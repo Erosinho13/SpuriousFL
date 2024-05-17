@@ -1,0 +1,15 @@
+{
+    "seed": 42,
+    "data_shuffle_seed" : null,
+    "dirichlet_alpha": 0.5,
+    "dataset": "CIFAR10",
+    "batch_size": 32,
+    "epochs": 1,
+    "rounds": 10,
+    "num_clients": 10,
+    "weight_clients": false,
+    "aug": true,
+    "aug_crop": 4,
+    "aug_horizontal_flip":true,
+    "split_mode": "dirichlet"
+}
