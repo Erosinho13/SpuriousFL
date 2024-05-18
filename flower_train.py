@@ -18,6 +18,7 @@ global Y_split
 global X_val
 global Y_val
 
+
 #!TODO I don't know how to pass parameters to this function
 def client_fn(cid: str) -> fl.client.Client:
     """Prepare flower client from ID (following flower documentation)"""
@@ -25,6 +26,7 @@ def client_fn(cid: str) -> fl.client.Client:
     client.load_data(X_split[int(cid)], Y_split[int(cid)], X_val, Y_val)
     client.init_model()
     return client
+
 
 def train():
     """Flower training simulation using global config"""
@@ -54,9 +56,9 @@ def train():
     model_utils.print_summary(initial_model)
     ws = model_utils.get_weights(initial_model)
     initial_parameters = ndarrays_to_parameters(
-            ws
-        )
-    
+        ws
+    )
+
     # Create FedAvg strategy
     strategy = MyStrategy(
         conf=conf,
@@ -76,13 +78,14 @@ def train():
         ray_init_args=conf["ray_init_args"],
         client_resources=conf["client_resources"],
     )
-    #!TODO there is a new, better way of returning with latest model
+    # TODO there is a new, better way of returning with latest model
     model_path = os.path.join(
-                "./dump/",
-                "latest_model"
-            )
+        "./dump/",
+        "latest_model"
+    )
     model = model_utils.init_model(conf=conf, model_path=model_path)
     return model
+
 
 if __name__ == "__main__":
     train()

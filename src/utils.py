@@ -15,7 +15,7 @@ def load_config(env_path="env.json", config_path="config.json"):
         for k, v in config["paths"].items():
             if "root_path" in config.keys():
                 if v[: len(config["root_path"])] == config["root_path"]:
-                    v = v[len(config["root_path"]) :]
+                    v = v[len(config["root_path"]):]
             config["paths"][k] = str(os.path.join(env["root_path"], v))
     config.update(env)
     return config
@@ -25,7 +25,7 @@ def get_logger():
     logger = logging.getLogger("spurious-fl")
     logger.setLevel(logging.DEBUG)
     DEFAULT_FORMATTER = logging.Formatter(
-    "%(levelname)s %(name)s %(asctime)s | %(filename)s:%(lineno)d | %(message)s"
+        "%(levelname)s %(name)s %(asctime)s | %(filename)s:%(lineno)d | %(message)s"
     )
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
@@ -33,7 +33,9 @@ def get_logger():
     logger.addHandler(console_handler)
     return logger
 
+
 DEFAULT_LOGGER = get_logger()
 
+
 def log(*args, **kwargs):
-    DEFAULT_LOGGER.log(*args,**kwargs)
+    DEFAULT_LOGGER.log(*args, **kwargs)

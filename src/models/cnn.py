@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 
@@ -12,18 +11,18 @@ class DiaoCNN(nn.Module):
     """
 
     def __init__(
-        self,
-        input_shape=(3, 32, 32),
-        num_classes=10,
-        default_hidden=[64, 128, 256, 512],
-        use_bias=True,
+            self,
+            input_shape=(3, 32, 32),
+            num_classes=10,
+            default_hidden=[64, 128, 256, 512],
+            use_bias=True,
     ):
         super(DiaoCNN, self).__init__()
 
         hidden_sizes = default_hidden
 
-        conv = nn.Conv2d(in_channels=input_shape[0], out_channels=hidden_sizes[0], kernel_size=3, stride=1, padding=1, bias=use_bias)
-
+        conv = nn.Conv2d(in_channels=input_shape[0], out_channels=hidden_sizes[0], kernel_size=3, stride=1, padding=1,
+                         bias=use_bias)
 
         norm = nn.BatchNorm2d(hidden_sizes[0], track_running_stats=False)
 
@@ -35,7 +34,8 @@ class DiaoCNN(nn.Module):
         ]
 
         for i in range(len(hidden_sizes) - 1):
-            conv = nn.Conv2d(in_channels=hidden_sizes[i], out_channels=hidden_sizes[i + 1], kernel_size=3, stride=1, padding=1, bias=use_bias)
+            conv = nn.Conv2d(in_channels=hidden_sizes[i], out_channels=hidden_sizes[i + 1], kernel_size=3, stride=1,
+                             padding=1, bias=use_bias)
             norm = nn.BatchNorm2d(hidden_sizes[i + 1], track_running_stats=False)
 
             blocks.extend(

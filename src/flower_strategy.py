@@ -12,7 +12,8 @@ from src.models import model_utils
 
 def fit_metrics_aggregation_fn(fit_metrics):
     losses = [a[1]["loss"] for a in fit_metrics]
-    return {"train_loss":np.mean(losses), "train_lossStd":np.std(losses)}
+    return {"train_loss": np.mean(losses), "train_lossStd": np.std(losses)}
+
 
 def evaluate_metrics_aggregation_fn(eval_metrics):
     eval_res = {
@@ -32,10 +33,10 @@ class MyStrategy(fl.server.strategy.FedAvg):
                          *args, **kwargs)
 
     def aggregate_fit(
-        self,
-        server_round,
-        results,
-        failures,
+            self,
+            server_round,
+            results,
+            failures,
     ):
         """Aggregate fit results using weighted average."""
         if not results:
@@ -49,11 +50,10 @@ class MyStrategy(fl.server.strategy.FedAvg):
             (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
             for _, fit_res in results
         ]
- 
+
         weights_aggregated = aggregate(weights_results)
 
         parameters_aggregated = ndarrays_to_parameters(weights_aggregated)
-
 
         # Aggregate custom metrics if aggregation fn was provided
         metrics_aggregated = {}
@@ -70,12 +70,11 @@ class MyStrategy(fl.server.strategy.FedAvg):
 
         return parameters_aggregated, metrics_aggregated
 
-
     def aggregate_evaluate(
-        self,
-        rnd,
-        results,
-        failures,
+            self,
+            rnd,
+            results,
+            failures,
     ):
         """Save final model"""
         aggregated_result = super().aggregate_evaluate(rnd, results, failures)
@@ -93,7 +92,7 @@ class MyStrategy(fl.server.strategy.FedAvg):
                 conf=self.conf, weights=aggregated_weights
             )
             model_utils.save_model(model, save_path)
-        
+
         # Aggregate custom metrics if aggregation fn was provided
         metrics_aggregated = {}
         if self.evaluate_metrics_aggregation_fn:

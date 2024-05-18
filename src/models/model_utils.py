@@ -6,6 +6,7 @@ import os
 
 from .cnn import get_diao_CNN
 
+
 def get_cpu():
     return torch.device("cpu")
 
@@ -47,8 +48,8 @@ def save_model(model, model_path):
     try:
         os.makedirs(os.path.join(model_path))
     except FileExistsError:
-        pass # Not nice...
-    torch.save(model.state_dict(), os.path.join(model_path,"torchmodel.pt"))
+        pass  # Not nice...
+    torch.save(model.state_dict(), os.path.join(model_path, "torchmodel.pt"))
 
 
 def count_params(model, only_trainable=False):
@@ -69,8 +70,9 @@ class History:
     def __init__(self):
         self.history = {"loss": [], "accuracy": []}
 
+
 def fit(model, data, conf, validation_data=None, verbose=0):
-    model.train() # switch to training mode
+    model.train()  # switch to training mode
     history = History()
     optimizer = get_optimizer(model.parameters(), conf)
     loss_fn = get_loss(conf)
@@ -93,7 +95,7 @@ def fit(model, data, conf, validation_data=None, verbose=0):
         epoch_acc = correct / total
 
         if validation_data is not None:
-            model.eval() # validation
+            model.eval()  # validation
             with torch.no_grad():
                 correct, total, val_loss = 0, 0, 0.0
                 for images, labels in validation_data:
@@ -106,12 +108,12 @@ def fit(model, data, conf, validation_data=None, verbose=0):
                     del loss, outputs
                 val_loss /= len(validation_data.dataset)
                 val_acc = correct / total
-            model.train() # switch to training mode
+            model.train()  # switch to training mode
         if verbose > 0:
             v_string = ''
             if validation_data is not None:
                 v_string = f" val_loss:{val_loss}, val_acc:{val_acc}"
-            print(f"Epoch {epoch+1}: loss:{epoch_loss}, acc:{epoch_acc}"+v_string)
+            print(f"Epoch {epoch + 1}: loss:{epoch_loss}, acc:{epoch_acc}" + v_string)
         history.history["loss"].append(epoch_loss)
         history.history["accuracy"].append(epoch_acc)
     return history
@@ -136,7 +138,7 @@ def evaluate(model, data, conf, verbose=0):
 
 
 def np_to_tensor(images):
-    return torch.from_numpy(np.transpose(images,(0,3,1,2)))
+    return torch.from_numpy(np.transpose(images, (0, 3, 1, 2)))
 
 
 def predict_numpy(model, X, verbose=0):
@@ -144,7 +146,7 @@ def predict_numpy(model, X, verbose=0):
     model.to(get_cpu())
     with torch.no_grad():
         images = np_to_tensor(X)
-        #images = batch.to(get_cpu())
+        # images = batch.to(get_cpu())
         outputs = model(images)
         return outputs
 
@@ -152,15 +154,15 @@ def predict_numpy(model, X, verbose=0):
 def predict_dataloader(model, dataloader, conf, apply_softmax=True):
     total_outputs = []
     labels_all = None
-    model.eval()     # Optional when not using Model Specific layer
+    model.eval()  # Optional when not using Model Specific layer
     model.to(get_device(conf))
     for images, labels in dataloader:
         l = labels.detach().numpy()
         if labels_all is None:
             labels_all = l
         else:
-            labels_all = np.concatenate((labels_all,l))
-        images, labels = images.to(get_device(conf)), labels.to(get_device(conf))      
+            labels_all = np.concatenate((labels_all, l))
+        images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
         outputs = model(images)
         if apply_softmax:
             outputs = torch.nn.functional.softmax(torch.Tensor(outputs), -1)
@@ -170,12 +172,12 @@ def predict_dataloader(model, dataloader, conf, apply_softmax=True):
 
 
 def init_model(conf, model_path=None, weights=None, *args, **kwargs):
-    if conf["dataset"]=="CIFAR10":
-        input_shape = (3,32,32)
-        num_classes=10
+    if conf["dataset"] == "CIFAR10":
+        input_shape = (3, 32, 32)
+        num_classes = 10
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes
-    model = get_diao_CNN(*args,**kwargs)
+    model = get_diao_CNN(*args, **kwargs)
     if model_path is not None:
         load_model_weights(model, model_path)
     if weights is not None:

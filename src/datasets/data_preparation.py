@@ -7,22 +7,23 @@ import copy
 import json
 import numpy as np
 
-class SubsetDataset(Dataset): # https://discuss.pytorch.org/t/torch-utils-data-dataset-random-split/32209/3 
+
+class SubsetDataset(Dataset):  # https://discuss.pytorch.org/t/torch-utils-data-dataset-random-split/32209/3
     def __init__(self, subset, transform=None):
         self.subset = subset
         self.transform = transform
-        
+
     def __getitem__(self, index):
         x, y = self.subset[index]
         if self.transform:
             x = self.transform(x)
         return x, y
-        
+
     def __len__(self):
         return len(self.subset)
 
 
-def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio = 0.2, conf={}):
+def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
     """Load datasets into dataset object"""
     if "dataset" in conf.keys():
         dataset_mode = conf["dataset"]
@@ -62,7 +63,7 @@ def preprocess_data(data, conf, shuffle=False):
     add_transforms.append(torchvision.transforms.ToTensor())
 
     #!TODO check these numbers
-    if conf["dataset"]=="CIFAR10":
+    if conf["dataset"] == "CIFAR10":
         add_transforms.append(
             torchvision.transforms.Normalize(
                 (0.4914, 0.4822, 0.4465), (0.2470, 0.2434, 0.2615)
@@ -84,7 +85,7 @@ def preprocess_data(data, conf, shuffle=False):
 
 
 def dirichlet_split(
-    num_classes, num_clients, dirichlet_alpha=1.0, mode="clients", seed=None
+        num_classes, num_clients, dirichlet_alpha=1.0, mode="clients", seed=None
 ):
     """Dirichlet distribution of the data points,
     with mode 'classes', 1.0 is distributed between num_classes class,
@@ -103,7 +104,7 @@ def dirichlet_split(
     return split_norm
 
 
-def split_data(X, Y, num_clients, 
+def split_data(X, Y, num_clients,
                split=None,
                split_mode="dirichlet",
                distribution_seed=None,
@@ -193,6 +194,7 @@ def get_np_from_ds(data):
     if isinstance(data, torch.utils.data.DataLoader):
         return get_np_from_dataloader(data)
     return get_np_from_dataset(data)
+
 
 class CustomImageDataset(torch.utils.data.Dataset):
     def __init__(self, data, transform=None, target_transform=None):

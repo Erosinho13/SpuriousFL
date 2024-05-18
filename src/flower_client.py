@@ -11,6 +11,12 @@ class FlowerClient(fl.client.NumPyClient):
     """Client implementation using Flower federated learning framework"""
 
     def __init__(self, cid, conf):
+        self.len_train_data = None
+        self.test_data = None
+        self.train_data = None
+        self.test_len = None
+        self.train_len = None
+        self.model = None
         self.cid = cid
         self.conf = conf
 
@@ -31,14 +37,13 @@ class FlowerClient(fl.client.NumPyClient):
         return model_utils.get_weights(self.model)
 
     def set_parameters(self, weights, config):
-            model_utils.set_weights(self.model, weights)
+        model_utils.set_weights(self.model, weights)
 
     def fit(self, weights, config):
         """Flower fit passing updated weights, data size and additional params in a dict"""
         # return self.get_parameters(config), 1, {"client_id": self.cid, "loss":-1}
         try:
             self.set_parameters(weights, config)
-            
 
             train_ds = data_preparation.get_ds_from_np(self.train_data)
             if self.conf["aug"]:
@@ -48,7 +53,7 @@ class FlowerClient(fl.client.NumPyClient):
             history = model_utils.fit(self.model, train_ds, self.conf)
 
             if np.isnan(
-                history.history["loss"][-1]
+                    history.history["loss"][-1]
             ):  # or np.isnan(history.history['val_loss'][-1]):
                 raise ValueError("Warning, client has NaN loss")
 
@@ -58,7 +63,6 @@ class FlowerClient(fl.client.NumPyClient):
 
             trained_weights = model_utils.get_weights(self.model)
 
-        
         except Exception as e:
             log(
                 ERROR,
@@ -71,18 +75,18 @@ class FlowerClient(fl.client.NumPyClient):
 
     def evaluate(self, weights, config):
         try:
-            
+
             test_ds = data_preparation.get_ds_from_np(self.test_data)
             test_ds = data_preparation.preprocess_data(test_ds, self.conf)
             # Local model eval
             self.set_parameters(weights, config)
             loss, accuracy = model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
-            
+
             return (
                 loss,
                 self.test_len,
                 {"cid": self.cid,
-                 "loss":loss, 
+                 "loss": loss,
                  "accuracy": accuracy},
             )
         except Exception as e:
