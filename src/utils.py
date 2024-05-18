@@ -2,15 +2,17 @@ import json
 import os
 import logging
 
+import yaml
+
 
 def load_config(env_path="env.json", config_path="config.json"):
     """Connect config and environment config files"""
     with open(config_path, "r") as f:
-        config = json.load(f)
+        config = yaml.safe_load(f)
     if env_path is None:
         return config
     with open(env_path, "r") as f:
-        env = json.load(f)
+        env = yaml.safe_load(f)
     if "paths" in config.keys():
         for k, v in config["paths"].items():
             if "root_path" in config.keys():
@@ -19,6 +21,7 @@ def load_config(env_path="env.json", config_path="config.json"):
             config["paths"][k] = str(os.path.join(env["root_path"], v))
     config.update(env)
     return config
+
 
 
 def get_logger():

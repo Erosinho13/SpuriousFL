@@ -1,0 +1,1 @@
+DATASETS_ROOT = '/home/efani/DATASETS'
