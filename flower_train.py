@@ -1,4 +1,6 @@
 # Installed modules
+import sys
+
 import flwr as fl
 from flwr.common import ndarrays_to_parameters
 import os
@@ -11,8 +13,6 @@ from src.flower_strategy import MyStrategy
 from src.flower_client import FlowerClient
 
 global conf
-conf = utils.load_config()
-
 global X_split
 global Y_split
 global X_val
@@ -88,4 +88,5 @@ def train():
 
 
 if __name__ == "__main__":
+    conf = utils.load_config(config_path=sys.argv[1])
     train()

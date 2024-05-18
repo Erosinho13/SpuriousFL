@@ -1,8 +1,6 @@
-import json
+import yaml
 import os
 import logging
-
-import yaml
 
 
 def load_config(env_path="env.json", config_path="config.json"):
@@ -21,7 +19,6 @@ def load_config(env_path="env.json", config_path="config.json"):
             config["paths"][k] = str(os.path.join(env["root_path"], v))
     config.update(env)
     return config
-
 
 
 def get_logger():
