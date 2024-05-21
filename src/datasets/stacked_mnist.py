@@ -2,9 +2,7 @@ import torch
 import random
 import numpy as np
 
-from collections import defaultdict
-
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, gridspec
 from torchvision.datasets import MNIST
 from torchvision.transforms import v2
 from PIL import Image
@@ -38,88 +36,101 @@ def _data_transforms_mnist(mean, std, norm=True):
 class StackedMNIST(MNIST):
 
     def __init__(self, root, train=True, transform=None, target_transform=None, download=False, num_images: int = 60000,
-                 dirichlet_groups_alpha: float = 1.0, num_classes: int = 120, max_num_groups: int = 6,
-                 prevent_class_shuffling: bool = False, prevent_group_shuffling: bool = False):
+                 dirichlet_groups_alpha: float = 1.0, num_targets: int = 100, max_num_groups: int = 10,
+                 prevent_class_shuffling: bool = False, prevent_group_shuffling: bool = False,
+                 groups: list[int] = None, targets: list[int] = None, force_balanced_dataset: bool = False):
         super().__init__(root=root, train=train, transform=transform, target_transform=target_transform,
                          download=download)
 
         assert dirichlet_groups_alpha >= 0
-        assert 2 <= num_classes <= 120
-        assert 1 <= max_num_groups <= 6
+        assert 2 <= num_targets <= 100
+        assert 1 <= max_num_groups <= 10
 
+        num_original_mnist_targets = 10
         self.num_images = num_images
-        self.num_classes = num_classes
+        self.num_targets = num_targets
         self.max_num_groups = max_num_groups
+        self.mnist_target_to_img = self.get_mnist_images_by_target(num_original_mnist_targets)
+        self.force_balanced_dataset = force_balanced_dataset
 
-        # original: original stacked MNIST label, integer (123 != 321)
-        # unordered: unordered stacked MNIST label, human friendly, string (123 = 321, label: '123')
-        # target: integer associated to each unordered label, from 0 to max number of combinations - 1
-        self.target_to_unordered = {}
-        self.unordered_to_target = {}
-        self.target_to_original = defaultdict(lambda: [])
-        self.original_to_target = {}
-        self.map_targets(prevent_class_shuffling, prevent_group_shuffling)  # fill the dictionaries above
+        self.targets = list(range(100))
+        self.groups = list(range(10))
+        if not prevent_class_shuffling:
+            random.shuffle(self.targets)
+        if not prevent_group_shuffling:
+            random.shuffle(self.groups)
+        self.targets = self.targets[:self.num_targets]
+        self.groups = self.groups[:self.max_num_groups]
 
-        # array to count the images per class in the test set, needed to build a balanced test set
-        self.last_test_original_id = np.zeros(len(self.original_to_target.keys())).astype(np.uint8)
+        if targets is not None:
+            assert len(targets) == self.num_targets
+            assert 0 <= all(targets) < 100
+            self.targets = targets
 
-        # divide original mnist data per class
-        self.mnist_label_to_img = [[] for _ in range(10)]
-        for img, label in zip(self.data, self.targets):
-            self.mnist_label_to_img[label].append(img)
+        if groups is not None:
+            assert len(groups) == self.max_num_groups
+            assert 0 <= all(groups) < 10
+            self.groups = groups
 
-        self.index = []  # list of pairs (class, id) of images from self.mnist_label_to_img
+        self.target_ids = {value: idx for idx, value in enumerate(self.targets)}
+        self.group_ids = {value: idx for idx, value in enumerate(self.groups)}
+
+        self.index = []  # list of 3 RGB pairs (class, id) of images from self.mnist_target_to_img
 
         # get dirichlet probabilities to sample the groups
         proportions = None
         if dirichlet_groups_alpha > 0:
             proportions = np.random.dirichlet(np.repeat(dirichlet_groups_alpha, self.max_num_groups))
 
-        id_label = 0
+        target_id = 0
+        group_id = np.zeros(self.num_targets, dtype=np.uint8)
         for i in range(self.num_images):
-
-            # sample a group, i.e. original (stacked mnist) label
+            # sample a group, i.e. original (stacked mnist) target
             if dirichlet_groups_alpha == 0:  # each class is associated with one single group
-                original_label = self.target_to_original[id_label][0]
+                group = self.groups[0]
+            elif not train or self.force_balanced_dataset:
+                group = self.groups[group_id[target_id]]
             else:
-                if train:
-                    original_label = \
-                        random.choices(self.target_to_original[id_label][:self.max_num_groups], proportions, k=1)[0]
-                else:
-                    original_label = self.target_to_original[id_label][self.last_test_original_id[id_label]]
-                    self.last_test_original_id[id_label] += 1
-                    if self.last_test_original_id[id_label] == self.max_num_groups:
-                        self.last_test_original_id[id_label] = 0
+                group = random.choices(self.groups[:self.max_num_groups], proportions, k=1)[0]
 
-            # randomly sample 3 images for the corresponding original_label original mnist classes
-            original_label_list = [int(i) for i in list(str(original_label).zfill(3))]  # list of original label digits
+            # randomly sample 3 images for the corresponding group and target
+            # list of original target digits
+            original_target_list = [group] + [int(i) for i in list(str(self.targets[target_id]).zfill(2))]
             img_id_list = []  # list of ids of original mnist images for the current RGB stacked mnist image
-            for j in original_label_list:
-                img_id_list.append(random.randint(0, len(self.mnist_label_to_img[j]) - 1))
+            for j in original_target_list:
+                img_id_list.append(random.randint(0, len(self.mnist_target_to_img[j]) - 1))
 
             self.index.append((
-                (original_label_list[0], img_id_list[0]), # R channel
-                (original_label_list[1], img_id_list[1]), # G channel
-                (original_label_list[2], img_id_list[2])  # B channel
+                (original_target_list[0], img_id_list[0]), # R channel
+                (original_target_list[1], img_id_list[1]), # G channel
+                (original_target_list[2], img_id_list[2])  # B channel
             ))
 
-            id_label += 1
-            if id_label == self.num_classes:  # max_num_classes = Bin(10, 3) = 120
-                id_label = 0
+            group_id[target_id] += 1
+            if group_id[target_id] == self.max_num_groups:
+                group_id[target_id] = 0
+
+            target_id += 1
+            if target_id == self.num_targets:
+                target_id = 0
 
     def __len__(self):
         return self.num_images
 
     def __getitem__(self, index):
+
         img = np.zeros((28, 28, 3), dtype=np.uint8)
-        target = 0
-        for i in range(3):
-            idx = self.index[index]
-            img_, target_ = self.mnist_label_to_img[idx[i][0]][idx[i][1]], idx[i][0]
-            img[:, :, i] = img_
-            target += target_ * 10 ** (2 - i)
-        original_target = target
-        target = self.original_to_target[target]
+
+        red_img = self.mnist_target_to_img[self.index[index][0][0]][self.index[index][0][1]]
+        group = self.index[index][0][0]
+
+        green_img = self.mnist_target_to_img[self.index[index][1][0]][self.index[index][1][1]]
+        blue_img = self.mnist_target_to_img[self.index[index][2][0]][self.index[index][2][1]]
+        target = 10 * self.index[index][1][0] + self.index[index][2][0]
+
+        img[:, :, 0] = red_img
+        img[:, :, 1] = green_img
+        img[:, :, 2] = blue_img
 
         img = Image.fromarray(img, mode="RGB")
         if self.transform is not None:
@@ -128,7 +139,7 @@ class StackedMNIST(MNIST):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, (target, original_target)
+        return img, (self.target_ids[target], self.group_ids[group])
 
     def mean(self):
         return np.round(self.data.float().mean(axis=(0, 1, 2)) / 255, 4)
@@ -136,27 +147,12 @@ class StackedMNIST(MNIST):
     def std(self):
         return np.round(self.data.float().std(axis=(0, 1, 2)) / 255, 4)
 
-    def map_targets(self, prevent_class_shuffling, prevent_group_shuffling):
-        new = 0
-        original_classes = list(range(1000))
-        if not prevent_class_shuffling:
-            random.shuffle(original_classes)
-        for i in original_classes:
-            list_unordered_target = [str(j) for j in sorted([int(i) for i in list(str(i).zfill(3))])]
-            if len(list_unordered_target) != len(set(list_unordered_target)):
-                continue  # ignore values with digits repetition, e.g. 133
-            str_unordered_target = ''.join(list_unordered_target)
-            if str_unordered_target not in set(self.target_to_unordered.values()) and new < self.num_classes:
-                self.target_to_unordered[new] = str_unordered_target
-                self.unordered_to_target[str_unordered_target] = new
-                new += 1
-            if str_unordered_target in self.unordered_to_target.keys():
-                self.target_to_original[self.unordered_to_target[str_unordered_target]].append(i)
-                self.original_to_target[i] = self.unordered_to_target[str_unordered_target]
-        self.target_to_original = dict(self.target_to_original)
-        if not prevent_group_shuffling:
-            for v in self.target_to_original.values():  # shuffle the groups
-                random.shuffle(v)
+    def get_mnist_images_by_target(self, num_original_mnist_targets):
+        # divide original mnist data per class
+        mnist_images_by_target = [[] for _ in range(num_original_mnist_targets)]
+        for img, target in zip(self.data, self.targets):
+            mnist_images_by_target[target].append(img)
+        return mnist_images_by_target
 
 
 class Denormalize(object):
@@ -182,18 +178,61 @@ def plot_sample_image(sample_image):
     plt.show()
 
 
-def count_img(ds):
-    # The groups are the original labels. This dict is structured in this way: {012: {012: 3, 021: 6, ...}}
-    count_images_per_groups_per_label = defaultdict(lambda: {})
+def count_img(data):
+    count_images_per_groups_per_target = np.zeros((data.max_num_groups, data.num_targets))
+    for img, (target, group) in data:
+        count_images_per_groups_per_target[group][target] += 1
+    return count_images_per_groups_per_target
 
-    for _, (target, original_target) in ds:
-        unordered_target = ds.target_to_unordered[target]
-        if original_target not in count_images_per_groups_per_label[unordered_target].keys():
-            count_images_per_groups_per_label[unordered_target][original_target] = 0
-        else:
-            count_images_per_groups_per_label[unordered_target][original_target] += 1
 
-    return count_images_per_groups_per_label
+def plot_heatmap(count_images_per_groups_per_target, data, title, write_annotations=True):
+
+    row_sums = count_images_per_groups_per_target.sum(axis=1)
+    col_sums = count_images_per_groups_per_target.sum(axis=0)
+
+    fig = plt.figure(figsize=(12, 8))
+    gs = gridspec.GridSpec(2, 2, width_ratios=[4, 1], height_ratios=[1, 4])
+
+    ax0 = plt.subplot(gs[1, 0])
+    im = ax0.imshow(count_images_per_groups_per_target, cmap='viridis', aspect='auto')
+
+    ax0.set_xticks(np.arange(data.num_targets + 1) - 0.5, minor=True)
+    ax0.set_yticks(np.arange(data.max_num_groups + 1) - 0.5, minor=True)
+    ax0.grid(which='minor', color='white', linestyle='-', linewidth=1)
+    ax0.tick_params(which='minor', size=0)
+
+    ax0.set_xticks(np.arange(data.max_num_groups))
+    ax0.set_xticklabels(data.groups)
+    ax0.set_yticks(np.arange(data.num_targets))
+    ax0.set_yticklabels(data.targets)
+    ax0.set_xlabel('Targets')
+    ax0.set_ylabel('Groups')
+
+    if write_annotations:
+        for i in range(data.max_num_groups):
+            for j in range(data.num_targets):
+                value = count_images_per_groups_per_target[i, j]
+                color = 'white' if value > count_images_per_groups_per_target.max() / 2 else 'black'
+                ax0.text(j, i, str(int(value)), ha='center', va='center', color=color, fontweight='bold')
+
+    cbar = plt.colorbar(im, ax=ax0, fraction=0.046, pad=0.04)
+
+    ax1 = plt.subplot(gs[1, 1], sharey=ax0)
+    ax1.barh(np.arange(data.max_num_groups), row_sums, align='center', color='blue')
+    ax1.set_yticks(np.arange(data.max_num_groups))
+    ax1.set_yticklabels(data.groups)
+    ax1.set_xlabel('Tot images by groups')
+    ax1.invert_yaxis()
+
+    ax2 = plt.subplot(gs[0, 0], sharex=ax0)
+    ax2.bar(np.arange(data.num_targets), col_sums, align='center', color='red')
+    ax2.set_xticks(np.arange(data.num_targets))
+    ax2.set_xticklabels(data.targets)
+    ax2.set_ylabel('Tot images by target')
+
+    plt.tight_layout()
+    plt.title(title)
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -203,10 +242,12 @@ if __name__ == '__main__':
     dirichlet_groups_alpha = 1.0
     num_train_images = 60000
     num_test_images = 10000
-    num_classes = 2
+    num_targets = 2
     max_num_groups = 2
     prevent_class_shuffling = False
-    prevent_group_shuffling = True
+    prevent_group_shuffling = False
+    force_balanced_dataset = True
+    write_annotations = True
 
     set_seed(seed)
     mean = (0.1307, 0.1307, 0.1307)
@@ -214,21 +255,32 @@ if __name__ == '__main__':
     train_transform, test_transform = _data_transforms_mnist(mean=mean, std=std, norm=True)
     train_data = StackedMNIST(root=DATASETS_ROOT, train=True, download=True, transform=train_transform,
                               num_images=num_train_images, dirichlet_groups_alpha=dirichlet_groups_alpha,
-                              num_classes=num_classes, max_num_groups=max_num_groups,
+                              num_targets=num_targets, max_num_groups=max_num_groups,
                               prevent_class_shuffling=prevent_class_shuffling,
-                              prevent_group_shuffling=prevent_group_shuffling)
+                              prevent_group_shuffling=prevent_group_shuffling,
+                              targets=[23, 45], groups=[0, 1], force_balanced_dataset=force_balanced_dataset)
     test_data = StackedMNIST(root=DATASETS_ROOT, train=False, download=True, transform=test_transform,
-                             num_images=num_test_images, num_classes=num_classes, max_num_groups=max_num_groups)
+                             num_images=num_test_images, num_targets=num_targets, max_num_groups=max_num_groups,
+                             prevent_class_shuffling=prevent_class_shuffling,
+                             prevent_group_shuffling=prevent_group_shuffling,
+                             targets=[23, 45], groups=[0, 1], force_balanced_dataset=force_balanced_dataset)
 
     sample_image = train_data[sample_id]
-    print(f"Target: {sample_image[1][0]}, "
-          f"Unordered_target: {train_data.target_to_unordered[sample_image[1][0]]}, "
-          f"Original_target: {sample_image[1][1]}")
+    print(f"Target: {train_data.targets[sample_image[1][0]]}, "
+          f"Group: {train_data.groups[sample_image[1][1]]}, "
+          f"Original target: {train_data.groups[sample_image[1][1]]}"
+          f"{str(train_data.targets[sample_image[1][0]]).zfill(2)}, "
+          f"Target id: {sample_image[1][0]}, "
+          f"Group id: {sample_image[1][1]}, ")
     # R_channel = torch.Tensor.numpy(sample_image[0])[0]
     # G_channel = torch.Tensor.numpy(sample_image[0])[1]
     # B_channel = torch.Tensor.numpy(sample_image[0])[2]
     plot_sample_image(sample_image)
 
-    count_images_per_groups_per_label_train = count_img(train_data)
-    count_images_per_groups_per_label_test = count_img(test_data)
-    pass
+    count_images_per_groups_per_target_train = count_img(train_data)
+    count_images_per_groups_per_target_test = count_img(test_data)
+
+    plot_heatmap(count_images_per_groups_per_target_train, train_data, 'Train dataset',
+                 write_annotations=write_annotations)
+    plot_heatmap(count_images_per_groups_per_target_test, test_data, 'Test dataset',
+                 write_annotations=write_annotations)
