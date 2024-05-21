@@ -1,5 +1,6 @@
 # Installed modules
-import sys
+import argparse
+from datetime import datetime
 
 import flwr as fl
 from flwr.common import ndarrays_to_parameters
@@ -34,6 +35,18 @@ def train():
     global Y_split
     global X_val
     global Y_val
+
+    conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
+    if conf["wandb"]:
+        import wandb
+        wandb.init(
+            project="spurious_FL",
+            config=conf,
+            id=conf["exp_id"],
+            job_type="train",
+            reinit=True
+        )
+
     train_ds, val_ds, test_ds = data_preparation.load_data(conf=conf)
     X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
     X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
@@ -78,6 +91,9 @@ def train():
         ray_init_args=conf["ray_init_args"],
         client_resources=conf["client_resources"],
     )
+    if conf["wandb"]:
+        wandb.finish()
+
     # TODO there is a new, better way of returning with latest model
     model_path = os.path.join(
         "./dump/",
@@ -88,7 +104,6 @@ def train():
 
 
 if __name__ == "__main__":
-    import argparse
 
     # Instantiate the parser
     parser = argparse.ArgumentParser(
