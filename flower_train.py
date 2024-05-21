@@ -88,5 +88,26 @@ def train():
 
 
 if __name__ == "__main__":
-    conf = utils.load_config(config_path=sys.argv[1])
+    import argparse
+
+    # Instantiate the parser
+    parser = argparse.ArgumentParser(
+        description=""
+    )
+    parser.add_argument(
+        "--config_path",
+        type=str,
+        help="Config path",
+        default="config.yaml",
+    )
+    parser.add_argument(
+        "--env_path",
+        type=str,
+        help="Environment path",
+        default="env.yaml",
+    )
+    args = parser.parse_args()
+
+    conf = utils.load_config(config_path=args.config_path, env_path=args.env_path)
+    print(conf)
     train()
