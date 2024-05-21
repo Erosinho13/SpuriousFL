@@ -11,3 +11,6 @@ aug: true
 aug_crop: 4
 aug_horizontal_flip: true
 split_mode: dirichlet
+client_opt:
+    optimizer: SGD
+    learning_rate: 0.001

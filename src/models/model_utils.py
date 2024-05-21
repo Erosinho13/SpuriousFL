@@ -27,7 +27,21 @@ def get_loss(conf={}):
 
 
 def get_optimizer(params, conf={}):
-    return torch.optim.Adam(params, lr=0.001)
+    if "client_opt" in conf.keys():
+        copt = conf["client_opt"]
+        if "optimizer" in copt:
+            if copt["optimizer"]=="SGD":
+                opt = torch.optim.SGD
+            elif copt["optimizer"]=="Adam":
+                opt = torch.optim.Adam
+            else:
+                raise NotImplementedError(f"optimizer not recognized {copt['optimizer']}")
+        if "learning_rate" in copt:
+            lr = copt["learning_rate"]
+        else:
+            lr = 0.001
+        return opt(params, lr=lr)
+    return torch.optim.SGD(params, lr=0.001)
 
 
 def get_weights(model):
