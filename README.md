@@ -2,7 +2,7 @@
 
 
 # Repo structure
-
+```
 project
 │   README.md
 │   .gitignore 
@@ -17,3 +17,4 @@ project
 │   └───models # PyTorch models
 └───datasets # Dataset files or links
 └───checkpoints # Experiment files
+```
