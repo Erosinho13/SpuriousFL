@@ -37,6 +37,9 @@ def train():
     global Y_val
 
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
+    os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
+    utils.save_config(conf, os.path.join("checkpoints/",conf["exp_id"],"config.yaml"))
+
     if conf["wandb"]:
         import wandb
         wandb.init(
@@ -96,7 +99,8 @@ def train():
 
     # TODO there is a new, better way of returning with latest model
     model_path = os.path.join(
-        "./dump/",
+        "checkpoints/",
+        conf["exp_id"],
         "latest_model"
     )
     model = model_utils.init_model(conf=conf, model_path=model_path)

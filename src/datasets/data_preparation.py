@@ -33,10 +33,10 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
 
     if dataset_mode == "CIFAR10":
         trainset = torchvision.datasets.CIFAR10(
-            "./dump/dataset", train=True, download=True
+            "./datasets", train=True, download=True
         )
         testset = torchvision.datasets.CIFAR10(
-            "./dump/dataset", train=False, download=True
+            "./datasets", train=False, download=True
         )
 
         if val_split:

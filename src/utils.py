@@ -21,6 +21,12 @@ def load_config(env_path="env.json", config_path="config.json"):
     return config
 
 
+def save_config(conf, path):
+    """Save config dict to file"""
+    with open(path, 'w') as outfile:
+        yaml.dump(conf, outfile, default_flow_style=False)
+
+
 def get_logger():
     logger = logging.getLogger("spurious-fl")
     logger.setLevel(logging.DEBUG)
