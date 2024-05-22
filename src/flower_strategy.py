@@ -81,8 +81,9 @@ class MyStrategy(fl.server.strategy.FedAvg):
         if rnd == self.conf["rounds"]:
             # end of training calls
             save_path = os.path.join(
-                "./dump/",
-                "latest_model"
+                "checkpoints",
+                self.conf["exp_id"],
+                "final"
             )
             log(INFO, "Saving model to %s", save_path)
             aggregated_weights = fl.common.parameters_to_ndarrays(
@@ -101,5 +102,13 @@ class MyStrategy(fl.server.strategy.FedAvg):
             log(INFO, "aggregated eval results %s", str(metrics_aggregated))
         elif rnd == 1:  # Only log this warning once
             log(WARNING, "No evaluate_metrics_aggregation_fn provided")
+
+
+        if self.conf["wandb"]:
+            import wandb
+            wandb_log = aggregated_result[1]
+            wandb_log["round"] = rnd
+            wandb_log.update(self.train_metrics_aggregated)
+            wandb.log(wandb_log)
 
         return aggregated_result

@@ -101,7 +101,7 @@ def train():
     model_path = os.path.join(
         "checkpoints/",
         conf["exp_id"],
-        "latest_model"
+        "final"
     )
     model = model_utils.init_model(conf=conf, model_path=model_path)
     return model
