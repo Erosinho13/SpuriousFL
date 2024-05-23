@@ -13,5 +13,11 @@ aug_horizontal_flip: true
 split_mode: dirichlet
 client_opt:
     optimizer: SGD
-    learning_rate: 0.001
+    learning_rate: 0.0316
+server_opt:
+    optimizer: FedAvgM
+    learning_rate: 0.316
+    beta_1: 0.9
+    beta_2: 0.99
+    tau: 0.000000001
 wandb: true
