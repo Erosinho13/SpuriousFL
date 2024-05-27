@@ -6,14 +6,9 @@ from matplotlib import pyplot as plt, gridspec
 from torchvision.datasets import MNIST
 from torchvision.transforms import v2
 from PIL import Image
-from global_variables import DATASETS_ROOT
 from torchvision.transforms.functional import normalize
 
-
-def set_seed(random_seed):
-    random.seed(random_seed)
-    np.random.seed(random_seed)
-    torch.manual_seed(random_seed)
+from src.utils import set_seed
 
 
 def _data_transforms_mnist(mean, std, norm=True):
@@ -238,6 +233,7 @@ def plot_heatmap(count_images_per_groups_per_target, data, title, write_annotati
 if __name__ == '__main__':
 
     seed = 0
+    root = '/home/efani/DATASETS'
     sample_id = 25
     dirichlet_groups_alpha = 1.0
     num_train_images = 60000
@@ -253,13 +249,13 @@ if __name__ == '__main__':
     mean = (0.1307, 0.1307, 0.1307)
     std = (0.3081, 0.3081, 0.3081)
     train_transform, test_transform = _data_transforms_mnist(mean=mean, std=std, norm=True)
-    train_data = StackedMNIST(root=DATASETS_ROOT, train=True, download=True, transform=train_transform,
+    train_data = StackedMNIST(root=root, train=True, download=True, transform=train_transform,
                               num_images=num_train_images, dirichlet_groups_alpha=dirichlet_groups_alpha,
                               num_targets=num_targets, max_num_groups=max_num_groups,
                               prevent_class_shuffling=prevent_class_shuffling,
                               prevent_group_shuffling=prevent_group_shuffling,
                               targets=[23, 45], groups=[0, 1], force_balanced_dataset=force_balanced_dataset)
-    test_data = StackedMNIST(root=DATASETS_ROOT, train=False, download=True, transform=test_transform,
+    test_data = StackedMNIST(root=root, train=False, download=True, transform=test_transform,
                              num_images=num_test_images, num_targets=num_targets, max_num_groups=max_num_groups,
                              prevent_class_shuffling=prevent_class_shuffling,
                              prevent_group_shuffling=prevent_group_shuffling,

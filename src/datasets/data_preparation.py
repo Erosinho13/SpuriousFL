@@ -1,9 +1,14 @@
+import random
+from collections import defaultdict
+
 import torchvision
 from torch.utils.data import random_split, Dataset
 import torch
 from PIL import Image
 import copy
 import numpy as np
+
+from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, count_img
 
 
 class SubsetDataset(Dataset):  # https://discuss.pytorch.org/t/torch-utils-data-dataset-random-split/32209/3
@@ -39,21 +44,41 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
             "./datasets", train=False, download=True
         )
 
-        if val_split:
-            len_val = int(len(trainset) * val_ratio)
-            len_train = len(trainset) - len_val
-            trainset, valset = random_split(
-                trainset,
-                [len_train, len_val],
-                torch.Generator().manual_seed(conf["seed"]),
-            )
-            trainset = SubsetDataset(trainset)
-            valset = SubsetDataset(valset)
-        else:
-            valset = copy.deepcopy(testset)
-        return trainset, valset, testset
-    raise NotImplementedError(dataset_mode)
+    elif dataset_mode == "StackedMNIST":
+        ds_opt = conf['dataset_options']
+        mean = (0.1307, 0.1307, 0.1307)
+        std = (0.3081, 0.3081, 0.3081)
+        train_transform, test_transform = _data_transforms_mnist(mean=mean, std=std, norm=True)
+        trainset = StackedMNIST(root=ds_opt['root'], train=True, download=True, transform=train_transform,
+                                num_images=ds_opt['num_train_images'],
+                                dirichlet_groups_alpha=ds_opt['dirichlet_groups_alpha'],
+                                num_targets=ds_opt['num_targets'], max_num_groups=ds_opt['max_num_groups'],
+                                prevent_class_shuffling=ds_opt['prevent_class_shuffling'],
+                                prevent_group_shuffling=ds_opt['prevent_group_shuffling'],
+                                targets=[23, 45], groups=[0, 1],
+                                force_balanced_dataset=ds_opt['force_balanced_dataset'])
+        testset = StackedMNIST(root=ds_opt['root'], train=False, download=True, transform=test_transform,
+                               num_images=ds_opt['num_test_images'], num_targets=ds_opt['num_targets'],
+                               max_num_groups=ds_opt['max_num_groups'],
+                               prevent_class_shuffling=ds_opt['prevent_class_shuffling'],
+                               prevent_group_shuffling=ds_opt['prevent_group_shuffling'],
+                               targets=[23, 45], groups=[0, 1], force_balanced_dataset=ds_opt['force_balanced_dataset'])
+    else:
+        raise NotImplementedError(dataset_mode)
 
+    if val_split:
+        len_val = int(len(trainset) * val_ratio)
+        len_train = len(trainset) - len_val
+        trainset, valset = random_split(
+            trainset,
+            [len_train, len_val],
+            torch.Generator().manual_seed(conf["seed"]),
+        )
+        trainset = SubsetDataset(trainset)
+        valset = SubsetDataset(valset)
+    else:
+        valset = copy.deepcopy(testset)
+    return trainset, valset, testset
 
 def preprocess_data(data, conf, shuffle=False):
     """From torch.utils.data.Dataset to DataLoader"""
@@ -219,3 +244,95 @@ class CustomImageDataset(torch.utils.data.Dataset):
 
 def get_ds_from_np(data):
     return CustomImageDataset(data, transform=None, target_transform=None)
+
+
+def divide_idx_by_tg_pairs(ds, split_mode):
+    if split_mode == 'mode1':
+        tg_pairs_indices = {(0, 0): [], (1, 0): [], (0, 1): [], (1, 1): []}
+        tg_pairs = [(0, 0), (1, 0), (0, 1), (1, 1)]
+        for i in range(len(ds)):
+            tg_pairs_indices[tg_pairs[i % 4]].append(i)
+    else:
+        tg_pairs_indices = defaultdict(lambda: [])
+        for i, (_, (target, group)) in enumerate(ds):
+            tg_pairs_indices[(target, group)].append(i)
+        tg_pairs_indices = dict(tg_pairs_indices)
+    return tg_pairs_indices
+
+
+def get_client_indices_mode1(tg_pairs_indices, ds, num_clients):
+    for indices in tg_pairs_indices.values():
+        random.shuffle(indices)
+    clients_indices = [[] for _ in range(num_clients)]
+    cl_id = 0
+    tg_pairs = [(0, 0), (1, 0), (0, 1), (1, 1)]
+    for i in range(len(ds)):
+        clients_indices[cl_id].append(tg_pairs_indices[tg_pairs[i % 4]][i // 4])
+        if len(clients_indices[cl_id]) == len(ds) // num_clients:
+            cl_id += 1
+    return clients_indices
+
+
+def get_client_indices_mode2(tg_pairs_indices, num_clients):
+    def divide_indices_in_groups(indices, num_groups):
+        random.shuffle(indices)
+        group_size = len(indices) // num_groups
+        divided_groups = [indices[i * group_size:(i + 1) * group_size] for i in range(num_groups)]
+        remaining_indices = indices[num_groups * group_size:]
+        for i, index in enumerate(remaining_indices):
+            divided_groups[i % num_groups].append(index)
+        return divided_groups
+
+    clients_indices = []
+    for k, v in tg_pairs_indices.items():
+        clients_indices += divide_indices_in_groups(v, num_clients // 4)
+
+    return clients_indices
+
+
+def split_data_from_torchvision(ds, split_mode, num_clients):
+    clients_datasets = []
+    if type(ds).__name__ == 'StackedMNIST':
+        if split_mode == 'dirichlet':
+            raise NotImplementedError
+        if split_mode == 'mode1':
+            assert ds.num_targets == 2
+            assert ds.max_num_groups == 2
+            assert ds.force_balanced_dataset is True or ds.train is False
+            assert num_clients % 4 == 0
+            assert len(ds) % num_clients == 0
+            tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
+            clients_indices = get_client_indices_mode1(tg_pairs_indices, ds, num_clients)
+        elif split_mode == 'mode2':
+            assert ds.num_targets == 2
+            assert ds.max_num_groups == 2
+            assert ds.force_balanced_dataset is True or ds.train is False
+            assert num_clients % 4 == 0
+            tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
+            clients_indices = get_client_indices_mode2(tg_pairs_indices, num_clients)
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+    for indices in clients_indices:
+        clients_datasets.append(CustomSubset(ds, indices))
+
+    assert_list = [count_img(cds) for cds in clients_datasets]  # uncomment to check counts by tg pair per client
+    return clients_datasets
+
+
+class CustomSubset(Dataset):
+    def __init__(self, dataset, indices):
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        actual_idx = self.indices[idx]
+        return self.dataset[actual_idx]
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getattr__(self, name):
+        return getattr(self.dataset, name)

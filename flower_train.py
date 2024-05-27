@@ -12,6 +12,7 @@ from src.datasets import data_preparation
 from src.models import model_utils
 from src.flower_strategy import MyStrategy
 from src.flower_client import FlowerClient
+from src.utils import set_seed
 
 global conf
 global X_split
@@ -52,19 +53,25 @@ def train():
         )
 
     train_ds, val_ds, test_ds = data_preparation.load_data(conf=conf)
-    X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
-    X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
-    conf["len_total_data"] = len(X_train)
-    X_split, Y_split = data_preparation.split_data(
-        X_train,
-        Y_train,
-        conf["num_clients"],
-        split_mode=conf["split_mode"],
-        mode="clients",
-        distribution_seed=conf["seed"],
-        shuffle_seed=conf["data_shuffle_seed"],
-        dirichlet_alpha=conf["dirichlet_alpha"],
-    )
+    if conf['dataset'] == 'CIFAR10':
+        X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
+        X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
+        conf["len_total_data"] = len(X_train)
+        X_split, Y_split = data_preparation.split_data(
+            X_train,
+            Y_train,
+            conf["num_clients"],
+            split_mode=conf["split_mode"],
+            mode="clients",
+            distribution_seed=conf["seed"],
+            shuffle_seed=conf["data_shuffle_seed"],
+            dirichlet_alpha=conf["dirichlet_alpha"],
+        )
+    elif conf['dataset'] == 'StackedMNIST':
+        clients_datasets = \
+            data_preparation.split_data_from_torchvision(train_ds, conf['split_mode'], conf['num_clients'])
+    else:
+        raise NotImplementedError
 
     initial_model = model_utils.init_model(
         conf=conf
@@ -109,7 +116,6 @@ def train():
 
 
 if __name__ == "__main__":
-
     # Instantiate the parser
     parser = argparse.ArgumentParser(
         description=""
@@ -130,4 +136,5 @@ if __name__ == "__main__":
 
     conf = utils.load_config(config_path=args.config_path, env_path=args.env_path)
     print(conf)
+    set_seed(conf['seed'])
     train()

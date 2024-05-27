@@ -1,0 +1,29 @@
+seed: 42
+data_shuffle_seed : null  # TODO: check
+dataset: StackedMNIST
+dataset_options:
+    root: '/home/efani/DATASETS'
+    dirichlet_groups_alpha: 1.0
+    num_train_images: 60000
+    num_test_images: 10000
+    num_targets: 2
+    max_num_groups: 2
+    prevent_class_shuffling: False
+    prevent_group_shuffling: False
+    force_balanced_dataset: True
+split_mode: mode2
+batch_size: 32
+epochs: 1
+rounds: 1000
+num_clients: 20
+weight_clients: false  # TODO: check
+client_opt:
+    optimizer: SGD
+    learning_rate: 0.1
+server_opt:
+    optimizer: FedAvg  # TODO: check
+    learning_rate: 1.0
+    beta_1: 0.9  # TODO: check
+    beta_2: 0.99  # TODO: check
+    tau: 0.000000001  # TODO: check
+wandb: false
