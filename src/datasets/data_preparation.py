@@ -49,20 +49,19 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         mean = (0.1307, 0.1307, 0.1307)
         std = (0.3081, 0.3081, 0.3081)
         train_transform, test_transform = _data_transforms_mnist(mean=mean, std=std, norm=True)
-        trainset = StackedMNIST(root=ds_opt['root'], train=True, download=True, transform=train_transform,
+        trainset = StackedMNIST(root=ds_opt['root'], train=True, transform=train_transform, download=True,
                                 num_images=ds_opt['num_train_images'],
                                 dirichlet_groups_alpha=ds_opt['dirichlet_groups_alpha'],
-                                num_targets=ds_opt['num_targets'], max_num_groups=ds_opt['max_num_groups'],
-                                prevent_class_shuffling=ds_opt['prevent_class_shuffling'],
-                                prevent_group_shuffling=ds_opt['prevent_group_shuffling'],
-                                targets=[23, 45], groups=[0, 1],
-                                force_balanced_dataset=ds_opt['force_balanced_dataset'])
-        testset = StackedMNIST(root=ds_opt['root'], train=False, download=True, transform=test_transform,
+                                num_targets=ds_opt['num_targets'], num_groups=ds_opt['max_num_groups'],
+                                prevent_targets_shuffling=ds_opt['prevent_class_shuffling'],
+                                prevent_groups_shuffling=ds_opt['prevent_group_shuffling'], force_targets=[23, 45],
+                                force_groups=[0, 1], force_balanced_dataset=ds_opt['force_balanced_dataset'])
+        testset = StackedMNIST(root=ds_opt['root'], train=False, transform=test_transform, download=True,
                                num_images=ds_opt['num_test_images'], num_targets=ds_opt['num_targets'],
-                               max_num_groups=ds_opt['max_num_groups'],
-                               prevent_class_shuffling=ds_opt['prevent_class_shuffling'],
-                               prevent_group_shuffling=ds_opt['prevent_group_shuffling'],
-                               targets=[23, 45], groups=[0, 1], force_balanced_dataset=ds_opt['force_balanced_dataset'])
+                               num_groups=ds_opt['max_num_groups'],
+                               prevent_targets_shuffling=ds_opt['prevent_class_shuffling'],
+                               prevent_groups_shuffling=ds_opt['prevent_group_shuffling'], force_targets=[23, 45],
+                               force_groups=[0, 1], force_balanced_dataset=ds_opt['force_balanced_dataset'])
     else:
         raise NotImplementedError(dataset_mode)
 

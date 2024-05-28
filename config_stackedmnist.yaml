@@ -10,7 +10,8 @@ dataset_options:
     max_num_groups: 2
     prevent_class_shuffling: False
     prevent_group_shuffling: False
-    force_balanced_dataset: True
+    force_balanced_dataset: False
+    force_groups_proportions: [.45, .05, .05, .45]
 split_mode: mode2
 batch_size: 32
 epochs: 1
