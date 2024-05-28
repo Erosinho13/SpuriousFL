@@ -83,6 +83,9 @@ def print_summary(model):
 class History:
     def __init__(self):
         self.history = {"loss": [], "accuracy": []}
+    
+    def __str__(self):
+        return str(self.history)
 
 
 def fit(model, data, conf, validation_data=None, verbose=0):
