@@ -26,7 +26,7 @@ def client_fn(cid: str) -> fl.client.Client:
     client = FlowerClient(int(cid), conf)
     client.load_data(X_split[int(cid)], Y_split[int(cid)], X_val, Y_val)
     client.init_model()
-    return client
+    return client.to_client()
 
 
 def train():
