@@ -57,7 +57,7 @@ class FlowerClient(fl.client.NumPyClient):
             ):  # or np.isnan(history.history['val_loss'][-1]):
                 raise ValueError("Warning, client has NaN loss")
 
-            shared_metrics = {"client_id": self.cid, "loss": history.history["loss"]}
+            shared_metrics = {"client_id": self.cid, "loss": history.history["loss"][-1]}
 
             client_weight = self.train_len if self.conf["weight_clients"] else 1
 
@@ -70,7 +70,6 @@ class FlowerClient(fl.client.NumPyClient):
                 str(e),
             )
             raise RuntimeError("Client training terminated unexpectedly")
-
         return trained_weights, client_weight, shared_metrics
 
     def evaluate(self, weights, config):
