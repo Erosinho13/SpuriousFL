@@ -5,20 +5,27 @@ from PIL import Image
 import copy
 import numpy as np
 
+from src.datasets.cifar import CIFAR10
 
-class SubsetDataset(Dataset):  # https://discuss.pytorch.org/t/torch-utils-data-dataset-random-split/32209/3
-    def __init__(self, subset, transform=None):
-        self.subset = subset
-        self.transform = transform
 
-    def __getitem__(self, index):
-        x, y = self.subset[index]
-        if self.transform:
-            x = self.transform(x)
-        return x, y
+class SubsetDataset(Dataset):
+    def __init__(self, dataset, indices):
+        self.dataset = dataset
+        self.indices = indices
+
+    def __getitem__(self, idx):
+        actual_idx = self.indices[idx]
+        return self.dataset[actual_idx]
 
     def __len__(self):
-        return len(self.subset)
+        return len(self.indices)
+
+    def __getattr__(self, name):
+        print(name)
+        if name=="dataset":
+            return super().__getattribute__('dataset')
+        return getattr(self.dataset, name)
+
 
 
 def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
@@ -32,14 +39,15 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         conf["seed"] = None
 
     if dataset_mode == "CIFAR10":
-        trainset = torchvision.datasets.CIFAR10(
-            "./datasets", train=True, download=True
+        trainset = CIFAR10(
+            "./datasets", train=True
         )
-        testset = torchvision.datasets.CIFAR10(
-            "./datasets", train=False, download=True
+        testset = CIFAR10(
+            "./datasets", train=False
         )
 
         if val_split:
+            raise ValueError("Code needs update")
             len_val = int(len(trainset) * val_ratio)
             len_train = len(trainset) - len_val
             trainset, valset = random_split(
@@ -102,7 +110,7 @@ def dirichlet_split(
     return split_norm
 
 
-def split_data(X, Y, num_clients,
+def split_data(ds, num_clients,
                split=None,
                split_mode="dirichlet",
                distribution_seed=None,
@@ -110,8 +118,9 @@ def split_data(X, Y, num_clients,
                sort=True,
                *args, **kwargs):
     """Split data in X,Y between 'num_clients' number of clients"""
-    assert len(X) == len(Y)
-    classes = np.unique(Y)
+    
+    y_list = [y for _, (y,_) in ds]
+    classes = np.unique(y_list)
     num_classes = len(classes)
 
     if shuffle_seed is None:
@@ -137,12 +146,11 @@ def split_data(X, Y, num_clients,
                 split = split[:, sorted_indices]
         else:
             ValueError(f"Split mode not recognized {split_mode}")
-    X_split = None
-    Y_split = None
+            
     idx_split = None
 
     for i, cls in enumerate(classes):
-        idx_cls = np.where(Y == cls)[0]
+        idx_cls = np.where(y_list == cls)[0]
         np.random.default_rng(seed=shuffle_seed).shuffle(idx_cls)
         cls_num_example = len(idx_cls)
         cls_split = np.rint(split[i] * cls_num_example)
@@ -164,10 +172,9 @@ def split_data(X, Y, num_clients,
     for i in range(len(idx_split)):
         idx_split[i] = np.sort(idx_split[i])
 
-    X_split = [X[idx] for idx in idx_split]
-    Y_split = [Y[idx] for idx in idx_split]
-    print([len(y) for y in X_split])
-    return X_split, Y_split
+    ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
+    print([len(ds) for ds in ds_split])
+    return ds_split
 
 
 def get_np_from_dataset(dataset):

@@ -11,7 +11,6 @@ class FlowerClient(fl.client.NumPyClient):
     """Client implementation using Flower federated learning framework"""
 
     def __init__(self, cid, conf):
-        self.len_train_data = None
         self.test_data = None
         self.train_data = None
         self.test_len = None
@@ -26,12 +25,11 @@ class FlowerClient(fl.client.NumPyClient):
         )
         self.model = model
 
-    def load_data(self, X, Y, X_test, Y_test):
-        self.train_len = len(X)
-        self.test_len = len(X_test)
-        self.train_data = (X, Y)
-        self.test_data = (X_test, Y_test)
-        self.len_train_data = len(X)
+    def load_data(self, train_ds, test_ds):
+        self.train_len = len(train_ds)
+        self.test_len = len(test_ds)
+        self.train_data = train_ds
+        self.test_data = test_ds
 
     def get_parameters(self, config):
         return model_utils.get_weights(self.model)
@@ -45,11 +43,17 @@ class FlowerClient(fl.client.NumPyClient):
         try:
             self.set_parameters(weights, config)
 
-            train_ds = data_preparation.get_ds_from_np(self.train_data)
+            #train_ds = data_preparation.get_ds_from_np(self.train_data)
+            train_ds = self.train_data
+            log(
+                INFO,
+                "Client ds: %s",
+                str(train_ds),
+            )
+            
             if self.conf["aug"]:
                 train_ds = augmentation.aug_data(train_ds, conf=self.conf)
             train_ds = data_preparation.preprocess_data(train_ds, conf=self.conf, shuffle=True)
-
             history = model_utils.fit(self.model, train_ds, self.conf)
 
             if np.isnan(
@@ -75,7 +79,9 @@ class FlowerClient(fl.client.NumPyClient):
     def evaluate(self, weights, config):
         try:
 
-            test_ds = data_preparation.get_ds_from_np(self.test_data)
+            #test_ds = data_preparation.get_ds_from_np(self.test_data)
+            test_ds = self.test_data
+
             test_ds = data_preparation.preprocess_data(test_ds, self.conf)
             # Local model eval
             self.set_parameters(weights, config)

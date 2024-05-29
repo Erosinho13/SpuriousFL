@@ -95,7 +95,7 @@ def fit(model, data, conf, validation_data=None, verbose=0):
     loss_fn = get_loss(conf)
     for epoch in range(conf["epochs"]):
         correct, total, epoch_loss = 0, 0, 0.0
-        for images, labels in data:
+        for images, (labels, groups) in data:
             images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
             optimizer.zero_grad()
             outputs = model(images)
@@ -115,7 +115,7 @@ def fit(model, data, conf, validation_data=None, verbose=0):
             model.eval()  # validation
             with torch.no_grad():
                 correct, total, val_loss = 0, 0, 0.0
-                for images, labels in validation_data:
+                for images, (labels, groups) in validation_data:
                     images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
                     outputs = model(images)
                     loss = loss_fn(outputs, labels)
@@ -141,7 +141,7 @@ def evaluate(model, data, conf, verbose=0):
     loss_fn = get_loss(conf)
     correct, total, loss = 0, 0, 0.0
     with torch.no_grad():
-        for images, labels in data:
+        for images, (labels, groups) in data:
             images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
             outputs = model(images)
             loss += loss_fn(outputs, labels, reduction="sum").item()

@@ -14,27 +14,25 @@ from src.flower_strategy import MyStrategy
 from src.flower_client import FlowerClient
 
 global conf
-global X_split
-global Y_split
-global X_val
-global Y_val
+global ds_split
+global val_ds
 
 
 #!TODO I don't know how to pass parameters to this function
 def client_fn(cid: str) -> fl.client.Client:
     """Prepare flower client from ID (following flower documentation)"""
     client = FlowerClient(int(cid), conf)
-    client.load_data(X_split[int(cid)], Y_split[int(cid)], X_val, Y_val)
+    client_train_ds = ds_split[int(cid)]
+    #client_train_ds = data_preparation.get_ds_from_np((X_split[int(cid)], Y_split[int(cid)]))
+    client.load_data(client_train_ds, val_ds)
     client.init_model()
     return client.to_client()
 
 
 def train():
     """Flower training simulation using global config"""
-    global X_split
-    global Y_split
-    global X_val
-    global Y_val
+    global ds_split
+    global val_ds
 
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
@@ -52,12 +50,11 @@ def train():
         )
 
     train_ds, val_ds, test_ds = data_preparation.load_data(conf=conf)
-    X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
-    X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
-    conf["len_total_data"] = len(X_train)
-    X_split, Y_split = data_preparation.split_data(
-        X_train,
-        Y_train,
+    # X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
+    # X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
+    conf["len_total_data"] = len(train_ds)
+    ds_split = data_preparation.split_data(
+        train_ds,
         conf["num_clients"],
         split_mode=conf["split_mode"],
         mode="clients",

@@ -5,12 +5,13 @@ from wilds import get_dataset
 class WaterBirds(VisionDataset):
     def __init__(
         self,
-        root: str,
+        root="./datasets",
         train=True,
-        transforms=None,
+        transform=None,
     ) -> None:
         dataset = get_dataset(dataset="waterbirds", download=True, root_dir=root)
-        self.subset = dataset.get_subset("train" if train else "test", transform=transforms)
+        self.subset = dataset.get_subset("train" if train else "test", transform=transform)
+        self.root = root
 
     def __len__(self) -> int:
         return len(self.subset)
@@ -19,3 +20,9 @@ class WaterBirds(VisionDataset):
         x, y, metadata = self.subset[index]
         s = metadata[0]
         return x, (y, s)
+
+    def __getattr__(self, name):
+        try:
+            return super().__getattribute__('dataset').__getattribute__(name)
+        except AttributeError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
