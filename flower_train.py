@@ -57,12 +57,7 @@ def train():
     conf["len_total_data"] = len(train_ds)
     ds_split = data_preparation.split_data(
         train_ds,
-        conf["num_clients"],
-        split_mode=conf["split_mode"],
-        mode="clients",
-        distribution_seed=conf["seed"],
-        shuffle_seed=conf["data_shuffle_seed"],
-        dirichlet_alpha=conf["dirichlet_alpha"],
+        conf
     )
 
     initial_model = model_utils.init_model(

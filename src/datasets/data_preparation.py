@@ -5,26 +5,7 @@ from PIL import Image
 import copy
 import numpy as np
 
-from src.datasets.cifar import CIFAR10, data_transforms_cifar10
-
-
-class SubsetDataset(Dataset):
-    def __init__(self, dataset, indices):
-        self.dataset = dataset
-        self.indices = indices
-
-    def __getitem__(self, idx):
-        actual_idx = self.indices[idx]
-        return self.dataset[actual_idx]
-
-    def __len__(self):
-        return len(self.indices)
-
-    def __getattr__(self, name):
-        if name=="dataset":
-            return super().__getattribute__('dataset')
-        return getattr(self.dataset, name)
-
+from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
 
 
 def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
@@ -72,91 +53,21 @@ def preprocess_data(data, conf, shuffle=True):
     return ds   
 
 
-def dirichlet_split(
-        num_classes, num_clients, dirichlet_alpha=1.0, mode="clients", seed=None
-):
-    """Dirichlet distribution of the data points,
-    with mode 'classes', 1.0 is distributed between num_classes class,
-    with 'clients' it is distributed between num_clients clients"""
-    if mode == "classes":
-        a = num_classes
-        b = num_clients
-    elif mode == "clients":
-        a = num_clients
-        b = num_classes
-    else:
-        raise ValueError(f"unrecognized mode {mode}")
-    if np.isscalar(dirichlet_alpha):
-        dirichlet_alpha = np.repeat(dirichlet_alpha, a)
-    split_norm = np.random.default_rng(seed).dirichlet(dirichlet_alpha, b)
-    return split_norm
+def split_data(ds, conf):
+    if conf["dataset"]=='CIFAR10':
+        ds_split = cifar_split_data(
+            ds,
+            conf["num_clients"],
+            split_mode=conf["split_mode"],
+            mode="clients",
+            distribution_seed=conf["seed"],
+            shuffle_seed=conf["data_shuffle_seed"],
+            dirichlet_alpha=conf["dirichlet_alpha"],
+        )
+        return ds_split
+    raise NotImplementedError(f"Dataset split for dataset {conf['dataset']} not recognized")
 
 
-def split_data(ds, num_clients,
-               split=None,
-               split_mode="dirichlet",
-               distribution_seed=None,
-               shuffle_seed=None,
-               sort=True,
-               *args, **kwargs):
-    """Split data in X,Y between 'num_clients' number of clients"""
-    
-    y_list = [y for _, (y,_) in ds]
-    classes = np.unique(y_list)
-    num_classes = len(classes)
-
-    if shuffle_seed is None:
-        shuffle_seed = distribution_seed
-
-    if split is None:
-        if split_mode == "dirichlet":
-            split = dirichlet_split(num_classes, num_clients, seed=distribution_seed, *args, **kwargs)
-            if sort:
-                column_sums = np.sum(split, axis=0)
-                sorted_indices = np.argsort(column_sums)[::-1]
-                split = split[:, sorted_indices]
-        elif split_mode == "homogen":
-            split = [1 / num_clients] * num_clients
-            split = [split] * num_classes
-            split = np.array(split)
-        elif split_mode == "balanced":
-            split = dirichlet_split(1, num_clients, seed=distribution_seed, *args, **kwargs)
-            split = split.repeat(num_classes, axis=0)
-            if sort:
-                column_sums = np.sum(split, axis=0)
-                sorted_indices = np.argsort(column_sums)[::-1]
-                split = split[:, sorted_indices]
-        else:
-            ValueError(f"Split mode not recognized {split_mode}")
-            
-    idx_split = None
-
-    for i, cls in enumerate(classes):
-        idx_cls = np.where(y_list == cls)[0]
-        np.random.default_rng(seed=shuffle_seed).shuffle(idx_cls)
-        cls_num_example = len(idx_cls)
-        cls_split = np.rint(split[i] * cls_num_example)
-
-        # if rounding error remove it from most populus one
-        if sum(cls_split) > cls_num_example:
-            max_val = np.max(cls_split)
-            max_idx = np.where(cls_split == max_val)[0][0]
-            cls_split[max_idx] -= sum(cls_split) - cls_num_example
-        cls_split = cls_split.astype(int)
-        idx_cls_split = np.split(idx_cls, np.cumsum(cls_split)[:-1])
-        if idx_split is None:
-            idx_split = idx_cls_split
-
-        else:
-            for i in range(len(idx_cls_split)):
-                idx_split[i] = np.concatenate([idx_split[i], idx_cls_split[i]], axis=0)
-
-    for i in range(len(idx_split)):
-        idx_split[i] = np.sort(idx_split[i])
-
-    ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
-    print([len(ds) for ds in ds_split])
-    return ds_split
 
 
 def get_np_from_dataset(dataset):

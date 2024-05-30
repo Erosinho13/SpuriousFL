@@ -4,7 +4,7 @@ from logging import ERROR, INFO
 import numpy as np
 import os
 from src.models import model_utils
-from src.datasets import augmentation, data_preparation
+from src.datasets import data_preparation
 
 
 class FlowerClient(fl.client.NumPyClient):
@@ -43,13 +43,7 @@ class FlowerClient(fl.client.NumPyClient):
         try:
             self.set_parameters(weights, config)
 
-            #train_ds = data_preparation.get_ds_from_np(self.train_data)
             train_ds = self.train_data
-            log(
-                INFO,
-                "Client ds: %s",
-                len(train_ds),
-            )
             
             history = model_utils.fit(self.model, train_ds, self.conf)
 

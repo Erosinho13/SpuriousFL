@@ -1,6 +1,7 @@
 import yaml
 import os
 import logging
+import numpy as np
 
 
 def load_config(env_path="env.json", config_path="config.json"):
@@ -45,3 +46,23 @@ DEFAULT_LOGGER = get_logger()
 
 def log(*args, **kwargs):
     DEFAULT_LOGGER.log(*args, **kwargs)
+
+
+def dirichlet_split(
+        num_classes, num_clients, dirichlet_alpha=1.0, mode="clients", seed=None
+):
+    """Dirichlet distribution of the data points,
+    with mode 'classes', 1.0 is distributed between num_classes class,
+    with 'clients' it is distributed between num_clients clients"""
+    if mode == "classes":
+        a = num_classes
+        b = num_clients
+    elif mode == "clients":
+        a = num_clients
+        b = num_classes
+    else:
+        raise ValueError(f"unrecognized mode {mode}")
+    if np.isscalar(dirichlet_alpha):
+        dirichlet_alpha = np.repeat(dirichlet_alpha, a)
+    split_norm = np.random.default_rng(seed).dirichlet(dirichlet_alpha, b)
+    return split_norm

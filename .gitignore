@@ -1,7 +1,7 @@
-dump/
+/dump/
 __pycache__
 env.json
 .vscode/
-wandb/
-datasets/
-checkpoints/
+/wandb/
+/datasets/
+/checkpoints/
