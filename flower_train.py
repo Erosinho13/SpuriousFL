@@ -23,6 +23,7 @@ def client_fn(cid: str) -> fl.client.Client:
     """Prepare flower client from ID (following flower documentation)"""
     client = FlowerClient(int(cid), conf)
     client_train_ds = ds_split[int(cid)]
+    client_train_ds = data_preparation.preprocess_data(client_train_ds, conf, shuffle=True)
     #client_train_ds = data_preparation.get_ds_from_np((X_split[int(cid)], Y_split[int(cid)]))
     client.load_data(client_train_ds, val_ds)
     client.init_model()
@@ -50,6 +51,7 @@ def train():
         )
 
     train_ds, val_ds, test_ds = data_preparation.load_data(conf=conf)
+    val_ds = data_preparation.preprocess_data(val_ds, conf, shuffle=False)
     # X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
     # X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
     conf["len_total_data"] = len(train_ds)

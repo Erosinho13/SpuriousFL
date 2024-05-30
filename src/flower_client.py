@@ -48,12 +48,9 @@ class FlowerClient(fl.client.NumPyClient):
             log(
                 INFO,
                 "Client ds: %s",
-                str(train_ds),
+                len(train_ds),
             )
             
-            if self.conf["aug"]:
-                train_ds = augmentation.aug_data(train_ds, conf=self.conf)
-            train_ds = data_preparation.preprocess_data(train_ds, conf=self.conf, shuffle=True)
             history = model_utils.fit(self.model, train_ds, self.conf)
 
             if np.isnan(
@@ -79,10 +76,8 @@ class FlowerClient(fl.client.NumPyClient):
     def evaluate(self, weights, config):
         try:
 
-            #test_ds = data_preparation.get_ds_from_np(self.test_data)
             test_ds = self.test_data
 
-            test_ds = data_preparation.preprocess_data(test_ds, self.conf)
             # Local model eval
             self.set_parameters(weights, config)
             loss, accuracy = model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)

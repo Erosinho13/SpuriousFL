@@ -5,7 +5,7 @@ from PIL import Image
 import copy
 import numpy as np
 
-from src.datasets.cifar import CIFAR10
+from src.datasets.cifar import CIFAR10, data_transforms_cifar10
 
 
 class SubsetDataset(Dataset):
@@ -21,7 +21,6 @@ class SubsetDataset(Dataset):
         return len(self.indices)
 
     def __getattr__(self, name):
-        print(name)
         if name=="dataset":
             return super().__getattribute__('dataset')
         return getattr(self.dataset, name)
@@ -39,11 +38,12 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         conf["seed"] = None
 
     if dataset_mode == "CIFAR10":
+        train_tr_list, test_tr_list = data_transforms_cifar10(conf)
         trainset = CIFAR10(
-            "./datasets", train=True
+            "./datasets", train=True, transforms=train_tr_list
         )
         testset = CIFAR10(
-            "./datasets", train=False
+            "./datasets", train=False, transforms=test_tr_list
         )
 
         if val_split:
@@ -63,31 +63,13 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
     raise NotImplementedError(dataset_mode)
 
 
-def preprocess_data(data, conf, shuffle=False):
-    """From torch.utils.data.Dataset to DataLoader"""
-    add_transforms = []
-    add_transforms.append(torchvision.transforms.ToTensor())
-
-    #!TODO check these numbers
-    if conf["dataset"] == "CIFAR10":
-        add_transforms.append(
-            torchvision.transforms.Normalize(
-                (0.4914, 0.4822, 0.4465), (0.2470, 0.2434, 0.2615)
-            )
-        )
-    else:
-        raise NotImplementedError("Dataset unknown", conf["dataset"])
-
-    if data.transform is None:
-        data.transform = torchvision.transforms.Compose([])
-    old_transforms = data.transform.transforms
-    new_transforms = old_transforms + add_transforms
-    data.transform.transforms = new_transforms
-
+def preprocess_data(data, conf, shuffle=True):
+    """From dataset to dataloader in PyTorch
+    Transforms, augmentations, etc. are now stored in the dataset"""
     ds = torch.utils.data.DataLoader(
         data, batch_size=conf["batch_size"], shuffle=shuffle
     )
-    return ds
+    return ds   
 
 
 def dirichlet_split(

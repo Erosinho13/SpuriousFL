@@ -7,7 +7,7 @@ epochs: 1
 rounds: 10
 num_clients: 10
 weight_clients: false
-aug: true
+norm: true
 aug_crop: 4
 aug_horizontal_flip: true
 split_mode: dirichlet
