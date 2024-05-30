@@ -192,6 +192,12 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
     if conf["dataset"] == "CIFAR10":
         input_shape = (3, 32, 32)
         num_classes = 10
+    elif conf["dataset"] == "WaterBirds":
+        input_shape = (3, 32, 32)
+        num_classes = 2
+    else:
+        dataset = conf['dataset']
+        raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')       
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes
     model = get_diao_CNN(*args, **kwargs)

@@ -4,6 +4,7 @@ import copy
 import numpy as np
 
 from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
+from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
 from src.datasets.subset import SubsetDataset
 
 def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
@@ -26,7 +27,7 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         )
 
         if val_split:
-            rand_ids = np.random.default_rng(seed=42).permutation(len(trainset))
+            rand_ids = np.random.default_rng(seed=conf["seed"]).permutation(len(trainset))
             len_val = int(len(trainset) * val_ratio)
             len_train = len(trainset) - len_val
             train_ids = rand_ids[:len_train]
@@ -36,6 +37,17 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
             return trainset_reduced, valset, testset
         else:
             valset = copy.deepcopy(testset)
+        return trainset, valset, testset
+    
+    if dataset_mode == "WaterBirds":
+        train_tr_list, test_tr_list = data_transforms_waterbirds(conf)
+        trainset = WaterBirds(
+            "./datasets", train=True, transforms=train_tr_list
+        )
+        testset = WaterBirds(
+            "./datasets", train=False, transforms=test_tr_list
+        )
+        valset = copy.deepcopy(testset)
         return trainset, valset, testset
     raise NotImplementedError(dataset_mode)
 
@@ -61,5 +73,12 @@ def split_data(ds, conf):
             dirichlet_alpha=conf["dirichlet_alpha"],
         )
         return ds_split
-    raise NotImplementedError(f"Dataset split for dataset {conf['dataset']} not recognized")
+    if conf["dataset"]=="WaterBirds":
+        ds_split = split_data_waterbirds(
+            ds,
+            conf
+        )
+        return ds_split
+    dataset = conf['dataset']
+    raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')
 
