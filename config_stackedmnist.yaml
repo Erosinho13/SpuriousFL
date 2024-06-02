@@ -3,16 +3,26 @@ data_shuffle_seed : null  # TODO: check
 dataset: StackedMNIST
 dataset_options:
     root: '/home/efani/DATASETS'
-    dirichlet_groups_alpha: 1.0
     num_train_images: 60000
     num_test_images: 10000
     num_targets: 2
-    max_num_groups: 2
+    num_groups: 2
     prevent_class_shuffling: False
     prevent_group_shuffling: False
-    force_balanced_dataset: False
-    force_groups_proportions: [.45, .05, .05, .45]
-split_mode: mode2
+    dirichlet_targets_alpha: 1.0
+    dirichlet_groups_alpha: 1.0
+    uniform_targets: True
+    uniform_groups: True
+    force_targets:
+    - 23
+    - 45
+    force_groups:
+    - 0
+    - 1
+    force_targets_proportions: null
+    force_groups_proportions: null
+    force_proportions: null
+split_mode: mode1
 batch_size: 32
 epochs: 1
 rounds: 1000

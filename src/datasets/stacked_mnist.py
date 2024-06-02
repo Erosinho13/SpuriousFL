@@ -392,6 +392,8 @@ def main():
         prevent_groups_shuffling=prevent_groups_shuffling,
         uniform_targets=True,
         uniform_groups=True,
+        force_targets=force_targets,
+        force_groups=force_groups,
     )
 
     sample_image = train_data[sample_id]

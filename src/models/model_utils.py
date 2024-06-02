@@ -192,6 +192,11 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
     if conf["dataset"] == "CIFAR10":
         input_shape = (3, 32, 32)
         num_classes = 10
+    elif conf["dataset"] == "StackedMNIST":
+        input_shape = (3, 32, 32)
+        num_classes = conf["dataset_options"]["num_targets"]
+    else:
+        raise NotImplementedError
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes
     model = get_diao_CNN(*args, **kwargs)
