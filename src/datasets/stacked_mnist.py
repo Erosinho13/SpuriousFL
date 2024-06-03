@@ -131,7 +131,6 @@ class StackedMNIST(MNIST):
 
                     remaining_images -= 1
 
-
     def __len__(self):
         return self.num_images
 
@@ -211,6 +210,9 @@ class StackedMNIST(MNIST):
     def get_proportions(self, targets_alpha, groups_alpha, num_targets, num_groups, uniform_targets=False,
                         uniform_groups=False, force_targets_proportions=None, force_groups_proportions=None,
                         force_proportions=None):
+        """
+
+        """
 
         if force_proportions is not None and self.train:
             return np.array(force_proportions)
