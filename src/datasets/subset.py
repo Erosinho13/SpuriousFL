@@ -14,6 +14,6 @@ class SubsetDataset(Dataset):
         return len(self.indices)
 
     def __getattr__(self, name):
-        if name=="dataset":
+        if name == "dataset":
             return super().__getattribute__('dataset')
         return getattr(self.dataset, name)

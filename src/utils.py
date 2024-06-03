@@ -2,6 +2,8 @@ import yaml
 import os
 import logging
 import numpy as np
+import torch
+import random
 
 
 def load_config(env_path="env.json", config_path="config.json"):
@@ -20,6 +22,12 @@ def load_config(env_path="env.json", config_path="config.json"):
             config["paths"][k] = str(os.path.join(env["root_path"], v))
     config.update(env)
     return config
+
+
+def set_seed(random_seed):
+    random.seed(random_seed)
+    np.random.seed(random_seed)
+    torch.manual_seed(random_seed)
 
 
 def save_config(conf, path):

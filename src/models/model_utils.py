@@ -195,9 +195,13 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
     elif conf["dataset"] == "WaterBirds":
         input_shape = (3, 32, 32)
         num_classes = 2
+    elif conf["dataset"] == "StackedMNIST":
+        input_shape = (3, 32, 32)
+        num_classes = conf["dataset_options"]["num_targets"]
     else:
         dataset = conf['dataset']
         raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')       
+
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes
     model = get_diao_CNN(*args, **kwargs)
