@@ -72,13 +72,15 @@ def split_data(ds, conf):
             shuffle_seed=conf["data_shuffle_seed"],
             dirichlet_alpha=conf["dirichlet_alpha"],
         )
-        return ds_split
-    if conf["dataset"]=="WaterBirds":
+        
+    elif conf["dataset"]=="WaterBirds":
         ds_split = split_data_waterbirds(
             ds,
             conf
         )
-        return ds_split
-    dataset = conf['dataset']
-    raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')
+    else:
+        dataset = conf['dataset']
+        raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')
+    print([len(ds) for ds in ds_split])
+    return ds_split
 

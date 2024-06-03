@@ -70,6 +70,9 @@ def get_spurious_group_idx(ds):
 
 def get_envs(group_ids, split_mode='sameratio', seed=42):
     """Set list of idx for environment
+    homogen:
+      - 1/4 of each
+    sameratio:
     0 - {(0,0),(1,0)} - birds on land
     1 - {(0,0),(1,1)} - everyone in the expected background
     2 - {(0,1),(1,0)} - everyone in unexpected background
@@ -77,6 +80,15 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
 
     rng = np.random.default_rng(seed=seed)
     subsets = [[],[],[],[]]
+    if split_mode=="homogen":
+        for y in group_ids.keys():
+            for s in group_ids[y].keys():
+                l = len(group_ids[y][s])//4
+                perm = rng.permutation(group_ids[y][s])
+                samples_by_envs =  [perm[:l], perm[l:l*2], perm[l*2:l*3], perm[l*3:]]
+                for i, x in enumerate(samples_by_envs):
+                    subsets[i].extend(x)
+        return subsets
     if split_mode=="sameratio":
         for y in group_ids.keys():
             for s in group_ids[y].keys():
@@ -96,7 +108,7 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                     subsets[1].extend(subset1)
                     subsets[3].extend(subset2)
         return subsets
-    raise NotImplementedError()
+    raise NotImplementedError("split_mode not recognized")
 
 
 def split_data_waterbirds(ds, conf):
@@ -106,6 +118,6 @@ def split_data_waterbirds(ds, conf):
         raise NotImplementedError("Only 4 clients for now!")
     
     ids_by_groups = get_spurious_group_idx(ds)
-    idx_split = get_envs(ids_by_groups, split_mode='sameratio', seed=conf["seed"])
+    idx_split = get_envs(ids_by_groups, split_mode=conf["split_mode"], seed=conf["seed"])
     ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
     return ds_split
