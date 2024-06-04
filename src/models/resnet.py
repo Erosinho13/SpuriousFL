@@ -5,7 +5,7 @@ def get_resnet50(num_classes):
     model = models.resnet50(pretrained=True)
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, num_classes)
-    set_track_running_stats_false(model)
+    
     return model
 
 
