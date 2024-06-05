@@ -1,14 +1,10 @@
-import random
-from collections import defaultdict
-
 import torch
 import copy
 import numpy as np
 
 from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
 from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
-from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, train_mnist_target_to_img, \
-    split_stackedmnist_data
+from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, split_stackedmnist_data
 from src.datasets.subset import SubsetDataset
 
 
@@ -129,7 +125,11 @@ def split_data(ds, conf):
             conf
         )
     elif conf["dataset"] == "StackedMNIST":
-        ds_split = split_stackedmnist_data(ds, conf['split_mode'], conf['num_clients'])
+        ds_split = \
+            split_stackedmnist_data(
+                ds, conf['split_mode'], conf['num_clients'],
+                uniform_proportion=conf['uniform_proportion'] if 'uniform_proportion' in conf.keys() else 0
+            )
     else:
         dataset = conf['dataset']
         raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')

@@ -374,20 +374,21 @@ def divide_idx_by_tg_pairs(ds, split_mode):
     return tg_pairs_indices
 
 
-def get_client_indices_mode1(tg_pairs_indices, ds, num_clients):
+def get_client_indices_mode1(tg_pairs_indices, num_images, num_clients):
     for indices in tg_pairs_indices.values():
         random.shuffle(indices)
     clients_indices = [[] for _ in range(num_clients)]
     cl_id = 0
     tg_pairs = [(0, 0), (1, 0), (0, 1), (1, 1)]
-    for i in range(len(ds)):
+    for i in range(num_images):
         clients_indices[cl_id].append(tg_pairs_indices[tg_pairs[i % 4]][i // 4])
-        if len(clients_indices[cl_id]) == len(ds) // num_clients:
+        if len(clients_indices[cl_id]) == num_images // num_clients:
             cl_id += 1
     return clients_indices
 
 
-def get_client_indices_mode2(tg_pairs_indices, num_clients):
+def get_client_indices_mode2(tg_pairs_indices, num_clients, uniform_proportion=0.15):
+
     def divide_indices_in_groups(indices, num_groups):
         random.shuffle(indices)
         group_size = len(indices) // num_groups
@@ -397,14 +398,25 @@ def get_client_indices_mode2(tg_pairs_indices, num_clients):
             divided_groups[i % num_groups].append(index)
         return divided_groups
 
+    tg_pairs_indices_uniform = \
+        {k: v[:int(uniform_proportion * len(tg_pairs_indices[k]))] for k, v in tg_pairs_indices.items()}
+    tg_pairs_indices_unbalanced = \
+        {k: v[int(uniform_proportion * len(tg_pairs_indices[k])):] for k, v in tg_pairs_indices.items()}
+    client_indices_uniform = get_client_indices_mode1(
+        tg_pairs_indices, sum([len(v) for v in tg_pairs_indices_uniform.values()]), num_clients)
+
+    clients_indices_unbalanced = []
+    for k, v in tg_pairs_indices_unbalanced.items():
+        clients_indices_unbalanced += divide_indices_in_groups(v, num_clients // 4)
+
     clients_indices = []
-    for k, v in tg_pairs_indices.items():
-        clients_indices += divide_indices_in_groups(v, num_clients // 4)
+    for c1, c2 in zip(client_indices_uniform, clients_indices_unbalanced):
+        clients_indices.append(c1 + c2)
 
     return clients_indices
 
 
-def split_stackedmnist_data(ds, split_mode, num_clients):
+def split_stackedmnist_data(ds, split_mode, num_clients, **kwargs):
     clients_datasets = []
     if type(ds).__name__ == 'StackedMNIST':
         if split_mode == 'dirichlet':
@@ -416,14 +428,18 @@ def split_stackedmnist_data(ds, split_mode, num_clients):
             assert num_clients % 4 == 0
             assert len(ds) % num_clients == 0
             tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
-            clients_indices = get_client_indices_mode1(tg_pairs_indices, ds, num_clients)
+            clients_indices = get_client_indices_mode1(tg_pairs_indices, len(ds), num_clients)
         elif split_mode == 'mode2':
             assert ds.num_targets == 2
             assert ds.num_groups == 2
             assert (ds.uniform_targets and ds.uniform_groups) or ds.train is False
             assert num_clients % 4 == 0
             tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
-            clients_indices = get_client_indices_mode2(tg_pairs_indices, num_clients)
+            clients_indices = \
+                get_client_indices_mode2(
+                    tg_pairs_indices, num_clients,
+                    uniform_proportion=kwargs['uniform_proportion'] if 'uniform_proportion' in kwargs.keys() else 0
+                )
         else:
             raise NotImplementedError
     else:
