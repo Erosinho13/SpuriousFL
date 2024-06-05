@@ -16,10 +16,12 @@ def fit_metrics_aggregation_fn(fit_metrics):
 
 
 def evaluate_metrics_aggregation_fn(eval_metrics):
-    eval_res = {
-        "loss": sum([e[1]["loss"] for e in eval_metrics]),
-        "accuracy": sum([e[1]["accuracy"] for e in eval_metrics]),
-    }
+    keys = list(eval_metrics[0][1].keys())
+    eval_res = {}
+
+    for k in keys:
+        eval_res[k] = sum([e[1][k] for e in eval_metrics])
+    
     return eval_res
 
 

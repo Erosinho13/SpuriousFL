@@ -153,18 +153,36 @@ def evaluate(model, data, conf, verbose=0):
     model.eval()
     loss_fn = get_loss(conf)
     correct, total, loss = 0, 0, 0.0
+    label_group_correct, label_group_total = {}, {}
     with torch.no_grad():
         for images, (labels, groups) in data:
-            images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
+            images, labels, groups = images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(get_device(conf))
             outputs = model(images)
             loss += loss_fn(outputs, labels, reduction="sum").item()
             _, predicted = torch.max(outputs.data, 1)
 
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+
+            unique_pairs = torch.unique(torch.stack((labels, groups), dim=1), dim=0)
+            for label, group in unique_pairs:
+                mask = (labels == label) & (groups == group)
+                pair_labels = labels[mask]
+                pair_predictions = predicted[mask]
+                correct_count = (pair_predictions == pair_labels).sum().item()
+                total_count = mask.sum().item()
+                
+                pair_key = (label.item(), group.item())
+                if pair_key not in label_group_total:
+                    label_group_total[pair_key] = 0
+                    label_group_correct[pair_key] = 0
+                
+                label_group_total[pair_key] += total_count
+                label_group_correct[pair_key] += correct_count
     loss /= len(data.dataset)
     accuracy = correct / total
-    return loss, accuracy
+    group_accuracies = {("y"+str(pair[0])+"g"+str(pair[1])): label_group_correct[pair] / label_group_total[pair] for pair in label_group_total}
+    return loss, accuracy, group_accuracies
 
 
 def np_to_tensor(images):
