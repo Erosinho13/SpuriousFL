@@ -21,3 +21,4 @@ server_opt:
     beta_2: 0.99
     tau: 0.000000001
 wandb: true
+model_type: ResNet

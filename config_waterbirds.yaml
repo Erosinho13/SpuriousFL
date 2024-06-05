@@ -6,18 +6,19 @@ batch_size: 32
 epochs: 1
 rounds: 10
 num_clients: 4
-weight_clients: false
+weight_clients: true
 norm: true
 aug_crop: 4
 aug_horizontal_flip: true
 split_mode: sameratio
 client_opt:
     optimizer: SGD
-    learning_rate: 0.0316
+    learning_rate: 0.0001
 server_opt:
-    optimizer: FedAvgM
-    learning_rate: 0.316
+    optimizer: FedAvg
+    learning_rate: 0.1
     beta_1: 0.9
     beta_2: 0.99
     tau: 0.000000001
 wandb: true
+model_type: ResNet

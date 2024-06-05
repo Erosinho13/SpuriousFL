@@ -74,14 +74,18 @@ class FlowerClient(fl.client.NumPyClient):
 
             # Local model eval
             self.set_parameters(weights, config)
-            loss, accuracy = model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
+            loss, accuracy, group_acc = model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
+            metric_dict = {
+                "cid": self.cid,
+                 "loss": loss,
+                 "accuracy": accuracy,
+            }
+            metric_dict = metric_dict | group_acc
 
             return (
                 loss,
                 self.test_len,
-                {"cid": self.cid,
-                 "loss": loss,
-                 "accuracy": accuracy},
+                metric_dict,
             )
         except Exception as e:
             log(
