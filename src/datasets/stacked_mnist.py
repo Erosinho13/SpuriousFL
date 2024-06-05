@@ -12,7 +12,7 @@ from src.utils import set_seed
 
 
 def get_mnist_images_by_target(data, targets):
-    # divide original mnist data per class
+    """ divide original mnist data per class """
     mnist_images_by_target = [[] for _ in range(10)]
     for img, target in zip(data, targets):
         mnist_images_by_target[target].append(img)
@@ -215,8 +215,25 @@ class StackedMNIST(MNIST):
     def get_proportions(self, targets_alpha, groups_alpha, num_targets, num_groups, uniform_targets=False,
                         uniform_groups=False, force_targets_proportions=None, force_groups_proportions=None,
                         force_proportions=None):
-        """
 
+        """
+            If not force parameter is set, this function uses dirichlet distributions.
+
+            targets_alpha: alpha coefficient of the dirichlet distribution on the targets
+            groups_alpha: alpha coefficient of the dirichlet distribution on the groups
+            num_targets: total number of targets
+            num_groups: total number of groups
+            uniform_targets: forces the marginal distribution of the targets to be uniform
+            uniform_groups: forces the marginal distribution of the groups to be uniform
+            force_targets_proportions: list of num_targets values that represent the marginal distribution of the
+                                       targets
+            force_groups_proportions: list of num_groups values that represent the marginal distribution of the groups
+            force_proportions: list of lists of shape num_targets x num_groups representing the distribution of images
+                               with corresponding (target, group) pairs
+
+            Returns:
+                numpy matrix of shape num_targets x num_groups representing the distribution of images with
+                corresponding (target, group) pairs
         """
 
         if force_proportions is not None and self.train:
@@ -240,6 +257,9 @@ class StackedMNIST(MNIST):
 
     @staticmethod
     def round_num_images(num_images_per_tg_pair, num_images):
+
+        """Add or remove some random images to match the num_images requirements"""
+
         current_sum = np.sum(num_images_per_tg_pair)
         difference = num_images - current_sum
 
