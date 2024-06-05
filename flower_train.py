@@ -24,7 +24,7 @@ def client_fn(cid: str) -> fl.client.Client:
     client = FlowerClient(int(cid), conf)
     client_train_ds = ds_split[int(cid)]
     client_train_ds = data_preparation.preprocess_data(client_train_ds, conf, shuffle=True)
-    #client_train_ds = data_preparation.get_ds_from_np((X_split[int(cid)], Y_split[int(cid)]))
+    # client_train_ds = data_preparation.get_ds_from_np((X_split[int(cid)], Y_split[int(cid)]))
     client.load_data(client_train_ds, val_ds)
     client.init_model()
     return client.to_client()
@@ -37,7 +37,7 @@ def train():
 
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
-    utils.save_config(conf, os.path.join("checkpoints/",conf["exp_id"],"config.yaml"))
+    utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
 
     if conf["wandb"]:
         import wandb
@@ -91,6 +91,7 @@ def train():
     )
     if conf["wandb"]:
         wandb.finish()
+        wandb.finish()
 
     # TODO there is a new, better way of returning with latest model
     model_path = os.path.join(
@@ -103,7 +104,6 @@ def train():
 
 
 if __name__ == "__main__":
-
     # Instantiate the parser
     parser = argparse.ArgumentParser(
         description=""

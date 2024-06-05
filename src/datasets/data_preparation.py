@@ -93,7 +93,10 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
                 force_targets=ds_opt['force_targets'],
                 force_groups=ds_opt['force_groups']
             )
-        valset = copy.deepcopy(testset)
+
+        valset = copy.deepcopy(trainset)
+        valset.transform = test_transform
+
         return trainset, valset, testset
     raise NotImplementedError(dataset_mode)
 
