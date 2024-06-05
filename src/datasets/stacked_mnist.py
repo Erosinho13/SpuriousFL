@@ -1,5 +1,7 @@
 import math
 import random
+from collections import defaultdict
+
 import numpy as np
 
 from matplotlib import pyplot as plt, gridspec
@@ -8,6 +10,7 @@ from torchvision.transforms import v2
 from PIL import Image
 from torchvision.transforms.functional import normalize
 
+from src.datasets.subset import SubsetDataset
 from src.utils import set_seed
 
 
@@ -355,6 +358,82 @@ def plot_heatmap(count_images_per_groups_per_target, data, title, write_annotati
     plt.tight_layout()
     plt.title(title)
     plt.show()
+
+
+def divide_idx_by_tg_pairs(ds, split_mode):
+    if split_mode == 'mode1':
+        tg_pairs_indices = {(0, 0): [], (1, 0): [], (0, 1): [], (1, 1): []}
+        tg_pairs = [(0, 0), (1, 0), (0, 1), (1, 1)]
+        for i in range(len(ds)):
+            tg_pairs_indices[tg_pairs[i % 4]].append(i)
+    else:
+        tg_pairs_indices = defaultdict(lambda: [])
+        for i, (_, (target, group)) in enumerate(ds):
+            tg_pairs_indices[(target, group)].append(i)
+        tg_pairs_indices = dict(tg_pairs_indices)
+    return tg_pairs_indices
+
+
+def get_client_indices_mode1(tg_pairs_indices, ds, num_clients):
+    for indices in tg_pairs_indices.values():
+        random.shuffle(indices)
+    clients_indices = [[] for _ in range(num_clients)]
+    cl_id = 0
+    tg_pairs = [(0, 0), (1, 0), (0, 1), (1, 1)]
+    for i in range(len(ds)):
+        clients_indices[cl_id].append(tg_pairs_indices[tg_pairs[i % 4]][i // 4])
+        if len(clients_indices[cl_id]) == len(ds) // num_clients:
+            cl_id += 1
+    return clients_indices
+
+
+def get_client_indices_mode2(tg_pairs_indices, num_clients):
+    def divide_indices_in_groups(indices, num_groups):
+        random.shuffle(indices)
+        group_size = len(indices) // num_groups
+        divided_groups = [indices[i * group_size:(i + 1) * group_size] for i in range(num_groups)]
+        remaining_indices = indices[num_groups * group_size:]
+        for i, index in enumerate(remaining_indices):
+            divided_groups[i % num_groups].append(index)
+        return divided_groups
+
+    clients_indices = []
+    for k, v in tg_pairs_indices.items():
+        clients_indices += divide_indices_in_groups(v, num_clients // 4)
+
+    return clients_indices
+
+
+def split_stackedmnist_data(ds, split_mode, num_clients):
+    clients_datasets = []
+    if type(ds).__name__ == 'StackedMNIST':
+        if split_mode == 'dirichlet':
+            raise NotImplementedError
+        if split_mode == 'mode1':
+            assert ds.num_targets == 2
+            assert ds.num_groups == 2
+            assert (ds.uniform_targets and ds.uniform_groups) or ds.train is False
+            assert num_clients % 4 == 0
+            assert len(ds) % num_clients == 0
+            tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
+            clients_indices = get_client_indices_mode1(tg_pairs_indices, ds, num_clients)
+        elif split_mode == 'mode2':
+            assert ds.num_targets == 2
+            assert ds.num_groups == 2
+            assert (ds.uniform_targets and ds.uniform_groups) or ds.train is False
+            assert num_clients % 4 == 0
+            tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
+            clients_indices = get_client_indices_mode2(tg_pairs_indices, num_clients)
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+    for indices in clients_indices:
+        clients_datasets.append(SubsetDataset(ds, indices))
+
+    # assert_list = [count_img(cds) for cds in clients_datasets]  # uncomment to check counts by tg pair per client
+    return clients_datasets
 
 
 def main():

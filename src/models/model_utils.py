@@ -4,8 +4,11 @@ from collections import OrderedDict
 import numpy as np
 import os
 
+from torchvision.models import mobilenet_v2
+
 from .cnn import get_diao_CNN
 from .resnet import get_resnet50
+
 
 def get_cpu():
     return torch.device("cpu")
@@ -30,9 +33,9 @@ def get_optimizer(params, conf={}):
     if "client_opt" in conf.keys():
         copt = conf["client_opt"]
         if "optimizer" in copt:
-            if copt["optimizer"]=="SGD":
+            if copt["optimizer"] == "SGD":
                 opt = torch.optim.SGD
-            elif copt["optimizer"]=="Adam":
+            elif copt["optimizer"] == "Adam":
                 opt = torch.optim.Adam
             else:
                 raise NotImplementedError(f"optimizer not recognized {copt['optimizer']}")
@@ -96,7 +99,7 @@ def print_summary(model):
 class History:
     def __init__(self):
         self.history = {"loss": [], "accuracy": []}
-    
+
     def __str__(self):
         return str(self.history)
 
@@ -156,7 +159,8 @@ def evaluate(model, data, conf, verbose=0):
     label_group_correct, label_group_total = {}, {}
     with torch.no_grad():
         for images, (labels, groups) in data:
-            images, labels, groups = images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(get_device(conf))
+            images, labels, groups = images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(
+                get_device(conf))
             outputs = model(images)
             loss += loss_fn(outputs, labels, reduction="sum").item()
             _, predicted = torch.max(outputs.data, 1)
@@ -171,17 +175,18 @@ def evaluate(model, data, conf, verbose=0):
                 pair_predictions = predicted[mask]
                 correct_count = (pair_predictions == pair_labels).sum().item()
                 total_count = mask.sum().item()
-                
+
                 pair_key = (label.item(), group.item())
                 if pair_key not in label_group_total:
                     label_group_total[pair_key] = 0
                     label_group_correct[pair_key] = 0
-                
+
                 label_group_total[pair_key] += total_count
                 label_group_correct[pair_key] += correct_count
     loss /= len(data.dataset)
     accuracy = correct / total
-    group_accuracies = {("y"+str(pair[0])+"g"+str(pair[1])): label_group_correct[pair] / label_group_total[pair] for pair in label_group_total}
+    group_accuracies = {("y" + str(pair[0]) + "g" + str(pair[1])): label_group_correct[pair] / label_group_total[pair]
+                        for pair in label_group_total}
     return loss, accuracy, group_accuracies
 
 
@@ -231,14 +236,16 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
         num_classes = conf["dataset_options"]["num_targets"]
     else:
         dataset = conf['dataset']
-        raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')       
+        raise NotImplementedError('Dataset split for dataset ' + dataset + ' not recognized')
 
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes
-    if conf["model_type"]=="CNN":
+    if conf["model_type"] == "CNN":
         model = get_diao_CNN(*args, **kwargs)
-    elif conf["model_type"]=="ResNet":
+    elif conf["model_type"] == "ResNet":
         model = get_resnet50(num_classes)
+    elif conf["model_type"] == "mobilenetv2":
+        model = mobilenet_v2(pretrained=False)
     else:
         raise NotImplementedError("conf['model_type']")
     if model_path is not None:

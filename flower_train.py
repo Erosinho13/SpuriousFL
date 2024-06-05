@@ -19,9 +19,7 @@ global ds_split
 global val_ds
 
 
-
-
-#!TODO I don't know how to pass parameters to this function
+# TODO: I don't know how to pass parameters to this function
 def client_fn(cid: str) -> fl.client.Client:
     """Prepare flower client from ID (following flower documentation)"""
     client = FlowerClient(int(cid), conf)
