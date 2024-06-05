@@ -9,6 +9,7 @@ import os
 # Own modules
 from src import utils
 from src.datasets import data_preparation
+from src.datasets.stacked_mnist import train_mnist_target_to_img
 from src.models import model_utils
 from src.flower_strategy import MyStrategy
 from src.flower_client import FlowerClient
@@ -16,6 +17,8 @@ from src.flower_client import FlowerClient
 global conf
 global ds_split
 global val_ds
+
+
 
 
 #!TODO I don't know how to pass parameters to this function

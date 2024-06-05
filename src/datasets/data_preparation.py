@@ -7,7 +7,7 @@ import numpy as np
 
 from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
 from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
-from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, count_img
+from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, train_mnist_target_to_img
 from src.datasets.subset import SubsetDataset
 
 

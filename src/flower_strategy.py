@@ -202,7 +202,6 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif rnd == 1:  # Only log this warning once
             log(WARNING, "No evaluate_metrics_aggregation_fn provided")
 
-
         if self.conf["wandb"]:
             import wandb
             wandb_log = aggregated_result[1]

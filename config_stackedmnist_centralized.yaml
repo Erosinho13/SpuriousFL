@@ -9,8 +9,8 @@ dataset_options:
     num_groups: 10
     prevent_class_shuffling: False
     prevent_group_shuffling: False
-    dirichlet_targets_alpha: 1.0
-    dirichlet_groups_alpha: 1.0
+    dirichlet_targets_alpha: 1000.0
+    dirichlet_groups_alpha: 100.0
     uniform_targets: True
     uniform_groups: True
     force_targets: null

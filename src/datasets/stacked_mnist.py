@@ -11,6 +11,21 @@ from torchvision.transforms.functional import normalize
 from src.utils import set_seed
 
 
+def get_mnist_images_by_target(data, targets):
+    # divide original mnist data per class
+    mnist_images_by_target = [[] for _ in range(10)]
+    for img, target in zip(data, targets):
+        mnist_images_by_target[target].append(img)
+    return mnist_images_by_target
+
+
+train_mnist_dataset = MNIST(root='datasets/', train=True, download=True)
+train_mnist_target_to_img = get_mnist_images_by_target(train_mnist_dataset.data, train_mnist_dataset.targets)
+
+test_mnist_dataset = MNIST(root='datasets/', train=False, download=True)
+test_mnist_target_to_img = get_mnist_images_by_target(test_mnist_dataset.data, test_mnist_dataset.targets)
+
+
 def _data_transforms_mnist(mean, std, norm=True):
     train_tr_list = [
         v2.Pad(padding=2),
@@ -71,9 +86,6 @@ class StackedMNIST(MNIST):
             assert len(force_groups_proportions) == num_groups
             assert math.isclose(sum(force_groups_proportions), 1.0, rel_tol=1e-9)
 
-        num_original_mnist_targets = 10
-        self.mnist_target_to_img = self.get_mnist_images_by_target(num_original_mnist_targets)
-
         self.num_images = num_images
         self.num_targets = num_targets
         self.num_groups = num_groups
@@ -89,7 +101,7 @@ class StackedMNIST(MNIST):
         self.target_ids = {value: idx for idx, value in enumerate(self.targets)}
         self.group_ids = {value: idx for idx, value in enumerate(self.groups)}
 
-        self.index = []  # list of 3 RGB pairs (class, id) of images from self.mnist_target_to_img
+        self.index = []  # list of 3 RGB pairs (class, id) of images from mnist_target_to_img
 
         # get proportions to sample each (target, group) couple
         self.proportions = self.get_proportions(self.dirichlet_targets_alpha,
@@ -118,7 +130,7 @@ class StackedMNIST(MNIST):
                     while True:
                         img_id_list = []  # list of ids of original mnist images for the current RGB stacked mnist image
                         for k in original_target_list:
-                            img_id_list.append(random.randint(0, len(self.mnist_target_to_img[k]) - 1))
+                            img_id_list.append(random.randint(0, len(train_mnist_target_to_img[k]) - 1))
                         if tuple(img_id_list) not in selected_indices:
                             selected_indices.add(tuple(img_id_list))
                             break
@@ -138,11 +150,11 @@ class StackedMNIST(MNIST):
 
         img = np.zeros((28, 28, 3), dtype=np.uint8)
 
-        red_img = self.mnist_target_to_img[self.index[index][0][0]][self.index[index][0][1]]
+        red_img = train_mnist_target_to_img[self.index[index][0][0]][self.index[index][0][1]]
         group = self.index[index][0][0]
 
-        green_img = self.mnist_target_to_img[self.index[index][1][0]][self.index[index][1][1]]
-        blue_img = self.mnist_target_to_img[self.index[index][2][0]][self.index[index][2][1]]
+        green_img = train_mnist_target_to_img[self.index[index][1][0]][self.index[index][1][1]]
+        blue_img = train_mnist_target_to_img[self.index[index][2][0]][self.index[index][2][1]]
         target = 10 * self.index[index][1][0] + self.index[index][2][0]
 
         img[:, :, 0] = red_img
@@ -165,13 +177,6 @@ class StackedMNIST(MNIST):
     @property
     def std(self):
         return np.round(self.data.float().std(axis=(0, 1, 2)) / 255, 4)
-
-    def get_mnist_images_by_target(self, num_original_mnist_targets):
-        # divide original mnist data per class
-        mnist_images_by_target = [[] for _ in range(num_original_mnist_targets)]
-        for img, target in zip(self.data, self.targets):
-            mnist_images_by_target[target].append(img)
-        return mnist_images_by_target
 
     def get_targets_and_groups(self, _prevent_targets_shuffling, _prevent_groups_shuffling):
         _targets = list(range(100))

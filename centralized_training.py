@@ -1,12 +1,10 @@
 import argparse
 from datetime import datetime
 import os
-from functools import partial
 
 import torch
 import wandb
 from torch import nn
-from torch.nn import GroupNorm
 from torch.optim import SGD
 from torch.utils.data import DataLoader
 
