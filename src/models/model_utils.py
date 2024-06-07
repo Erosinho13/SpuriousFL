@@ -229,7 +229,10 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
         input_shape = (3, 32, 32)
         num_classes = 10
     elif conf["dataset"] == "WaterBirds":
-        input_shape = (3, 32, 32)
+        if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
+            input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
+        else:
+            input_shape = (3, 32, 32)
         num_classes = 2
     elif conf["dataset"] == "StackedMNIST":
         input_shape = (3, 32, 32)
