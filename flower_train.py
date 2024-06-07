@@ -76,7 +76,7 @@ def train():
         conf=conf,
         initial_parameters=initial_parameters,  # avoid smaller models as init
         fraction_fit=1.0,  # Sample 10% of available clients for training
-        fraction_evaluate=0.1,  # Sample 5% of available clients for evaluation
+        fraction_evaluate=0.000001,  # Sample 5% of available clients for evaluation
         min_fit_clients=1,  # Never sample less than 10 clients for training
         min_evaluate_clients=1,  # Never sample less than 5 clients for evaluation
         # min_available_clients=1, # Wait until at least 75 clients are available
