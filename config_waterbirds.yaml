@@ -2,7 +2,7 @@ seed: 42
 data_shuffle_seed : null
 dirichlet_alpha: 0.5
 dataset: WaterBirds
-batch_size: 4
+batch_size: 8
 epochs: 1
 rounds: 10
 num_clients: 4
@@ -10,7 +10,7 @@ weight_clients: true
 norm: true
 aug_crop: 24
 aug_horizontal_flip: true
-split_mode: homogen
+split_mode: sameratio
 client_opt:
     optimizer: SGD
     learning_rate: 0.0001
@@ -21,6 +21,6 @@ server_opt:
     beta_2: 0.99
     tau: 0.000000001
 wandb: true
-model_type: ResNet
+model_type: CNN
 dataset_options:
-    input_size: 224
+    input_size: 64

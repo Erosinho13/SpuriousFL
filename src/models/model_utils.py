@@ -26,7 +26,11 @@ def get_device(conf):
 
 
 def get_loss(conf={}):
-    return torch.nn.functional.cross_entropy
+    if "weight_classes" in conf.keys():
+        weights = torch.Tensor(conf["weight_classes"]).to(get_device(conf))
+    else:
+        weights = None
+    return torch.nn.CrossEntropyLoss(weight=weights, reduction="sum")
 
 
 def get_optimizer(params, conf={}):
@@ -162,7 +166,7 @@ def evaluate(model, data, conf, verbose=0):
             images, labels, groups = images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(
                 get_device(conf))
             outputs = model(images)
-            loss += loss_fn(outputs, labels, reduction="sum").item()
+            loss += loss_fn(outputs, labels).item()
             _, predicted = torch.max(outputs.data, 1)
 
             total += labels.size(0)

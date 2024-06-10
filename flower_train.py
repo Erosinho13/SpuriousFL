@@ -1,10 +1,14 @@
 # Installed modules
 import argparse
 from datetime import datetime
+import os
+import collections
+import copy
+import numpy as np
 
 import flwr as fl
 from flwr.common import ndarrays_to_parameters
-import os
+
 
 # Own modules
 from src import utils
@@ -22,10 +26,19 @@ global val_ds
 # TODO: I don't know how to pass parameters to this function
 def client_fn(cid: str) -> fl.client.Client:
     """Prepare flower client from ID (following flower documentation)"""
-    client = FlowerClient(int(cid), conf)
     client_train_ds = ds_split[int(cid)]
-    client_train_ds = data_preparation.preprocess_data(client_train_ds, conf, shuffle=True)
+    
+    c = collections.Counter(y.item() for x, (y,g) in client_train_ds)
+    weights = [c[i] for i in range(len(c.keys()))]
+    avg_ = np.average(weights)
+    weights = [avg_/w for w in weights]
+    client_conf = copy.deepcopy(conf)
+    client_conf['weight_classes'] = weights
+
+    client_train_ds = data_preparation.preprocess_data(client_train_ds, client_conf, shuffle=True)
     # client_train_ds = data_preparation.get_ds_from_np((X_split[int(cid)], Y_split[int(cid)]))
+
+    client = FlowerClient(int(cid), client_conf)
     client.load_data(client_train_ds, val_ds)
     client.init_model()
     return client.to_client()
