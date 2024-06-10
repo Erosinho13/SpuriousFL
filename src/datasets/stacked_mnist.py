@@ -311,7 +311,6 @@ def count_img(data):
 
 
 def plot_heatmap(count_images_per_groups_per_target, data, title, write_annotations=True):
-
     row_sums = count_images_per_groups_per_target.sum(axis=1)
     col_sums = count_images_per_groups_per_target.sum(axis=0)
 
@@ -387,16 +386,17 @@ def get_client_indices_mode1(tg_pairs_indices, num_images, num_clients):
     return clients_indices
 
 
-def get_client_indices_mode2(tg_pairs_indices, num_clients, uniform_proportion=0.15):
+def divide_indices_in_groups(indices, num_groups):
+    random.shuffle(indices)
+    group_size = len(indices) // num_groups
+    divided_groups = [indices[i * group_size:(i + 1) * group_size] for i in range(num_groups)]
+    remaining_indices = indices[num_groups * group_size:]
+    for i, index in enumerate(remaining_indices):
+        divided_groups[i % num_groups].append(index)
+    return divided_groups
 
-    def divide_indices_in_groups(indices, num_groups):
-        random.shuffle(indices)
-        group_size = len(indices) // num_groups
-        divided_groups = [indices[i * group_size:(i + 1) * group_size] for i in range(num_groups)]
-        remaining_indices = indices[num_groups * group_size:]
-        for i, index in enumerate(remaining_indices):
-            divided_groups[i % num_groups].append(index)
-        return divided_groups
+
+def get_client_indices_mode2_and_3(tg_pairs_indices, num_clients, uniform_proportion=0.15, mode=2, proportions=None):
 
     tg_pairs_indices_uniform = \
         {k: v[:int(uniform_proportion * len(tg_pairs_indices[k]))] for k, v in tg_pairs_indices.items()}
@@ -407,7 +407,8 @@ def get_client_indices_mode2(tg_pairs_indices, num_clients, uniform_proportion=0
 
     clients_indices_unbalanced = []
     for k, v in tg_pairs_indices_unbalanced.items():
-        clients_indices_unbalanced += divide_indices_in_groups(v, num_clients // 4)
+        clients_per_group = num_clients // 4 if mode == 2 else int(proportions[k] * num_clients)
+        clients_indices_unbalanced += divide_indices_in_groups(v, clients_per_group)
 
     clients_indices = []
     for c1, c2 in zip(client_indices_uniform, clients_indices_unbalanced):
@@ -436,10 +437,21 @@ def split_stackedmnist_data(ds, split_mode, num_clients, **kwargs):
             assert num_clients % 4 == 0
             tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
             clients_indices = \
-                get_client_indices_mode2(
+                get_client_indices_mode2_and_3(
                     tg_pairs_indices, num_clients,
                     uniform_proportion=kwargs['uniform_proportion'] if 'uniform_proportion' in kwargs.keys() else 0
                 )
+        elif split_mode == 'mode3':
+            assert ds.num_targets == 2
+            assert ds.num_groups == 2
+            assert np.array_equal(ds.proportions, np.array([[0.05, 0.45], [0.45, 0.05]]))
+            tg_pairs_indices = divide_idx_by_tg_pairs(ds, split_mode)
+            clients_indices = get_client_indices_mode2_and_3(
+                tg_pairs_indices, num_clients,
+                uniform_proportion=kwargs['uniform_proportion'] if 'uniform_proportion' in kwargs.keys() else 0,
+                proportions=ds.proportions
+            )
+
         else:
             raise NotImplementedError
     else:
@@ -453,7 +465,6 @@ def split_stackedmnist_data(ds, split_mode, num_clients, **kwargs):
 
 
 def main():
-
     seed = 0
     root = '/home/efani/DATASETS'
     sample_id = 25

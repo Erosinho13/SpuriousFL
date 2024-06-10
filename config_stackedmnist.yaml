@@ -21,9 +21,13 @@ dataset_options:
     - 1
     force_targets_proportions: null
     force_groups_proportions: null
-    force_proportions: null
-split_mode: mode2
-uniform_proportion: 0.2
+    force_proportions:
+    - - 0.05
+      - 0.45
+    - - 0.45
+      - 0.05
+split_mode: mode3
+#uniform_proportion: 0.2
 batch_size: 32
 epochs: 1
 rounds: 1000
