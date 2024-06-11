@@ -1,11 +1,11 @@
 import torch.nn as nn
-from torchvision import  models
+from timm.models import resnet50_gn
+
 
 def get_resnet50(num_classes):
-    model = models.resnet50(pretrained=True)
+    model = resnet50_gn(pretrained=True)
     num_ftrs = model.fc.in_features
     model.fc = nn.Linear(num_ftrs, num_classes)
-    
     return model
 
 

@@ -247,8 +247,6 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
         model = get_diao_CNN(*args, **kwargs)
     elif conf["model_type"] == "ResNet":
         model = get_resnet50(num_classes)
-    elif conf["model_type"] == "mobilenetv2":
-        model = mobilenet_v2(pretrained=False)
     else:
         raise NotImplementedError("conf['model_type']")
     if model_path is not None:

@@ -9,7 +9,6 @@ import os
 # Own modules
 from src import utils
 from src.datasets import data_preparation
-from src.datasets.stacked_mnist import train_mnist_target_to_img
 from src.models import model_utils
 from src.flower_strategy import MyStrategy
 from src.flower_client import FlowerClient
