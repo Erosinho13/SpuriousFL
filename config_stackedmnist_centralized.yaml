@@ -20,9 +20,11 @@ dataset_options:
     force_proportions: null
 batch_size: 32
 epochs: 100
-optimizer: SGD
-learning_rate: 0.01
-momentum: 0.9
+client_opt:
+    optimizer: SGD
+    learning_rate: 0.01
+    momentum: 0.9
+model_type: MobileNet
 eval_interval: 1
 test_interval: 1
 wandb: true

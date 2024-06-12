@@ -3,7 +3,7 @@ data_shuffle_seed : null
 dirichlet_alpha: 0.5
 dataset: WaterBirds
 batch_size: 4
-epochs: 1
+epochs: 10
 rounds: 10
 num_clients: 4
 weight_clients: true
@@ -25,3 +25,5 @@ wandb: true
 model_type: ResNet
 dataset_options:
     input_size: 224
+eval_interval: 1
+test_interval: 1

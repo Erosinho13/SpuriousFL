@@ -57,7 +57,7 @@ def train(conf):
     model = mobilenet_v2(pretrained=False).to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = SGD(model.parameters(), lr=conf['learning_rate'], momentum=conf['momentum'])
+    optimizer = SGD(model.parameters(), lr=conf['client_opt']['learning_rate'], momentum=conf['client_opt']['momentum'])
 
     for epoch in range(conf['epochs']):
 
