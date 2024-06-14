@@ -40,7 +40,7 @@ def get_optimizer(params, conf={}):
             else:
                 raise NotImplementedError(f"optimizer not recognized {copt['optimizer']}")
         if "learning_rate" in copt:
-            lr = copt["learning_rate"]
+            lr = float(copt["learning_rate"])
         else:
             lr = 0.001
         return opt(params, lr=lr)
@@ -243,10 +243,16 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
 
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes
-    if conf["model_type"] == "CNN":
+    if conf["model_options"]["model_type"] == "CNN":
         model = get_diao_CNN(*args, **kwargs)
-    elif conf["model_type"] == "ResNet":
-        model = get_resnet50(num_classes)
+    elif conf["model_options"]["model_type"] == "ResNet":
+        if 'norm_layer' in conf.keys():
+            norm=conf['norm_layer']
+        else:
+            norm = 'gn'
+        model = get_resnet50(num_classes, norm=norm)
+    elif conf["model_options"]["model_type"] == "MobileNet":
+        model = mobilenet_v2(pretrained=False)
     else:
         raise NotImplementedError("conf['model_type']")
     if model_path is not None:

@@ -9,6 +9,7 @@ from torch.optim import SGD
 from torch.utils.data import DataLoader
 
 from src import utils
+from src.models import model_utils
 from src.datasets import data_preparation
 from torchvision.models import mobilenet_v2
 
@@ -30,6 +31,11 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
     if conf["wandb"]:
         key = 'test_accuracy' if not train_set else 'train_accuracy'
         wandb.log({key: 100 * correct / total}, step=epoch)
+    if not train_set:
+        _, _, group_acc = model_utils.evaluate(model, test_loader, conf)
+        print(group_acc)
+        wandb.log(group_acc, step=epoch)
+    
 
 
 def train(conf):
@@ -54,10 +60,12 @@ def train(conf):
     eval_loader = DataLoader(dataset=eval_ds, batch_size=conf['batch_size'], shuffle=False)
     test_loader = DataLoader(dataset=test_ds, batch_size=conf['batch_size'], shuffle=False)
 
-    model = mobilenet_v2(pretrained=False).to(device)
+    model = model_utils.init_model(conf).to(device)
+    #model = mobilenet_v2(pretrained=False).to(device)
+    model_utils.print_summary(model)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = SGD(model.parameters(), lr=conf['client_opt']['learning_rate'], momentum=conf['client_opt']['momentum'])
+    optimizer = SGD(model.parameters(), lr=float(conf['client_opt']['learning_rate']), momentum=float(conf['client_opt']['momentum']))
 
     for epoch in range(conf['epochs']):
 
@@ -75,7 +83,7 @@ def train(conf):
 
         print(f"Epoch [{epoch + 1}/{conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
         if conf["wandb"]:
-            wandb.log({'training_loss': running_loss / len(train_loader)}, step=epoch)
+            wandb.log({'train_loss': running_loss / len(train_loader)}, step=epoch)
 
         if (epoch + 1) % conf['eval_interval'] == 0:
             test_model(eval_loader, model, device, conf, epoch, train_set=True)

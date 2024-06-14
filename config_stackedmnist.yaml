@@ -43,4 +43,6 @@ server_opt:
     beta_2: 0.99  # TODO: check
     tau: 0.000000001  # TODO: check
 wandb: false
-model_type: ResNet
+model_options:
+    model_type: MobileNet
+    norm_layer: gn

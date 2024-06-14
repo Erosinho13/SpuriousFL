@@ -77,8 +77,8 @@ class FlowerClient(fl.client.NumPyClient):
             loss, accuracy, group_acc = model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
             metric_dict = {
                 "cid": self.cid,
-                 "loss": loss,
-                 "accuracy": accuracy,
+                 "test_loss": loss,
+                 "test_accuracy": accuracy,
             }
             metric_dict = metric_dict | group_acc
 

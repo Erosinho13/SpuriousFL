@@ -24,7 +24,9 @@ client_opt:
     optimizer: SGD
     learning_rate: 0.01
     momentum: 0.9
-model_type: MobileNet
+model_options:
+    model_type: MobileNet
+    norm_layer: gn
 eval_interval: 1
 test_interval: 1
 wandb: true
