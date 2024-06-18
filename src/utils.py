@@ -21,6 +21,10 @@ def load_config(env_path="env.json", config_path="config.json"):
                     v = v[len(config["root_path"]):]
             config["paths"][k] = str(os.path.join(env["root_path"], v))
     config.update(env)
+    if "log_group_acc" not in config.keys():
+        config["log_group_acc"] = True
+    if "log_group_f1_score" not in config.keys():
+        config["log_group_f1_score"] = True
     return config
 
 

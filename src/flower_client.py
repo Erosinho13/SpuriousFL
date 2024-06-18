@@ -74,13 +74,18 @@ class FlowerClient(fl.client.NumPyClient):
 
             # Local model eval
             self.set_parameters(weights, config)
-            loss, accuracy, group_acc = model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
+            loss, accuracy, group_acc, f1_score, group_f1_score = \
+                model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
             metric_dict = {
                 "cid": self.cid,
-                 "test_loss": loss,
-                 "test_accuracy": accuracy,
+                "test_loss": loss,
+                "test_accuracy": accuracy,
+                "test_f1_score": f1_score
             }
-            metric_dict = metric_dict | group_acc
+            if self.conf["log_group_acc"]:
+                metric_dict |= group_acc
+            if self.conf["log_group_f1_score"]:
+                metric_dict |= group_f1_score
 
             return (
                 loss,

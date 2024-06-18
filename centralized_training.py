@@ -30,7 +30,7 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
         key = 'test_accuracy' if not train_set else 'train_accuracy'
         wandb.log({key: 100 * correct / total}, step=epoch)
     if not train_set:
-        _, _, group_acc = model_utils.evaluate(model, test_loader, conf)
+        _, _, group_acc, _, _ = model_utils.evaluate(model, test_loader, conf)
         print(group_acc)
         wandb.log(group_acc, step=epoch)
 
