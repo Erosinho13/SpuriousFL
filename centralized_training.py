@@ -11,11 +11,9 @@ from torch.utils.data import DataLoader
 from src import utils
 from src.models import model_utils
 from src.datasets import data_preparation
-from torchvision.models import mobilenet_v2
 
 
 def test_model(test_loader, model, device, conf, epoch, train_set=False):
-
     model.eval()
     correct = 0
     total = 0
@@ -35,11 +33,9 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
         _, _, group_acc = model_utils.evaluate(model, test_loader, conf)
         print(group_acc)
         wandb.log(group_acc, step=epoch)
-    
 
 
 def train(conf):
-
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
@@ -61,11 +57,12 @@ def train(conf):
     test_loader = DataLoader(dataset=test_ds, batch_size=conf['batch_size'], shuffle=False)
 
     model = model_utils.init_model(conf).to(device)
-    #model = mobilenet_v2(pretrained=False).to(device)
+    # model = mobilenet_v2(pretrained=False).to(device)
     model_utils.print_summary(model)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = SGD(model.parameters(), lr=float(conf['client_opt']['learning_rate']), momentum=float(conf['client_opt']['momentum']))
+    optimizer = SGD(model.parameters(), lr=float(conf['client_opt']['learning_rate']),
+                    momentum=float(conf['client_opt']['momentum']))
 
     for epoch in range(conf['epochs']):
 
@@ -98,7 +95,6 @@ def train(conf):
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description=""
     )

@@ -87,8 +87,8 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
                 num_groups=ds_opt['num_groups'],
                 prevent_targets_shuffling=ds_opt['prevent_class_shuffling'],
                 prevent_groups_shuffling=ds_opt['prevent_group_shuffling'],
-                force_targets=ds_opt['force_targets'],
-                force_groups=ds_opt['force_groups']
+                force_targets=trainset.targets,
+                force_groups=trainset.groups
             )
 
         valset = copy.deepcopy(trainset)

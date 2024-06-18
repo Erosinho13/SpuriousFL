@@ -88,6 +88,9 @@ class StackedMNIST(MNIST):
         if force_groups_proportions is not None:
             assert len(force_groups_proportions) == num_groups
             assert math.isclose(sum(force_groups_proportions), 1.0, rel_tol=1e-9)
+        if not train:
+            assert force_targets is not None
+            assert force_groups is not None
 
         self.num_images = num_images
         self.num_targets = num_targets
@@ -471,20 +474,20 @@ def main():
     num_train_images = 60000
     num_test_images = 10000
 
-    num_targets = 2
-    num_groups = 2
+    num_targets = 100
+    num_groups = 10
     dirichlet_targets_alpha = 10.0
     dirichlet_groups_alpha = 1.0
-    uniform_targets = False
-    uniform_groups = False
-    force_targets = [23, 45]
-    force_groups = [0, 1]
+    uniform_targets = True
+    uniform_groups = True
+    force_targets = None
+    force_groups = None
     prevent_targets_shuffling = False
     prevent_groups_shuffling = False
 
     force_targets_proportions = None  # [0.5, 0.5]
     force_groups_proportions = None  # [0.9, 0.1]
-    force_proportions = [[0.45, 0.05], [0.05, 0.45]]
+    force_proportions = None # [[0.45, 0.05], [0.05, 0.45]]
 
     write_annotations = True
 
@@ -525,8 +528,8 @@ def main():
         prevent_groups_shuffling=prevent_groups_shuffling,
         uniform_targets=True,
         uniform_groups=True,
-        force_targets=force_targets,
-        force_groups=force_groups,
+        force_targets=train_data.targets,
+        force_groups=train_data.groups,
     )
 
     sample_image = train_data[sample_id]
