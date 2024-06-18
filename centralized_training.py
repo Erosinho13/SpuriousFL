@@ -35,11 +35,14 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
         wandb.log(group_acc, step=epoch)
 
 
-def train(conf):
+def train(conf, conf_path=None):
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
     if conf["wandb"]:
+        if "store_id" in conf.keys():
+            if conf["store_id"]:
+                conf["run_id"] = conf_path.split('/')[-1].split('.')[0]
         wandb.init(
             project="spurious_FL",
             entity="predictive-analytics-lab",
@@ -114,7 +117,7 @@ def main():
 
     conf = utils.load_config(config_path=args.config_path, env_path=args.env_path)
     print(conf)
-    train(conf)
+    train(conf, conf_path=args.config_path)
 
 
 if __name__ == '__main__':
