@@ -30,7 +30,7 @@ def client_fn(cid: str) -> fl.client.Client:
     return client.to_client()
 
 
-def train():
+def train(conf_path=None):
     """Flower training simulation using global config"""
     global ds_split
     global val_ds
@@ -41,6 +41,9 @@ def train():
 
     if conf["wandb"]:
         import wandb
+        if "store_id" in conf.keys():
+            if conf["store_id"]:
+                conf["run_id"] = conf_path.split('/')[-1].split('.')[0]
         wandb.init(
             project="spurious_FL",
             entity="predictive-analytics-lab",
@@ -124,4 +127,4 @@ if __name__ == "__main__":
 
     conf = utils.load_config(config_path=args.config_path, env_path=args.env_path)
     print(conf)
-    train()
+    train(conf_path=args.config_path)

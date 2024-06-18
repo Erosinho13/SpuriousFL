@@ -42,7 +42,8 @@ server_opt:
     beta_1: 0.9  # TODO: check
     beta_2: 0.99  # TODO: check
     tau: 0.000000001  # TODO: check
-wandb: false
+wandb: true
 model_options:
     model_type: MobileNet
     norm_layer: gn
+store_id: true
