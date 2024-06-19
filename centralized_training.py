@@ -46,6 +46,7 @@ def train(conf, conf_path=None):
         wandb.init(
             project="spurious_FL",
             entity="predictive-analytics-lab",
+            tags=["centralized"],
             config=conf,
             id=conf["exp_id"],
             job_type="train",
