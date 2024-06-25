@@ -184,9 +184,11 @@ def evaluate(model, data, conf, verbose=0):
                 label_group_total[pair_key] += total_count
                 label_group_correct[pair_key] += correct_count
     loss /= len(data.dataset)
-    accuracy = correct / total
-    group_accuracies = {("y" + str(pair[0]) + "g" + str(pair[1])): label_group_correct[pair] / label_group_total[pair]
+    accuracy = 100 * correct / total
+    group_accuracies = {("y" + str(pair[0]) + "g" + str(pair[1])): 100* label_group_correct[pair] / label_group_total[pair]
                         for pair in label_group_total}
+    worst_acc = min(group_accuracies.values())
+    group_accuracies["worst_group"] = worst_acc
     return loss, accuracy, group_accuracies
 
 
