@@ -74,3 +74,22 @@ def dirichlet_split(
         dirichlet_alpha = np.repeat(dirichlet_alpha, a)
     split_norm = np.random.default_rng(seed).dirichlet(dirichlet_alpha, b)
     return split_norm
+
+
+def get_cpu():
+    return torch.device("cpu")
+
+
+def get_device(conf):
+    """Check gpu availability in environment config"""
+    if len(conf["CUDA_VISIBLE_DEVICES"]) > 0:
+        if "client_resources" in conf.keys() and conf["client_resources"] is not None:
+            if "num_gpus" in conf["client_resources"].keys():
+                if conf["client_resources"]["num_gpus"] > 0:
+                    device = torch.device("cuda")
+                    return device
+    return get_cpu()
+
+
+def np_to_tensor(images):
+    return torch.from_numpy(np.transpose(images, (0, 3, 1, 2)))

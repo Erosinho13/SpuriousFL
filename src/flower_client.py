@@ -1,4 +1,5 @@
 import flwr as fl
+import src.optimizers.optim_utils
 from src.utils import log
 from logging import ERROR, INFO
 import numpy as np
@@ -45,7 +46,7 @@ class FlowerClient(fl.client.NumPyClient):
 
             train_ds = self.train_data
             
-            history = model_utils.fit(self.model, train_ds, self.conf)
+            history = src.optimizers.optim_utils.fit(self.model, train_ds, self.conf)
 
             if np.isnan(
                     history.history["loss"][-1]
@@ -74,7 +75,7 @@ class FlowerClient(fl.client.NumPyClient):
 
             # Local model eval
             self.set_parameters(weights, config)
-            loss, accuracy, group_acc = model_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
+            loss, accuracy, group_acc = src.optimizers.optim_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
             metric_dict = {
                 "cid": self.cid,
                  "test_loss": loss,
