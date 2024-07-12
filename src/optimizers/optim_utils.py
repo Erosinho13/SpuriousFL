@@ -1,28 +1,7 @@
 import numpy as np
+from src.optimizers.subpopbench import get_base_optimizer, get_loss, get_subpop_optimizer
 from src.utils import get_cpu, get_device, np_to_tensor
 import torch
-
-def get_optimizer(params, conf={}):
-    if "client_opt" in conf.keys():
-        copt = conf["client_opt"]
-        if "optimizer" in copt:
-            if copt["optimizer"] == "SGD":
-                opt = torch.optim.SGD
-            elif copt["optimizer"] == "Adam":
-                opt = torch.optim.Adam
-            else:
-                raise NotImplementedError(f"optimizer not recognized {copt['optimizer']}")
-        if "learning_rate" in copt:
-            lr = float(copt["learning_rate"])
-        else:
-            lr = 0.001
-        return opt(params, lr=lr)
-    return torch.optim.SGD(params, lr=0.001)
-
-
-def get_loss(conf={}):
-    return torch.nn.functional.cross_entropy
-
 
 class History:
     def __init__(self):
@@ -35,23 +14,23 @@ class History:
 def fit(model, data, conf, validation_data=None, verbose=0):
     model.train()  # switch to training mode
     history = History()
-    optimizer = get_optimizer(model.parameters(), conf)
-    loss_fn = get_loss(conf)
+    opt = get_subpop_optimizer(model, conf)
     for epoch in range(conf["epochs"]):
         correct, total, epoch_loss = 0, 0, 0.0
         for images, (labels, groups) in data:
             images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
-            optimizer.zero_grad()
-            outputs = model(images)
+            groups = groups.to(get_device(conf))
 
-            loss = loss_fn(outputs, labels)
-            loss.backward()
-            optimizer.step()
+
+            opt_out = opt.update((None, images, labels, groups), 1)
+            loss = opt_out["loss"]
+            minibatch_correct = opt_out["correct"]
+
             # Metrics
-            epoch_loss += loss.item() * images.size(0)
+            correct += minibatch_correct
+            epoch_loss += loss * images.size(0)
             total += labels.size(0)
-            correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
-            del loss, outputs
+            del loss
         epoch_loss /= len(data.dataset)
         epoch_acc = correct / total
 
@@ -61,12 +40,13 @@ def fit(model, data, conf, validation_data=None, verbose=0):
                 correct, total, val_loss = 0, 0, 0.0
                 for images, (labels, groups) in validation_data:
                     images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
-                    outputs = model(images)
-                    loss = loss_fn(outputs, labels)
-                    val_loss += loss.item() * images.size(0)
+                    opt_out = opt.update((None, images, labels, groups), 1)
+                    loss = opt_out["loss"]
+                    minibatch_correct = opt_out["correct"]
+                    correct += minibatch_correct
+                    val_loss += loss * images.size(0)
                     total += labels.size(0)
-                    correct += (torch.max(outputs.data, 1)[1] == labels).sum().item()
-                    del loss, outputs
+                    del loss
                 val_loss /= len(validation_data.dataset)
                 val_acc = correct / total
             model.train()  # switch to training mode
@@ -79,7 +59,7 @@ def fit(model, data, conf, validation_data=None, verbose=0):
         history.history["accuracy"].append(epoch_acc)
     return history
 
-
+#!TODO update with subpopbench optims
 def evaluate(model, data, conf, verbose=0):
     model.eval()
     loss_fn = get_loss(conf)

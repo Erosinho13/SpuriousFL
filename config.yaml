@@ -12,7 +12,8 @@ aug_crop: 4
 aug_horizontal_flip: true
 split_mode: dirichlet
 client_opt:
-    optimizer: SGD
+    subpop_optimizer: ERM
+    base_optimizer: SGD
     learning_rate: 0.0316
 server_opt:
     optimizer: FedAvgM

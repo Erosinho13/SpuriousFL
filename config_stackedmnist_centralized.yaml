@@ -21,7 +21,8 @@ dataset_options:
 batch_size: 32
 epochs: 100
 client_opt:
-    optimizer: SGD
+    subpop_optimizer: ERM
+    base_optimizer: SGD
     learning_rate: 0.01
     momentum: 0.9
 model_options:

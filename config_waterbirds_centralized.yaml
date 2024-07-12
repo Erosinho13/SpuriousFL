@@ -12,7 +12,8 @@ aug_crop: 24
 aug_horizontal_flip: true
 split_mode: homogen
 client_opt:
-    optimizer: SGD
+    subpop_optimizer: ERM
+    base_optimizer: SGD
     learning_rate: 1e-3
     momentum: 0.9
 server_opt:

@@ -34,7 +34,8 @@ rounds: 1000
 num_clients: 20
 weight_clients: false  # TODO: check
 client_opt:
-    optimizer: SGD
+    subpop_optimizer: ERM
+    base_optimizer: SGD
     learning_rate: 0.1
 server_opt:
     optimizer: FedAvg  # TODO: check
