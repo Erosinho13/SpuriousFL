@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 
+from src.models.abstract_model import AbstractModel
 
-class DiaoCNN(nn.Module):
+class DiaoCNN(AbstractModel):
     """Model following the diao et al paper.
     Emmiting LN, GN and IN as it is not straightforward to cast to TF,
     and the paper shows superiority of the BN
@@ -47,20 +48,15 @@ class DiaoCNN(nn.Module):
                 ]
             )
         blocks = blocks[:-1]
-        linear = nn.Linear(in_features=hidden_sizes[-1], out_features=num_classes, bias=use_bias)
-
         blocks.extend(
             [
                 nn.AdaptiveAvgPool2d(1),
                 nn.Flatten(),
-                linear,
-            ]
+            ]            
         )
-        self.blocks = nn.Sequential(*blocks)
+        self.featurizer = nn.Sequential(*blocks)
+        self.classifier = nn.Linear(in_features=hidden_sizes[-1], out_features=num_classes, bias=use_bias)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        output = self.blocks(x)
-        return output
 
 
 def get_diao_CNN(*args, **kwargs):
