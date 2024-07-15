@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 
 import src.optimizers.optim_utils
-from src.optimizers.subpopbench import get_subpop_optimizer
+from src.optimizers.subpopbench import get_subpop_optimizer, is_two_stage_optimizer
 import torch
 import wandb
 from torch import nn
@@ -69,6 +69,11 @@ def train(conf, conf_path=None):
     # criterion = nn.CrossEntropyLoss()
     # optimizer = SGD(model.parameters(), lr=float(conf['client_opt']['learning_rate']),
     #                 momentum=float(conf['client_opt']['momentum']))
+
+    if is_two_stage_optimizer(conf):
+        #!TODO: load pretrained weights or train basic ERM
+        pass
+
     opt = get_subpop_optimizer(model, conf)
     for epoch in range(conf['epochs']):
 

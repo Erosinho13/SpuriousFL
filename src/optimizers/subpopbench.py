@@ -65,6 +65,16 @@ class Algorithm(torch.nn.Module):
         return zip(idx_a, idx_samples)
 
 
+def is_two_stage_optimizer(conf):
+    if "client_opt" in conf.keys():
+        copt = conf["client_opt"]
+        if "subpop_optimizer" in copt.keys():
+            if "CRT" in copt["subpop_optimizer"] or "DFR" in copt["subpop_optimizer"]:
+                return True
+            return False
+    raise KeyError("Missing conf.client_opt.subpop_optimizer")
+
+
 def get_subpop_optimizer(model, conf={}):
     if "client_opt" in conf.keys():
         copt = conf["client_opt"]
