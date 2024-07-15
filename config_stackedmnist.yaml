@@ -37,6 +37,7 @@ client_opt:
     subpop_optimizer: ERM
     base_optimizer: SGD
     learning_rate: 0.1
+    groupdro_eta: 1e-2
 server_opt:
     optimizer: FedAvg  # TODO: check
     learning_rate: 1.0

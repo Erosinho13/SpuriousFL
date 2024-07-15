@@ -11,10 +11,11 @@ aug_crop: 24
 aug_horizontal_flip: true
 split_mode: homogen
 client_opt:
-    subpop_optimizer: ERM
+    subpop_optimizer: GroupDRO
     base_optimizer: SGD
     learning_rate: 1e-3
     momentum: 0.9
+    groupdro_eta: 0.01
 server_opt:
     optimizer: FedAvg
     learning_rate: 0.1

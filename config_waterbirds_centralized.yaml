@@ -15,6 +15,7 @@ client_opt:
     base_optimizer: SGD
     learning_rate: 1e-3
     momentum: 0.9
+    groupdro_eta: 1e-2
 server_opt:
     optimizer: FedAvg
     learning_rate: 0.1
@@ -27,7 +28,7 @@ model_options:
     norm_layer: gn
 dataset_options:
     name: WaterBirds
-    input_size: 224
+    input_size: 64
     num_targets: 2
     num_groups: 2
 eval_interval: 1

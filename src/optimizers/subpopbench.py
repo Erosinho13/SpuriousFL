@@ -2,6 +2,8 @@
 
 import torch
 
+from src.utils import get_device
+
 class Algorithm(torch.nn.Module):
     """
     A subclass of Algorithm implements a subgroup robustness algorithm.
@@ -15,10 +17,11 @@ class Algorithm(torch.nn.Module):
     def __init__(self, model, conf):
         super(Algorithm, self).__init__()
         self.conf = conf
+        self.hparams = conf["client_opt"]
         if "dataset_options" in conf.keys():
             dopt = conf["dataset_options"]
             if "num_targets" in dopt.keys():
-                self.num_labels = dopt["num_targets"]
+                self.num_classes = dopt["num_targets"]
             if "num_groups" in dopt.keys():
                 self.num_attributes =  dopt["num_groups"]
         self.network = model
@@ -68,6 +71,10 @@ def get_subpop_optimizer(model, conf={}):
         if "subpop_optimizer" in copt.keys():
             if copt["subpop_optimizer"] == "ERM":
                 return ERM(model, conf)
+            elif copt["subpop_optimizer"] == "GroupDRO":
+                return GroupDRO(model, conf)
+            else:
+                raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)
 
 
@@ -90,7 +97,7 @@ def get_base_optimizer(params, conf={}):
 
 
 def get_loss(conf={}):
-    return torch.nn.functional.cross_entropy
+    return torch.nn.CrossEntropyLoss(reduction="none")
 
 
 class ERM(Algorithm):
@@ -137,3 +144,31 @@ class ERM(Algorithm):
 
     def predict(self, x):
         return self.network(x)
+
+
+class GroupDRO(ERM):
+    """
+    Group DRO minimizes the error at the worst group [https://arxiv.org/pdf/1911.08731.pdf]
+    """
+    def __init__(self, model, conf):
+        super(GroupDRO, self).__init__(
+            model, conf)
+        print(self.num_classes, self.num_attributes)
+        self.register_buffer(
+            "q", torch.ones(self.num_classes * self.num_attributes).to(get_device(conf)))
+
+    def _compute_loss(self, i, pred, y, a, step):
+        losses = self.loss(pred, y)
+
+        for idx_g, idx_samples in self.return_groups(y, a):
+            import pdb
+            #pdb.set_trace()
+            self.q[idx_g] *= (float(self.hparams["groupdro_eta"]) * losses[idx_samples].mean()).exp().item()
+
+        self.q /= self.q.sum()
+
+        loss_value = 0
+        for idx_g, idx_samples in self.return_groups(y, a):
+            loss_value += self.q[idx_g] * losses[idx_samples].mean()
+
+        return loss_value

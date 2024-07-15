@@ -70,7 +70,7 @@ def evaluate(model, data, conf, verbose=0):
             images, labels, groups = images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(
                 get_device(conf))
             outputs = model(images)
-            loss += loss_fn(outputs, labels, reduction="sum").item()
+            loss += loss_fn(outputs, labels).mean().item()
             _, predicted = torch.max(outputs.data, 1)
 
             total += labels.size(0)

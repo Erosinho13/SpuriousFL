@@ -25,6 +25,7 @@ client_opt:
     base_optimizer: SGD
     learning_rate: 0.01
     momentum: 0.9
+    groupdro_eta: 1e-2
 model_options:
     model_type: MobileNet
     norm_layer: gn

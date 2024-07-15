@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 
 import src.optimizers.optim_utils
+from src.optimizers.subpopbench import get_subpop_optimizer
 import torch
 import wandb
 from torch import nn
@@ -65,23 +66,24 @@ def train(conf, conf_path=None):
     # model = mobilenet_v2(pretrained=False).to(device)
     model_utils.print_summary(model)
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = SGD(model.parameters(), lr=float(conf['client_opt']['learning_rate']),
-                    momentum=float(conf['client_opt']['momentum']))
-
+    # criterion = nn.CrossEntropyLoss()
+    # optimizer = SGD(model.parameters(), lr=float(conf['client_opt']['learning_rate']),
+    #                 momentum=float(conf['client_opt']['momentum']))
+    opt = get_subpop_optimizer(model, conf)
     for epoch in range(conf['epochs']):
 
         model.train()
         running_loss = 0.0
 
         for images, (labels, groups) in train_loader:
-            images, labels = images.to(device), labels.to(device)
-            optimizer.zero_grad()
-            outputs = model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
+            images, labels = images.to(utils.get_device(conf)), labels.to(utils.get_device(conf))
+            groups = groups.to(utils.get_device(conf))
+
+
+            opt_out = opt.update((None, images, labels, groups), 1)
+            loss = opt_out["loss"]
+
+            running_loss += loss
 
         print(f"Epoch [{epoch + 1}/{conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
         if conf["wandb"]:
