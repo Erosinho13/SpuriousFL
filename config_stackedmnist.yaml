@@ -1,7 +1,7 @@
 seed: 42
 data_shuffle_seed : null  # TODO: check
-dataset: StackedMNIST
 dataset_options:
+    name: StackedMNIST
     root: 'datasets/'
     num_train_images: 60000
     num_test_images: 10000

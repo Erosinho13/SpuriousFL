@@ -1,7 +1,6 @@
 seed: 42
 data_shuffle_seed : null
 dirichlet_alpha: 0.5
-dataset: CIFAR10
 batch_size: 32
 epochs: 1
 rounds: 10
@@ -24,5 +23,6 @@ server_opt:
 wandb: true
 model_type: ResNet
 dataset_options:
+    name: CIFAR10
     num_targets: 10
     num_groups: 1

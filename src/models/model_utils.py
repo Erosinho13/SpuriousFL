@@ -61,21 +61,24 @@ def print_summary(model):
 
 
 def init_model(conf, model_path=None, weights=None, *args, **kwargs):
-    if conf["dataset"] == "CIFAR10":
+    if "dataset_options" in conf.keys():
+        dataset_mode = conf["dataset_options"]["name"]
+    else:
+        raise KeyError("Missing dataset options")    
+    if dataset_mode == "CIFAR10":
         input_shape = (3, 32, 32)
         num_classes = 10
-    elif conf["dataset"] == "WaterBirds":
+    elif dataset_mode == "WaterBirds":
         if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
             input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
         else:
             input_shape = (3, 32, 32)
         num_classes = 2
-    elif conf["dataset"] == "StackedMNIST":
+    elif dataset_mode == "StackedMNIST":
         input_shape = (3, 32, 32)
         num_classes = conf["dataset_options"]["num_targets"]
     else:
-        dataset = conf['dataset']
-        raise NotImplementedError('Dataset split for dataset ' + dataset + ' not recognized')
+        raise NotImplementedError('Dataset split for dataset ' + dataset_mode + ' not recognized')
 
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes

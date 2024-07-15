@@ -10,8 +10,10 @@ from src.datasets.subset import SubsetDataset
 
 def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
     """Load datasets into dataset object"""
-    if "dataset" in conf.keys():
-        dataset_mode = conf["dataset"]
+    if "dataset_options" in conf.keys():
+        dataset_mode = conf["dataset_options"]["name"]
+    else:
+        raise KeyError("Missing dataset options")
 
     if "val_split" in conf.keys():
         val_split = conf["val_split"]
@@ -108,7 +110,11 @@ def preprocess_data(data, conf, shuffle=True):
 
 
 def split_data(ds, conf):
-    if conf["dataset"] == 'CIFAR10':
+    if "dataset_options" in conf.keys():
+        dataset_mode = conf["dataset_options"]["name"]
+    else:
+        raise KeyError("Missing dataset options")
+    if dataset_mode == 'CIFAR10':
         return cifar_split_data(
             ds,
             conf["num_clients"],
@@ -119,19 +125,18 @@ def split_data(ds, conf):
             dirichlet_alpha=conf["dirichlet_alpha"],
         )
         
-    elif conf["dataset"]=="WaterBirds":
+    elif dataset_mode == "WaterBirds":
         ds_split = split_data_waterbirds(
             ds,
             conf
         )
-    elif conf["dataset"] == "StackedMNIST":
+    elif dataset_mode == "StackedMNIST":
         ds_split = \
             split_stackedmnist_data(
                 ds, conf['split_mode'], conf['num_clients'],
                 uniform_proportion=conf['uniform_proportion'] if 'uniform_proportion' in conf.keys() else 0
             )
     else:
-        dataset = conf['dataset']
-        raise NotImplementedError('Dataset split for dataset '+dataset+' not recognized')
+        raise NotImplementedError('Dataset split for dataset '+dataset_mode+' not recognized')
     print([len(ds) for ds in ds_split])
     return ds_split
