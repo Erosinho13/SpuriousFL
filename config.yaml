@@ -23,3 +23,6 @@ server_opt:
     tau: 0.000000001
 wandb: true
 model_type: ResNet
+dataset_options:
+    num_targets: 10
+    num_groups: 1

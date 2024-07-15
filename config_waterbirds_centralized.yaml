@@ -28,5 +28,7 @@ model_options:
     norm_layer: gn
 dataset_options:
     input_size: 224
+    num_targets: 2
+    num_groups: 2
 eval_interval: 1
 test_interval: 1

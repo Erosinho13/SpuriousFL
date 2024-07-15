@@ -15,6 +15,12 @@ class Algorithm(torch.nn.Module):
     def __init__(self, model, conf):
         super(Algorithm, self).__init__()
         self.conf = conf
+        if "dataset_options" in conf.keys():
+            dopt = conf["dataset_options"]
+            if "num_targets" in dopt.keys():
+                self.num_labels = dopt["num_targets"]
+            if "num_groups" in dopt.keys():
+                self.num_attributes =  dopt["num_groups"]
         self.network = model
 
     def _init_model(self):

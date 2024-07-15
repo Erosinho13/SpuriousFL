@@ -28,3 +28,5 @@ model_options:
     norm_layer: gn
 dataset_options:
     input_size: 64
+    num_targets: 2
+    num_groups: 2
