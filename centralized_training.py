@@ -1,10 +1,11 @@
 import argparse
 from datetime import datetime
 import os
+import copy
 
 from src.optimizers.dataloaders import WeightedDataLoader
 import src.optimizers.optim_utils
-from src.optimizers.subpopbench import get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
+from src.optimizers.subpopbench import ERM, get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
 import torch
 import wandb
 from torch import nn
@@ -75,7 +76,27 @@ def train(conf, conf_path=None):
 
     if is_two_stage_optimizer(conf):
         #!TODO: load pretrained weights or train basic ERM
-        pass
+        first_stage_conf = copy.deepcopy(conf)
+        first_stage_conf["wandb"] = False
+        first_stage_conf["client_opt"]["subpop_optimizer"] = "ERM"
+        if conf["checkpoint"] is None:
+            print("First stage training with ERM")
+            opt = get_subpop_optimizer(model, train_ds, first_stage_conf)
+            for epoch in range(first_stage_conf['epochs']):
+                model.train()
+                running_loss = 0.0
+                for images, (labels, groups) in train_loader:
+                    images, labels = images.to(utils.get_device(first_stage_conf)), labels.to(utils.get_device(first_stage_conf))
+                    groups = groups.to(utils.get_device(first_stage_conf))
+                    opt_out = opt.update((None, images, labels, groups), 1)
+                    loss = opt_out["loss"]
+                    running_loss += loss
+                print(f"Epoch [{epoch + 1}/{first_stage_conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
+            print("First stage training finished")       
+        else:
+            print("First stage weights from: ",conf["checkpoint"])
+        test_model(test_loader, model, device, conf, 0)
+        
 
     opt = get_subpop_optimizer(model, train_ds, conf)
     for epoch in range(conf['epochs']):

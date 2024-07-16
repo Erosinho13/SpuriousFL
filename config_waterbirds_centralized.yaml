@@ -2,7 +2,7 @@ seed: 42
 data_shuffle_seed : null
 dirichlet_alpha: 0.5
 batch_size: 32
-epochs: 10
+epochs: 4
 rounds: 10
 num_clients: 4
 weight_clients: true
@@ -11,12 +11,13 @@ aug_crop: 24
 aug_horizontal_flip: true
 split_mode: homogen
 client_opt:
-    subpop_optimizer: ReWeight
+    subpop_optimizer: ReWeightCRT
     base_optimizer: SGD
     learning_rate: 1e-3
     momentum: 0.9
     groupdro_eta: 1e-2
     cbloss_beta: 0.9999
+    focal_gamma: 1
 server_opt:
     optimizer: FedAvg
     learning_rate: 0.1
@@ -34,3 +35,4 @@ dataset_options:
     num_groups: 2
 eval_interval: 1
 test_interval: 1
+checkpoint: null

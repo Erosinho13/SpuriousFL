@@ -16,6 +16,7 @@ client_opt:
     learning_rate: 0.0316
     groupdro_eta: 1e-2
     cbloss_beta: 0.9999
+    focal_gamma: 1
 server_opt:
     optimizer: FedAvgM
     learning_rate: 0.316
@@ -28,3 +29,4 @@ dataset_options:
     name: CIFAR10
     num_targets: 10
     num_groups: 1
+checkpoint: null

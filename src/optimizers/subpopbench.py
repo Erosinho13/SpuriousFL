@@ -95,6 +95,13 @@ def get_subpop_optimizer(model, data, conf={}):
             elif copt["subpop_optimizer"] == "CBLoss":
                 metadata = get_metadata(data)
                 return CBLoss(model, conf, metadata)
+            elif copt["subpop_optimizer"] == "Focal":
+                return Focal(model, conf)
+            elif copt["subpop_optimizer"] == "CRT":
+                return CRT(model, conf)
+            elif copt["subpop_optimizer"]== "ReWeightCRT":
+                metadata = get_metadata(data)
+                return ReWeightCRT(model, conf, metadata)
             else:
                 raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)
@@ -258,3 +265,34 @@ class CBLoss(ReWeight):
         per_grp_weights = (1. - self.hparams["cbloss_beta"]) / effective_num
         per_grp_weights = per_grp_weights / np.sum(per_grp_weights) * len(grp_sizes)
         self.weights_per_grp = torch.FloatTensor(per_grp_weights)
+
+
+class Focal(ERM):
+    """Focal loss, https://arxiv.org/abs/1708.02002"""
+    def __init__(self, model, conf):
+        super(Focal, self).__init__(
+            model, conf)
+
+    @staticmethod
+    def focal_loss(input_values, gamma):
+        p = torch.exp(-input_values)
+        loss = (1 - p) ** gamma * input_values
+        return loss.mean()
+
+    def _compute_loss(self, i, pred, y, a, step):
+        losses = self.loss(pred, y)
+        return self.focal_loss(losses, self.hparams["focal_gamma"])
+
+
+class CRT(ERM):
+    """Classifier re-training with balanced sampling during the second learning stage"""
+    def __init__(self, model, conf):
+        super(CRT, self).__init__(model, conf)
+        # fix stage 1 trained featurizer
+        for name, param in self.featurizer.named_parameters():
+            param.requires_grad = False
+        # only optimize the classifier
+
+
+class ReWeightCRT(ReWeight, CRT):
+    """Classifier re-training with balanced re-weighting during the second learning stage"""

@@ -17,6 +17,7 @@ client_opt:
     momentum: 0.9
     groupdro_eta: 1e-2
     cbloss_beta: 0.9999
+    focal_gamma: 1
 server_opt:
     optimizer: FedAvg
     learning_rate: 0.1
@@ -32,3 +33,4 @@ dataset_options:
     input_size: 224
     num_targets: 2
     num_groups: 2
+checkpoint: null
