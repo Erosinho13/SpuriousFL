@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime
 import os
 
+from src.optimizers.dataloaders import WeightedDataLoader
 import src.optimizers.optim_utils
 from src.optimizers.subpopbench import get_subpop_optimizer, is_two_stage_optimizer
 import torch
@@ -58,9 +59,9 @@ def train(conf, conf_path=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
-    train_loader = DataLoader(dataset=train_ds, batch_size=conf['batch_size'], shuffle=True, drop_last=True)
-    eval_loader = DataLoader(dataset=eval_ds, batch_size=conf['batch_size'], shuffle=False)
-    test_loader = DataLoader(dataset=test_ds, batch_size=conf['batch_size'], shuffle=False)
+    train_loader = WeightedDataLoader(dataset=train_ds, batch_size=conf['batch_size'], shuffle=True)
+    eval_loader = WeightedDataLoader(dataset=eval_ds, batch_size=conf['batch_size'], shuffle=False)
+    test_loader = WeightedDataLoader(dataset=test_ds, batch_size=conf['batch_size'], shuffle=False)
 
     model = model_utils.init_model(conf).to(device)
     # model = mobilenet_v2(pretrained=False).to(device)

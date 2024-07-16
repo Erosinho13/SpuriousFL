@@ -6,6 +6,7 @@ from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_dat
 from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
 from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, split_stackedmnist_data
 from src.datasets.subset import SubsetDataset
+from src.optimizers.dataloaders import WeightedDataLoader
 
 
 def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
@@ -103,7 +104,7 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
 def preprocess_data(data, conf, shuffle=True):
     """From dataset to dataloader in PyTorch
     Transforms, augmentations, etc. are now stored in the dataset"""
-    ds = torch.utils.data.DataLoader(
+    ds = WeightedDataLoader(
         data, batch_size=conf["batch_size"], shuffle=shuffle
     )
     return ds
