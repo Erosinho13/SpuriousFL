@@ -38,6 +38,7 @@ client_opt:
     base_optimizer: SGD
     learning_rate: 0.1
     groupdro_eta: 1e-2
+    cbloss_beta: 0.9999
 server_opt:
     optimizer: FedAvg  # TODO: check
     learning_rate: 1.0
