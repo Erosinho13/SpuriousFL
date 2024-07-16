@@ -1,7 +1,8 @@
 # Algorithms implemented in https://github.com/YyzHarry/SubpopBench/blob/main/subpopbench/learning/algorithms.py
 
+from src.datasets.dataset_utils import get_metadata
 import torch
-
+import numpy as np
 from src.utils import get_device
 
 class Algorithm(torch.nn.Module):
@@ -75,7 +76,7 @@ def is_two_stage_optimizer(conf):
     raise KeyError("Missing conf.client_opt.subpop_optimizer")
 
 
-def get_subpop_optimizer(model, conf={}):
+def get_subpop_optimizer(model, data, conf={}):
     if "client_opt" in conf.keys():
         copt = conf["client_opt"]
         if "subpop_optimizer" in copt.keys():
@@ -83,6 +84,17 @@ def get_subpop_optimizer(model, conf={}):
                 return ERM(model, conf)
             elif copt["subpop_optimizer"] == "GroupDRO":
                 return GroupDRO(model, conf)
+            elif copt["subpop_optimizer"] == "ReSample":
+                return ReSample(model, conf)
+            elif copt["subpop_optimizer"] == "ReWeight":
+                metadata = get_metadata(data)
+                return ReWeight(model, conf, metadata)
+            elif copt["subpop_optimizer"] == "SqrtReWeight":
+                metadata = get_metadata(data)
+                return SqrtReWeight(model, conf, metadata)
+            elif copt["subpop_optimizer"] == "CBLoss":
+                metadata = get_metadata(data)
+                return CBLoss(model, conf, metadata)
             else:
                 raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)
@@ -104,6 +116,21 @@ def get_base_optimizer(params, conf={}):
             lr = 0.001
         return opt(params, lr=lr)
     return torch.optim.SGD(params, lr=0.001)
+
+
+def get_sample_weights(ds, conf):
+    """ReSample weights for DataLoader.sampler"""
+    if "client_opt" in conf.keys():
+        copt = conf["client_opt"]
+        if "subpop_optimizer" in copt.keys():
+            if copt["subpop_optimizer"] in ["ReSample", "ReWeight"]:
+                ds.update_metadata()
+            if copt["subpop_optimizer"] == "ReSample":
+                # if attribute not available, groups degenerate to classes
+                train_weights = np.asarray(ds.weights_g)
+                train_weights /= np.sum(train_weights)
+                return train_weights
+    return None
 
 
 def get_loss(conf={}):
@@ -182,3 +209,52 @@ class GroupDRO(ERM):
             loss_value += self.q[idx_g] * losses[idx_samples].mean()
 
         return loss_value
+
+class ReSample(ERM):
+    """Naive resample, with no changes to ERM, but enable balanced sampling in DataLoader. See: get_sample_weights()"""
+
+
+class ReWeight(ERM):
+    """Naive inverse re-weighting"""
+    def __init__(self, model, conf, metadata):
+        super(ReWeight, self).__init__(
+            model, conf)
+        assert len(metadata['group_sizes']) == self.num_classes * self.num_attributes
+        grp_sizes = [x if x else np.inf for x in metadata['group_sizes']]
+        per_grp_weights = 1 / np.array(grp_sizes)
+        per_grp_weights = per_grp_weights / np.sum(per_grp_weights) * len(grp_sizes)
+        self.weights_per_grp = torch.FloatTensor(per_grp_weights)
+
+    def _compute_loss(self, i, pred, y, a, step):
+        losses = self.loss(pred, y)
+
+        all_g = y * self.num_attributes + a
+        loss_value = (self.weights_per_grp.type_as(losses)[all_g] * losses).mean()
+
+        return loss_value
+
+
+class SqrtReWeight(ReWeight):
+    """Square-root inverse re-weighting"""
+    def __init__(self, model, conf, metadata):
+        super(SqrtReWeight, self).__init__(
+            model, conf, metadata)
+        grp_sizes = [x if x else np.inf for x in metadata['group_sizes']]
+        per_grp_weights = 1 / np.sqrt(np.array(grp_sizes))
+        per_grp_weights = per_grp_weights / np.sum(per_grp_weights) * len(grp_sizes)
+        self.weights_per_grp = torch.FloatTensor(per_grp_weights)
+
+
+class CBLoss(ReWeight):
+    """Class-balanced loss, https://arxiv.org/pdf/1901.05555.pdf"""
+    def __init__(self, model, conf, metadata):
+        super(CBLoss, self).__init__(
+            model, conf, metadata)
+
+        grp_sizes = [x if x else np.inf for x in metadata['group_sizes']]
+        effective_num = 1. - np.power(self.hparams["cbloss_beta"], grp_sizes)
+        effective_num = np.array(effective_num)
+        effective_num[effective_num == 1] = np.inf
+        per_grp_weights = (1. - self.hparams["cbloss_beta"]) / effective_num
+        per_grp_weights = per_grp_weights / np.sum(per_grp_weights) * len(grp_sizes)
+        self.weights_per_grp = torch.FloatTensor(per_grp_weights)
