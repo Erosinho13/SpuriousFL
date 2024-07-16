@@ -10,7 +10,7 @@ from torchvision.transforms import v2
 from PIL import Image
 from torchvision.transforms.functional import normalize
 
-from src.datasets.subset import SubsetDataset
+from src.datasets.dataset_utils import SubsetDataset
 from src.utils import set_seed
 
 

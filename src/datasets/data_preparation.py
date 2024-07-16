@@ -5,7 +5,7 @@ import numpy as np
 from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
 from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
 from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, split_stackedmnist_data
-from src.datasets.subset import SubsetDataset
+from src.datasets.dataset_utils import SubsetDataset
 from src.optimizers.dataloaders import WeightedDataLoader
 
 

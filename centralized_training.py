@@ -4,7 +4,7 @@ import os
 
 from src.optimizers.dataloaders import WeightedDataLoader
 import src.optimizers.optim_utils
-from src.optimizers.subpopbench import get_subpop_optimizer, is_two_stage_optimizer
+from src.optimizers.subpopbench import get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
 import torch
 import wandb
 from torch import nn
@@ -59,7 +59,9 @@ def train(conf, conf_path=None):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
-    train_loader = WeightedDataLoader(dataset=train_ds, batch_size=conf['batch_size'], shuffle=True)
+    train_sample_weights = get_sample_weights(train_ds, conf)
+    train_loader = WeightedDataLoader(dataset=train_ds, weights=train_sample_weights,
+                                      batch_size=conf['batch_size'], shuffle=True)
     eval_loader = WeightedDataLoader(dataset=eval_ds, batch_size=conf['batch_size'], shuffle=False)
     test_loader = WeightedDataLoader(dataset=test_ds, batch_size=conf['batch_size'], shuffle=False)
 
@@ -75,7 +77,7 @@ def train(conf, conf_path=None):
         #!TODO: load pretrained weights or train basic ERM
         pass
 
-    opt = get_subpop_optimizer(model, conf)
+    opt = get_subpop_optimizer(model, train_ds, conf)
     for epoch in range(conf['epochs']):
 
         model.train()

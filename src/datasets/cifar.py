@@ -3,7 +3,7 @@ import torchvision
 import numpy as np
 
 from src.utils import dirichlet_split
-from src.datasets.subset import SubsetDataset
+from src.datasets.dataset_utils import SubsetDataset
 
 class CIFAR10(VisionDataset):
     def __init__(

@@ -3,10 +3,11 @@ from wilds import get_dataset
 import torchvision
 import numpy as np
 
-from src.datasets.subset import SubsetDataset
+from src.datasets.dataset_utils import SubsetDataset
+from src.datasets.dataset_utils import SubpopDataset, get_spurious_group_idx
 
 
-class WaterBirds(VisionDataset):
+class WaterBirds(VisionDataset, SubpopDataset):
     def __init__(
         self,
         root="./datasets",
@@ -59,21 +60,6 @@ def data_transforms_waterbirds(conf={}):
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 
 
-
-
-def get_spurious_group_idx(ds):
-    """Gets the list of idx for every (y,s) pair for y-label, s-spurious group.
-    Expects dataloader with x,(y,s) getter where y and s are scalar ints"""
-    d = {}
-    for i in range(len(ds)):
-        _, (y, s) = ds[i]
-        y,s = int(y), int(s)
-        if y not in d.keys():
-            d[y] = {}
-        if s not in d[y].keys():
-            d[y][s] = []
-        d[y][s].append(i)
-    return d
 
 
 def get_envs(group_ids, split_mode='sameratio', seed=42):
