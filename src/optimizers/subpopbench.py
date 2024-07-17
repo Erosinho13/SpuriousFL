@@ -102,6 +102,8 @@ def get_subpop_optimizer(model, data, conf={}):
             elif copt["subpop_optimizer"]== "ReWeightCRT":
                 metadata = get_metadata(data)
                 return ReWeightCRT(model, conf, metadata)
+            elif copt["subpop_optimizer"] == "DFR":
+                return DFR(model, conf)
             else:
                 raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)
@@ -292,7 +294,19 @@ class CRT(ERM):
         for name, param in self.featurizer.named_parameters():
             param.requires_grad = False
         # only optimize the classifier
+        self.optimizer = get_base_optimizer(self.classifier.parameters(), conf)
 
 
 class ReWeightCRT(ReWeight, CRT):
     """Classifier re-training with balanced re-weighting during the second learning stage"""
+
+
+
+class DFR(CRT):
+    """
+    Classifier re-training with sub-sampled, group-balanced, held-out(validation) data and l1 regularization.
+    Note that when attribute is unavailable in validation data, group-balanced reduces to class-balanced.
+    https://openreview.net/pdf?id=Zb6c8A-Fghk
+    """
+    def _compute_loss(self, i, pred, y, a, step):
+        return self.loss(pred, y).mean() + self.hparams['dfr_reg'] * torch.norm(self.classifier.weight, 1)

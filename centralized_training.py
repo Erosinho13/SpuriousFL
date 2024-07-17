@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 import copy
 
+from src.datasets.dataset_utils import subsample
 from src.optimizers.dataloaders import WeightedDataLoader
 import src.optimizers.optim_utils
 from src.optimizers.subpopbench import ERM, get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
@@ -96,6 +97,13 @@ def train(conf, conf_path=None):
         else:
             print("First stage weights from: ",conf["checkpoint"])
         test_model(test_loader, model, device, conf, 0)
+    
+    if conf["client_opt"]["subpop_optimizer"] == "DFR":
+        #!TODO: this should be from a held-out validation set
+        train_ds = subsample(train_ds, "group")
+        train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
+                                      batch_size=conf['batch_size'], shuffle=True)
+        
         
 
     opt = get_subpop_optimizer(model, train_ds, conf)

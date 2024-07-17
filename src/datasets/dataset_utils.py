@@ -63,16 +63,16 @@ def count_groups(ds, update_ds=True):
 def subsample(ds, subsample_type, metadata=None):
     assert subsample_type in {"group", "class"}
     if not hasattr(ds, "group_sizes") and metadata is None:
-        metadata = count_groups(ds, update_ds=True)
+        metadata = count_groups(ds, update_ds=False)
     if metadata is None:
         ds_y = ds.y
         ds_s = ds.s
-        num_attributes = num_attributes
-        num_labels = num_labels
-        group_sizes = group_sizes
-        class_sizes = class_sizes
-        weights_g = weights_g
-        weights_y = weights_y
+        num_attributes = ds.num_attributes
+        num_labels = ds.num_labels
+        group_sizes = ds.group_sizes
+        class_sizes = ds.class_sizes
+        weights_g = ds.weights_g
+        weights_y = ds.weights_y
     else:
         ds_y = metadata["y"]
         ds_s = metadata["s"]
@@ -89,14 +89,14 @@ def subsample(ds, subsample_type, metadata=None):
     counts_y = [0] * num_labels
     new_idx = []
     for p in perm:
-        y, a = ds.y[ds.idx[p]], ds.s[ds.idx[p]]
-        if (subsample_type == "group" and counts_g[ds.num_attributes * int(y) + int(a)] < min_size) or (
+        y, a = ds_y[p], ds_s[p]
+        if (subsample_type == "group" and counts_g[num_attributes * int(y) + int(a)] < min_size) or (
                 subsample_type == "class" and counts_y[int(y)] < min_size):
-            counts_g[ds.num_attributes * int(y) + int(a)] += 1
+            counts_g[num_attributes * int(y) + int(a)] += 1
             counts_y[int(y)] += 1
-            new_idx.append(ds.idx[p])
+            new_idx.append(p)
 
-    return new_idx
+    return SubsetDataset(ds, new_idx)
 
 def get_metadata(ds):
     """Return dataset descriptor metadata"""
