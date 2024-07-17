@@ -308,3 +308,15 @@ class DFR(CRT):
     """
     def _compute_loss(self, i, pred, y, a, step):
         return self.loss(pred, y).mean() + self.hparams['dfr_reg'] * torch.norm(self.classifier.weight, 1)
+
+
+class FEx(ERM):
+    """
+    Forgetting examples: re-training with sub-sampled dataset. Dataset samples detected by training
+    shallow model and tracking forgetting events.
+    https://arxiv.org/abs/1911.03861
+    """
+
+
+class FExCRT(CRT):
+    """Forgetting examples but with classifier re-training"""

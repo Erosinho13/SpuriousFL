@@ -5,7 +5,7 @@ import numpy as np
 from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
 from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
 from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, split_stackedmnist_data
-from src.datasets.dataset_utils import SubsetDataset
+from src.datasets.dataset_utils import SubsetDataset, count_groups
 from src.optimizers.dataloaders import WeightedDataLoader
 
 
@@ -141,3 +141,68 @@ def split_data(ds, conf):
         raise NotImplementedError('Dataset split for dataset '+dataset_mode+' not recognized')
     print([len(ds) for ds in ds_split])
     return ds_split
+
+
+def subsample_DFR(ds, subsample_type, metadata=None):
+    """
+    Classifier re-training with sub-sampled, group-balanced, held-out(validation) data and l1 regularization.
+    Note that when attribute is unavailable in validation data, group-balanced reduces to class-balanced.
+    https://openreview.net/pdf?id=Zb6c8A-Fghk
+    """
+    assert subsample_type in {"group", "class"}
+    if not hasattr(ds, "group_sizes") and metadata is None:
+        metadata = count_groups(ds, update_ds=False)
+    if metadata is None:
+        ds_y = ds.y
+        ds_s = ds.s
+        num_attributes = ds.num_attributes
+        num_labels = ds.num_labels
+        group_sizes = ds.group_sizes
+        class_sizes = ds.class_sizes
+        weights_g = ds.weights_g
+        weights_y = ds.weights_y
+    else:
+        ds_y = metadata["y"]
+        ds_s = metadata["s"]
+        num_attributes = metadata['num_attributes']
+        num_labels = metadata['num_labels']
+        group_sizes = metadata['group_sizes']
+        class_sizes = metadata['class_sizes']
+        weights_g = metadata['weights_g']
+        weights_y = metadata['weights_y']
+    perm = torch.randperm(len(ds)).tolist()
+    min_size = min(list(group_sizes)) if subsample_type == "group" else min(list(class_sizes))
+
+    counts_g = [0] * num_attributes * num_labels
+    counts_y = [0] * num_labels
+    new_idx = []
+    for p in perm:
+        y, a = ds_y[p], ds_s[p]
+        if (subsample_type == "group" and counts_g[num_attributes * int(y) + int(a)] < min_size) or (
+                subsample_type == "class" and counts_y[int(y)] < min_size):
+            counts_g[num_attributes * int(y) + int(a)] += 1
+            counts_y[int(y)] += 1
+            new_idx.append(p)
+
+    return SubsetDataset(ds, new_idx)
+
+
+def subsample_FEx(ds, conf):
+    """
+    Trains shallow model to detect forgettable examples.
+    https://arxiv.org/pdf/1911.03861
+    """
+    #!TODO: train shadow model
+    #!TODO: select interesting samples
+    
+
+
+def subsample(ds, conf):
+    """Subsample interesting samples to mitigate spurious correlation
+    in 2stage training methods"""
+    if conf["client_opt"]["subpop_optimizer"] == "DFR":
+        #!TODO: this should be from a held-out validation set
+        return subsample_DFR(ds, "group")
+
+    if "FEx" in conf["client_opt"]["subpop_optimizer"]:
+        return subsample_FEx(ds, conf)
