@@ -207,8 +207,6 @@ class GroupDRO(ERM):
         losses = self.loss(pred, y)
 
         for idx_g, idx_samples in self.return_groups(y, a):
-            import pdb
-            #pdb.set_trace()
             self.q[idx_g] *= (float(self.hparams["groupdro_eta"]) * losses[idx_samples].mean()).exp().item()
 
         self.q /= self.q.sum()
