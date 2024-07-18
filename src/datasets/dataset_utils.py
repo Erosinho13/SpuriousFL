@@ -1,3 +1,4 @@
+import numpy as np
 from torch.utils.data import Dataset
 from abc import abstractmethod
 
@@ -125,3 +126,44 @@ def get_metadata(ds):
         "group_sizes": ds.group_sizes,
         "class_sizes": ds.class_sizes, 
     }
+
+
+def compute_forgetting(accuracies):
+    """Counts elements with forgetting events: 
+    https://github.dev/sordonia/hans-forgetting/blob/master/utils_forgetting.py"""
+    forgetting_max = accuracies.shape[1]
+    num_examples = accuracies.shape[0]
+    forgetting = np.zeros(num_examples)
+
+    for example in range(num_examples):
+        never_learnt = (accuracies[example].sum() == 0)
+        if never_learnt:
+            forgetting[example] = forgetting_max
+        else:
+            num_forgetting_events = 0
+            last_acc = 0
+            num_present = 0
+            for current_acc in accuracies[example]:
+                if current_acc == -1:
+                    break
+                if current_acc == 0 and last_acc == 1:
+                    num_forgetting_events += 1
+                num_present += 1
+                last_acc = current_acc
+            assert num_present == accuracies.shape[1]
+            forgetting[example] = num_forgetting_events
+
+    most_forgotten_id = np.argsort(forgetting)[::-1]
+    most_forgotten_count = np.take(forgetting, most_forgotten_id)
+    return np.where(forgetting > 0)[0], forgetting, forgetting_max
+
+
+def select_forgettables(accuracies):
+    f, c, m = compute_forgetting(accuracies)
+    c_hard = c[c>0]
+    ids_by_forgettings = sorted(list(enumerate(c_hard)), key=lambda x: x[1], reverse=True)
+    ids_by_forgettings = [index for index, value in ids_by_forgettings]
+    f = f[ids_by_forgettings]
+    never_learnt = np.where(c == m)[0]
+    forgettables = f
+    return forgettables, never_learnt

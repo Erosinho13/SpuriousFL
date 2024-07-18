@@ -2,11 +2,8 @@ import argparse
 from datetime import datetime
 import os
 import copy
+import numpy as np
 
-from src.datasets.data_preparation import subsample
-from src.optimizers.dataloaders import WeightedDataLoader
-import src.optimizers.optim_utils
-from src.optimizers.subpopbench import ERM, get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
 import torch
 import wandb
 from torch import nn
@@ -16,6 +13,10 @@ from torch.utils.data import DataLoader
 from src import utils
 from src.models import model_utils
 from src.datasets import data_preparation
+from src.datasets.data_preparation import subsample
+from src.optimizers.dataloaders import WeightedDataLoader
+import src.optimizers.optim_utils
+from src.optimizers.subpopbench import ERM, get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
 
 
 def test_model(test_loader, model, device, conf, epoch, train_set=False):
@@ -67,6 +68,51 @@ def train(conf, conf_path=None):
     eval_loader = WeightedDataLoader(dataset=eval_ds, batch_size=conf['batch_size'], shuffle=False)
     test_loader = WeightedDataLoader(dataset=test_ds, batch_size=conf['batch_size'], shuffle=False)
 
+    # Shallow model training for Forgettable Examples
+    if "FEx" in conf["client_opt"]["subpop_optimizer"]:
+        #!TODO: train shallow model
+        #!TODO: get forgetting accuracies
+        train_loader_1 = WeightedDataLoader(dataset=train_ds, weights=None,
+                                      batch_size=conf['batch_size'], shuffle=True)
+        train_loader_2 = WeightedDataLoader(dataset=train_ds, weights=train_sample_weights,
+                                      batch_size=conf['batch_size'], shuffle=False)
+        shallow_conf = copy.deepcopy(conf)
+        shallow_conf["model_type"] = conf["client_opt"]["fex_shallow_model"]
+        shallow_conf["client_opt"]["subpop_optimizer"] = "ERM"
+        shallow_conf["epochs"] = conf["client_opt"]["fex_epochs"]
+        shallow_model = model_utils.init_model(shallow_conf)
+        print("Shallow model training for FEx (Forgettable examples)")
+        opt = get_subpop_optimizer(shallow_model, train_ds, shallow_conf)
+        correct_preds = None
+        for epoch in range(shallow_conf['epochs']):
+            shallow_model.train()
+            running_loss = 0.0
+            for images, (labels, groups) in train_loader_1:
+                images, labels = images.to(utils.get_device(shallow_conf)), labels.to(utils.get_device(shallow_conf))
+                groups = groups.to(utils.get_device(shallow_conf))
+                opt_out = opt.update((None, images, labels, groups), 1)
+                loss = opt_out["loss"]
+                running_loss += loss
+            print(f"Epoch [{epoch + 1}/{shallow_conf['epochs']}], Loss: {running_loss / len(train_loader_1):.4f}")
+            # Collect accuracies
+            shallow_model.eval()
+            with torch.no_grad():
+                correct_all = []
+                for images, (labels, groups) in train_loader_2:
+                    images, labels = images.to(device), labels.to(device)
+                    outputs = shallow_model(images)
+                    _, predicted = torch.max(outputs.data, 1)
+                    correct = (predicted == labels).cpu().numpy().astype(int)
+                    correct_all.extend(correct)
+                correct_all = np.array(correct_all)[:,np.newaxis]
+                if correct_preds is None:
+                    correct_preds = correct_all
+                else:
+                    correct_preds = np.concatenate((correct_preds, correct_all), axis=1)
+    else:
+        correct_preds = None
+
+    # Loading real model
     model = model_utils.init_model(conf).to(device)
     # model = mobilenet_v2(pretrained=False).to(device)
     model_utils.print_summary(model)
@@ -97,11 +143,10 @@ def train(conf, conf_path=None):
         else:
             print("First stage weights from: ",conf["checkpoint"])
         test_model(test_loader, model, device, conf, 0)
-    
 
     if conf["client_opt"]["subpop_optimizer"] == "DFR" or "FEx" in conf["client_opt"]["subpop_optimizer"]:
         # Subsample for 2nd stage training
-        train_ds = subsample(train_ds, conf)
+        train_ds = subsample(train_ds, conf, accuracies=correct_preds)
         train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
                                       batch_size=conf['batch_size'], shuffle=True)
 

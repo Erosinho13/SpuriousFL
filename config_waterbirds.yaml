@@ -19,6 +19,9 @@ client_opt:
     cbloss_beta: 0.9999
     focal_gamma: 1
     dfr_reg: 0.1
+    fex_shallow_model: CNN
+    fex_epochs: 5
+    fex_balance_classes: true
 server_opt:
     optimizer: FedAvg
     learning_rate: 0.1

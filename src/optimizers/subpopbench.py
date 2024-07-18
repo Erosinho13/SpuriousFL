@@ -70,7 +70,8 @@ def is_two_stage_optimizer(conf):
     if "client_opt" in conf.keys():
         copt = conf["client_opt"]
         if "subpop_optimizer" in copt.keys():
-            if "CRT" in copt["subpop_optimizer"] or "DFR" in copt["subpop_optimizer"]:
+            spopt = copt["subpop_optimizer"]
+            if "CRT" in spopt or "DFR" in spopt or "FEx" in spopt:
                 return True
             return False
     raise KeyError("Missing conf.client_opt.subpop_optimizer")
@@ -104,6 +105,10 @@ def get_subpop_optimizer(model, data, conf={}):
                 return ReWeightCRT(model, conf, metadata)
             elif copt["subpop_optimizer"] == "DFR":
                 return DFR(model, conf)
+            elif copt["subpop_optimizer"] == "FEx":
+                return FEx(model, conf)
+            elif copt["subpop_optimizer"] == "FExCRT":
+                return FExCRT(model, conf)
             else:
                 raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)

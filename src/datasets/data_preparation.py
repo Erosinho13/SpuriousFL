@@ -5,7 +5,7 @@ import numpy as np
 from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
 from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
 from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, split_stackedmnist_data
-from src.datasets.dataset_utils import SubsetDataset, count_groups
+from src.datasets.dataset_utils import SubsetDataset, compute_forgetting, count_groups, select_forgettables
 from src.optimizers.dataloaders import WeightedDataLoader
 
 
@@ -143,7 +143,7 @@ def split_data(ds, conf):
     return ds_split
 
 
-def subsample_DFR(ds, subsample_type, metadata=None):
+def subsample_DFR(ds, subsample_type, *args, metadata=None, random=True, **kwargs):
     """
     Classifier re-training with sub-sampled, group-balanced, held-out(validation) data and l1 regularization.
     Note that when attribute is unavailable in validation data, group-balanced reduces to class-balanced.
@@ -170,7 +170,10 @@ def subsample_DFR(ds, subsample_type, metadata=None):
         class_sizes = metadata['class_sizes']
         weights_g = metadata['weights_g']
         weights_y = metadata['weights_y']
-    perm = torch.randperm(len(ds)).tolist()
+    if random:
+        perm = torch.randperm(len(ds)).tolist()
+    else:
+        perm = list(range(len(ds)))
     min_size = min(list(group_sizes)) if subsample_type == "group" else min(list(class_sizes))
 
     counts_g = [0] * num_attributes * num_labels
@@ -186,23 +189,35 @@ def subsample_DFR(ds, subsample_type, metadata=None):
 
     return SubsetDataset(ds, new_idx)
 
-
-def subsample_FEx(ds, conf):
+def subsample_FEx(ds, conf, accuracies, *args, **kwargs):
     """
-    Trains shallow model to detect forgettable examples.
+    Detect forgettable examples from accurate pred list.
     https://arxiv.org/pdf/1911.03861
     """
-    #!TODO: train shadow model
-    #!TODO: select interesting samples
-    
+    #!TODO: balanced filters
+    f, u = select_forgettables(accuracies)
+    filtered_ids = {}
+    filtered_ids['forgettables'] = f
+    #filtered_ids['forgettables_b'] = balance_by_class(f)
+    filtered_ids['never_learnt'] = u
+    #filtered_ids['never_learnt_b'] = balance_by_class(u)
 
+    mode = "forgettables"
+    idx = filtered_ids[mode]
+    return SubsetDataset(ds, idx)
 
-def subsample(ds, conf):
+def subsample(ds, conf, *args, **kwargs):
     """Subsample interesting samples to mitigate spurious correlation
     in 2stage training methods"""
     if conf["client_opt"]["subpop_optimizer"] == "DFR":
         #!TODO: this should be from a held-out validation set
-        return subsample_DFR(ds, "group")
+        ret =  subsample_DFR(ds, "group", *args, **kwargs)
 
-    if "FEx" in conf["client_opt"]["subpop_optimizer"]:
-        return subsample_FEx(ds, conf)
+    elif "FEx" in conf["client_opt"]["subpop_optimizer"]:
+        ret =  subsample_FEx(ds, conf, *args, **kwargs)
+        if conf["client_opt"]["fex_balance_classes"]:
+            ret = subsample_DFR(ret, "class")
+    print("Subsample size:", len(ret))
+
+    print(count_groups(ret)["group_sizes"])
+    return ret
