@@ -8,6 +8,7 @@ import os
 from torchvision.models import mobilenet_v2
 
 from .cnn import get_diao_CNN
+from .mobilenet import mobilenetv2
 from .resnet import get_resnet50
 
 
@@ -91,7 +92,7 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
             norm = 'gn'
         model = get_resnet50(num_classes, norm=norm)
     elif conf["model_options"]["model_type"] == "MobileNet":
-        model = mobilenet_v2(pretrained=False)
+        model = mobilenetv2(num_classes=num_classes, return_features=False)
     else:
         raise NotImplementedError("conf['model_type']")
     if model_path is not None:

@@ -6,9 +6,6 @@ import numpy as np
 
 import torch
 import wandb
-from torch import nn
-from torch.optim import SGD
-from torch.utils.data import DataLoader
 
 from src import utils
 from src.models import model_utils
@@ -49,6 +46,8 @@ def train(conf, conf_path=None):
         if "store_id" in conf.keys():
             if conf["store_id"]:
                 conf["run_id"] = conf_path.split('/')[-1].split('.')[0]
+        else:
+            conf["run_id"] = conf_path.split('/')[-1].split('.')[0]
         wandb.init(
             project="spurious_FL",
             entity="predictive-analytics-lab",
@@ -73,9 +72,9 @@ def train(conf, conf_path=None):
         #!TODO: train shallow model
         #!TODO: get forgetting accuracies
         train_loader_1 = WeightedDataLoader(dataset=train_ds, weights=None,
-                                      batch_size=conf['batch_size'], shuffle=True)
+                                            batch_size=conf['batch_size'], shuffle=True)
         train_loader_2 = WeightedDataLoader(dataset=train_ds, weights=train_sample_weights,
-                                      batch_size=conf['batch_size'], shuffle=False)
+                                            batch_size=conf['batch_size'], shuffle=False)
         shallow_conf = copy.deepcopy(conf)
         shallow_conf["model_type"] = conf["client_opt"]["fex_shallow_model"]
         shallow_conf["client_opt"]["subpop_optimizer"] = "ERM"
@@ -104,7 +103,7 @@ def train(conf, conf_path=None):
                     _, predicted = torch.max(outputs.data, 1)
                     correct = (predicted == labels).cpu().numpy().astype(int)
                     correct_all.extend(correct)
-                correct_all = np.array(correct_all)[:,np.newaxis]
+                correct_all = np.array(correct_all)[:, np.newaxis]
                 if correct_preds is None:
                     correct_preds = correct_all
                 else:
@@ -133,24 +132,24 @@ def train(conf, conf_path=None):
                 model.train()
                 running_loss = 0.0
                 for images, (labels, groups) in train_loader:
-                    images, labels = images.to(utils.get_device(first_stage_conf)), labels.to(utils.get_device(first_stage_conf))
+                    images, labels = images.to(utils.get_device(first_stage_conf)), labels.to(
+                        utils.get_device(first_stage_conf))
                     groups = groups.to(utils.get_device(first_stage_conf))
                     opt_out = opt.update((None, images, labels, groups), 1)
                     loss = opt_out["loss"]
                     running_loss += loss
                 print(f"Epoch [{epoch + 1}/{first_stage_conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
-            print("First stage training finished")       
+            print("First stage training finished")
         else:
-            print("First stage weights from: ",conf["checkpoint"])
+            print("First stage weights from: ", conf["checkpoint"])
         test_model(test_loader, model, device, conf, 0)
 
     if conf["client_opt"]["subpop_optimizer"] == "DFR" or "FEx" in conf["client_opt"]["subpop_optimizer"]:
         # Subsample for 2nd stage training
         train_ds = subsample(train_ds, conf, accuracies=correct_preds)
         train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
-                                      batch_size=conf['batch_size'], shuffle=True)
+                                          batch_size=conf['batch_size'], shuffle=True)
 
-        
     opt = get_subpop_optimizer(model, train_ds, conf)
     for epoch in range(conf['epochs']):
 
@@ -160,7 +159,6 @@ def train(conf, conf_path=None):
         for images, (labels, groups) in train_loader:
             images, labels = images.to(utils.get_device(conf)), labels.to(utils.get_device(conf))
             groups = groups.to(utils.get_device(conf))
-
 
             opt_out = opt.update((None, images, labels, groups), 1)
             loss = opt_out["loss"]
