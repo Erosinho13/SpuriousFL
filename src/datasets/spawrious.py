@@ -1,0 +1,98 @@
+from torchvision.datasets import VisionDataset
+import numpy as np
+import torchvision
+import os
+import pandas as pd
+from PIL import Image
+
+from src.datasets.dataset_utils import SubsetDataset
+from src.datasets.dataset_utils import SubpopDataset, get_spurious_group_idx
+
+from spawrious.torch import _download_dataset_if_not_available
+
+class Spawrious(VisionDataset, SubpopDataset):
+    def __init__(
+        self,
+        root="./datasets",
+        train=True,
+        transforms=None,
+    ) -> None:
+        dataset, locations, breeds = get_dataset(root_dir=root, train=train)
+        self.metadata = {"locations":locations, "breeds":breeds}
+        self.dataset = dataset[["path","breed","location"]].to_numpy()
+        self.root = root
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __getitem__(self, index: int):
+        x, y, s = self.dataset[index]
+        x = Image.open(x)
+        return x, (y, s)
+
+    def __getattr__(self, name):
+        try:
+            return super().__getattribute__('dataset').__getattribute__(name)
+        except AttributeError:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+
+def get_image_info(root):
+    image_info_list = []
+
+    # Traverse the directory structure
+    for location in os.listdir(root):
+        location_path = os.path.join(root, location)
+        if os.path.isdir(location_path):
+            for breed in os.listdir(location_path):
+                breed_path = os.path.join(location_path, breed)
+                if os.path.isdir(breed_path):
+                    for filename in os.listdir(breed_path):
+                        if filename.endswith('.png'):
+                            image_path = os.path.join(breed_path, filename)
+                            image_info_list.append((image_path, location, breed))
+
+    return image_info_list
+
+
+def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0):
+    _download_dataset_if_not_available("entire_dataset", root_dir)
+    metadata1 = get_image_info(os.path.join(root_dir,"spawrious224","1"))
+    metadata0 = get_image_info(os.path.join(root_dir,"spawrious224","0"))
+    metadata = metadata0 + metadata1
+    df = pd.DataFrame(metadata, columns=["path","location","breed"])
+    df["location"], locations = pd.factorize(df["location"])
+    df["breed"], breeds = pd.factorize(df["breed"])
+    test_set = df.groupby(['location','breed']).apply(lambda x: x.sample(frac=test_ratio, random_state=seed)).droplevel([0,1])
+    train_set = df.drop(test_set.index)
+    if train:
+        df_ret = train_set
+    else:
+        df_ret = test_set
+    df_ret = df_ret.reset_index(drop=True)
+    return df_ret, locations, breeds
+
+
+def data_transforms_spawrious(conf={}):
+    train_tr_list = [
+    ]
+    if conf["aug_crop"] > 0:
+        train_tr_list.append(torchvision.transforms.RandomCrop(224, padding=conf['aug_crop']))
+    if conf["aug_horizontal_flip"]:
+        train_tr_list.append(torchvision.transforms.RandomHorizontalFlip())
+    train_tr_list.append(torchvision.transforms.ToTensor())
+    test_tr_list = [
+        torchvision.transforms.ToTensor()
+    ]
+
+    if conf["norm"]:
+        raise NotImplementedError("Get norms")
+    return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
+
+
+
+
+
+def split_data_spawrious(ds, conf):
+    """Split data in X,Y between 'num_clients' number of clients"""
+    return None
