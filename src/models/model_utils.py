@@ -92,7 +92,13 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
             norm = 'gn'
         model = get_resnet50(num_classes, norm=norm)
     elif conf["model_options"]["model_type"] == "MobileNet":
-        model = mobilenetv2(num_classes=num_classes, return_features=False)
+        pretrained = True
+        if 'pretrained' in conf["model_options"].keys():
+            pretrained = conf["model_options"]['pretrained']
+        if pretrained:
+            model = mobilenetv2(num_classes=num_classes, return_features=False)
+        else:
+            model = mobilenetv2(num_classes=num_classes, return_features=False, pretrained_path=None)
     else:
         raise NotImplementedError("conf['model_type']")
     if model_path is not None:
