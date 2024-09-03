@@ -5,7 +5,6 @@ batch_size: 32
 epochs: 4
 rounds: 10
 num_clients: 4
-weight_clients: true
 norm: true
 aug_crop: 24
 aug_horizontal_flip: true
@@ -28,6 +27,7 @@ server_opt:
     beta_1: 0.9
     beta_2: 0.99
     tau: 0.000000001
+    weight_clients: same
 wandb: true
 model_options:
     model_type: ResNet

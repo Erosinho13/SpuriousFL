@@ -32,7 +32,6 @@ batch_size: 32
 epochs: 1
 rounds: 1000
 num_clients: 20
-weight_clients: false  # TODO: check
 client_opt:
     subpop_optimizer: ERM
     base_optimizer: SGD
@@ -50,6 +49,7 @@ server_opt:
     beta_1: 0.9  # TODO: check
     beta_2: 0.99  # TODO: check
     tau: 0.000000001  # TODO: check
+    weight_clients: same # TODO: check
 wandb: true
 model_options:
     model_type: MobileNet

@@ -55,8 +55,16 @@ class FlowerClient(fl.client.NumPyClient):
 
             shared_metrics = {"client_id": self.cid, "loss": history.history["loss"][-1]}
 
-            client_weight = self.train_len if self.conf["weight_clients"] else 1
-
+            if "weight_clients" in self.conf["server_opt"].keys():
+                weight_mode = self.conf["server_opt"]["weight_clients"]
+                if weight_mode == "same":
+                    client_weight = 1
+                elif weight_mode == "datasize":
+                    client_weight = self.train_len
+                else:
+                    raise NotImplementedError("Client weight method not recognized!")
+            else: 
+                raise NotImplementedError("client weights not set!")
             trained_weights = model_utils.get_weights(self.model)
 
         except Exception as e:
