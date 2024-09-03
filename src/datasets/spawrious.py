@@ -16,8 +16,13 @@ class Spawrious(VisionDataset, SubpopDataset):
         root="./datasets",
         train=True,
         transforms=None,
+        num_targets = 4,
+        num_groups = 6,
+        num_samples_per_class = None
     ) -> None:
-        dataset, locations, breeds = get_dataset(root_dir=root, train=train)
+        dataset, locations, breeds = get_dataset(root_dir=root, train=train,
+                                                 num_targets=num_targets, num_groups=num_groups,
+                                                 num_samples_per_class=num_samples_per_class)
         self.metadata = {"locations":locations, "breeds":breeds}
         self.dataset = dataset[["path","breed","location"]].to_numpy()
         self.root = root
@@ -27,7 +32,9 @@ class Spawrious(VisionDataset, SubpopDataset):
 
     def __getitem__(self, index: int):
         x, y, s = self.dataset[index]
-        x = Image.open(x)
+        x = np.asarray(Image.open(x))
+        x = np.transpose(x, (2, 0, 1))
+        x = (x/255).astype(np.float32)
         return x, (y, s)
 
     def __getattr__(self, name):
@@ -55,7 +62,7 @@ def get_image_info(root):
     return image_info_list
 
 
-def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0):
+def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0, num_targets=4, num_groups=6, num_samples_per_class=None):
     _download_dataset_if_not_available("entire_dataset", root_dir)
     metadata1 = get_image_info(os.path.join(root_dir,"spawrious224","1"))
     metadata0 = get_image_info(os.path.join(root_dir,"spawrious224","0"))
@@ -63,8 +70,13 @@ def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0):
     df = pd.DataFrame(metadata, columns=["path","location","breed"])
     df["location"], locations = pd.factorize(df["location"])
     df["breed"], breeds = pd.factorize(df["breed"])
+    df = df[df["location"]<num_groups]
+    df = df[df["breed"]<num_targets]
     test_set = df.groupby(['location','breed']).apply(lambda x: x.sample(frac=test_ratio, random_state=seed)).droplevel([0,1])
     train_set = df.drop(test_set.index)
+    if num_samples_per_class is not None:
+        train_set = df.groupby(['location','breed']).apply(lambda x: x.sample(n=num_samples_per_class, random_state=seed)).droplevel([0,1])
+    
     if train:
         df_ret = train_set
     else:
@@ -76,23 +88,75 @@ def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0):
 def data_transforms_spawrious(conf={}):
     train_tr_list = [
     ]
+    test_tr_list = [
+    ]
+    if "input_size" in conf["dataset_options"].keys():
+        input_size = conf["dataset_options"]["input_size"]
+    if input_size != 224:
+        train_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
+        test_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
     if conf["aug_crop"] > 0:
-        train_tr_list.append(torchvision.transforms.RandomCrop(224, padding=conf['aug_crop']))
+        train_tr_list.append(torchvision.transforms.RandomCrop(input_size, padding=conf['aug_crop']))
     if conf["aug_horizontal_flip"]:
         train_tr_list.append(torchvision.transforms.RandomHorizontalFlip())
     train_tr_list.append(torchvision.transforms.ToTensor())
-    test_tr_list = [
-        torchvision.transforms.ToTensor()
-    ]
+    test_tr_list.append(torchvision.transforms.ToTensor())
 
     if conf["norm"]:
         raise NotImplementedError("Get norms")
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 
 
+def get_envs(group_ids, split_mode='sameratio', seed=42):
+    """Set list of idx for environment
+    homogen:
+      - 1/4 of each
+    sameratio:
+    0 - {(0,0),(1,0)} - birds on land
+    1 - {(0,0),(1,1)} - everyone in the expected background
+    2 - {(0,1),(1,0)} - everyone in unexpected background
+    3 - {(0,1),(1,1)} - birds on water"""
 
+    rng = np.random.default_rng(seed=seed)
+    subsets = [[],[],[],[]]
+    if split_mode=="homogen":
+        for y in group_ids.keys():
+            for s in group_ids[y].keys():
+                l = len(group_ids[y][s])//4
+                perm = rng.permutation(group_ids[y][s])
+                samples_by_envs =  [perm[:l], perm[l:l*2], perm[l*2:l*3], perm[l*3:]]
+                for i, x in enumerate(samples_by_envs):
+                    subsets[i].extend(x)
+        return subsets
+    if split_mode=="sameratio":
+        for y in group_ids.keys():
+            for s in group_ids[y].keys():
+                length = len(group_ids[y][s])//2
+                perm = rng.permutation(group_ids[y][s])
+                subset1, subset2 = perm[:length], perm[length:]
+                if y==0 and s==0:
+                    subsets[0].extend(subset1)
+                    subsets[1].extend(subset2)
+                elif y==0 and s==1:
+                    subsets[2].extend(subset1)
+                    subsets[3].extend(subset2)
+                elif y==1 and s==0:
+                    subsets[0].extend(subset1)
+                    subsets[2].extend(subset2)
+                elif y==1 and s==1:
+                    subsets[1].extend(subset1)
+                    subsets[3].extend(subset2)
+        return subsets
+    raise NotImplementedError("split_mode not recognized")
 
 
 def split_data_spawrious(ds, conf):
     """Split data in X,Y between 'num_clients' number of clients"""
-    return None
+
+    if conf["num_clients"]!=4:
+        raise NotImplementedError("Only 4 clients for now!")
+    
+    ids_by_groups = get_spurious_group_idx(ds)
+    idx_split = get_envs(ids_by_groups, split_mode=conf["split_mode"], seed=conf["seed"])
+    ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
+    return ds_split
