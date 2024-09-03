@@ -1,7 +1,7 @@
 seed: 42
 data_shuffle_seed : null
 dirichlet_alpha: 0.5
-batch_size: 32
+batch_size: 16
 epochs: 4
 rounds: 10
 num_clients: 4
@@ -34,7 +34,7 @@ model_options:
     norm_layer: gn
 dataset_options:
     name: Spawrious
-    input_size: 64
+    input_size: 32
     num_samples_per_class: 100
     num_targets: 2
     num_groups: 2

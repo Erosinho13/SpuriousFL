@@ -24,14 +24,14 @@ class Spawrious(VisionDataset, SubpopDataset):
                                                  num_targets=num_targets, num_groups=num_groups,
                                                  num_samples_per_class=num_samples_per_class)
         self.metadata = {"locations":locations, "breeds":breeds}
-        self.dataset = dataset[["path","breed","location"]].to_numpy()
+        self.subset = dataset[["path","breed","location"]].to_numpy()
         self.root = root
 
     def __len__(self) -> int:
-        return len(self.dataset)
+        return len(self.subset)
 
     def __getitem__(self, index: int):
-        x, y, s = self.dataset[index]
+        x, y, s = self.subset[index]
         x = np.asarray(Image.open(x))
         x = np.transpose(x, (2, 0, 1))
         x = (x/255).astype(np.float32)
