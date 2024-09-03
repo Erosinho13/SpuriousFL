@@ -149,13 +149,12 @@ def train(conf, conf_path=None):
         train_ds = subsample(train_ds, conf, accuracies=correct_preds)
         train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
                                           batch_size=conf['batch_size'], shuffle=True)
-
+    print("Dataset size:", len(train_ds))
     opt = get_subpop_optimizer(model, train_ds, conf)
     for epoch in range(conf['epochs']):
 
         model.train()
         running_loss = 0.0
-
         for images, (labels, groups) in train_loader:
             images, labels = images.to(utils.get_device(conf)), labels.to(utils.get_device(conf))
             groups = groups.to(utils.get_device(conf))

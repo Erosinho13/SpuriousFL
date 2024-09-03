@@ -1,3 +1,4 @@
+from src.datasets.spawrious import Spawrious, data_transforms_spawrious, split_data_spawrious
 import torch
 import copy
 import numpy as np
@@ -53,6 +54,23 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         valset = copy.deepcopy(testset)
         return trainset, valset, testset
     
+    if dataset_mode == "Spawrious":
+        ds_opt = conf["dataset_options"]
+        train_tr_list, test_tr_list = data_transforms_spawrious(conf)
+        trainset = Spawrious(
+            "./datasets", train=True, transforms=train_tr_list,
+            num_groups=ds_opt['num_groups'],
+            num_targets=ds_opt['num_targets'],
+            num_samples_per_class=ds_opt['num_samples_per_class']
+        )
+        testset = Spawrious(
+            "./datasets", train=False, transforms=test_tr_list,
+            num_groups=ds_opt['num_groups'],
+            num_targets=ds_opt['num_targets'],
+        )
+        valset = copy.deepcopy(testset)
+        return trainset, valset, testset
+
     if dataset_mode == "StackedMNIST":
         ds_opt = conf['dataset_options']
         mean = (0.1307, 0.1307, 0.1307)
@@ -137,6 +155,11 @@ def split_data(ds, conf):
                 ds, conf['split_mode'], conf['num_clients'],
                 uniform_proportion=conf['uniform_proportion'] if 'uniform_proportion' in conf.keys() else 0
             )
+    elif dataset_mode == "Spawrious":
+        ds_split = split_data_spawrious(
+            ds,
+            conf
+        )
     else:
         raise NotImplementedError('Dataset split for dataset '+dataset_mode+' not recognized')
     print([len(ds) for ds in ds_split])
