@@ -39,6 +39,12 @@ def train(conf_path=None):
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
 
+    train_ds, val_ds, test_ds = data_preparation.load_data(conf=conf)
+    val_ds = data_preparation.preprocess_data(val_ds, conf, shuffle=False)
+    # X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
+    # X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
+    conf["len_total_data"] = len(train_ds)
+
     if conf["wandb"]:
         import wandb
         if "store_id" in conf.keys():
@@ -53,12 +59,6 @@ def train(conf_path=None):
             job_type="train",
             reinit=True
         )
-
-    train_ds, val_ds, test_ds = data_preparation.load_data(conf=conf)
-    val_ds = data_preparation.preprocess_data(val_ds, conf, shuffle=False)
-    # X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
-    # X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
-    conf["len_total_data"] = len(train_ds)
     ds_split = data_preparation.split_data(
         train_ds,
         conf

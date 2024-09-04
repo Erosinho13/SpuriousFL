@@ -27,8 +27,8 @@ class FlowerClient(fl.client.NumPyClient):
         self.model = model
 
     def load_data(self, train_ds, test_ds):
-        self.train_len = len(train_ds)
-        self.test_len = len(test_ds)
+        self.train_len = len(train_ds.dataset)
+        self.test_len = len(test_ds.dataset)
         self.train_data = train_ds
         self.test_data = test_ds
 
@@ -62,7 +62,7 @@ class FlowerClient(fl.client.NumPyClient):
                 elif weight_mode == "datasize":
                     client_weight = self.train_len
                 elif weight_mode == "reversesize":
-                    client_weight = 1/self.train_len
+                    client_weight = int(self.conf["len_total_data"]/self.train_len)
                 elif weight_mode.startswith("server_"):
                     client_weight = config["client_weight"]
                 else:
@@ -70,7 +70,6 @@ class FlowerClient(fl.client.NumPyClient):
             else: 
                 raise NotImplementedError("client weights not set!")
             trained_weights = model_utils.get_weights(self.model)
-
         except Exception as e:
             log(
                 ERROR,
