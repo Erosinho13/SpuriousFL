@@ -3,7 +3,22 @@ from logging import ERROR, INFO
 from logging import WARNING
 import os
 import numpy as np
+from typing import Callable, Dict, List, Optional, Tuple, Union
 from flwr.server.strategy.aggregate import aggregate
+from flwr.server.client_proxy import ClientProxy
+from flwr.server.client_manager import ClientManager
+from flwr.common import (
+    EvaluateIns,
+    EvaluateRes,
+    FitIns,
+    FitRes,
+    MetricsAggregationFn,
+    NDArrays,
+    Parameters,
+    Scalar,
+    ndarrays_to_parameters,
+    parameters_to_ndarrays,
+)
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 
 from src.utils import log
@@ -210,3 +225,33 @@ class MyStrategy(fl.server.strategy.FedOpt):
             wandb.log(wandb_log)
 
         return aggregated_result
+
+    def configure_fit(
+        self, server_round: int, parameters: Parameters, client_manager: ClientManager
+    ) -> List[Tuple[ClientProxy, FitIns]]:
+        """Configure the next round of training."""
+
+        # Sample clients
+        sample_size, min_num_clients = self.num_fit_clients(
+            client_manager.num_available()
+        )
+        clients = client_manager.sample(
+            num_clients=sample_size, min_num_clients=min_num_clients
+        )
+
+        # Create custom configs
+        fit_configurations = []
+
+
+        # print(rands)
+        for client in clients:
+            client_config = {}
+
+            if self.conf["server_opt"]["weight_clients"].startswith("server_"):
+                #TODO: implement client weighting
+                client_config["client_weight"] = 1
+
+            fit_configurations.append((client, FitIns(parameters, client_config)))
+
+                
+        return fit_configurations
