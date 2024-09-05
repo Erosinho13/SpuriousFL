@@ -191,6 +191,14 @@ def train(conf, conf_path=None):
 
     test_model(test_loader, model, device, conf, conf['epochs'])
 
+    save_path = os.path.join(
+        "checkpoints",
+        conf["exp_id"],
+        "final"
+    )
+    print("Saving model to %s", save_path)
+    model_utils.save_model(model, save_path)
+    
     if conf["wandb"]:
         wandb.finish()
 
