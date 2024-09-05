@@ -42,6 +42,22 @@ def train(conf, conf_path=None):
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
+
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
+
+    if conf["local_training_id"] is not None:
+        # Feature to do local training for one client's data only
+        ds_split = data_preparation.split_data(
+            train_ds,
+            conf
+        )
+        train_ds = ds_split[conf["local_training_id"]]
+    conf["len_total_data"] = len(train_ds)
+    print("Dataset size: ", len(train_ds))
+
     if conf["wandb"]:
         if "store_id" in conf.keys():
             if conf["store_id"]:
@@ -58,9 +74,6 @@ def train(conf, conf_path=None):
             reinit=True
         )
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
     train_sample_weights = get_sample_weights(train_ds, conf)
     train_loader = WeightedDataLoader(dataset=train_ds, weights=train_sample_weights,
                                       batch_size=conf['batch_size'], shuffle=True)

@@ -56,3 +56,4 @@ model_options:
     norm_layer: gn
 store_id: true
 checkpoint: null
+local_training_id: null

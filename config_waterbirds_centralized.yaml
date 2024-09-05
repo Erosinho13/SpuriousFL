@@ -8,9 +8,9 @@ num_clients: 4
 norm: true
 aug_crop: 24
 aug_horizontal_flip: true
-split_mode: homogen
+split_mode: sameratio
 client_opt:
-    subpop_optimizer: FExCRT
+    subpop_optimizer: ERM
     base_optimizer: SGD
     learning_rate: 1e-3
     momentum: 0.9
@@ -40,3 +40,4 @@ dataset_options:
 eval_interval: 1
 test_interval: 1
 checkpoint: null
+local_training_id: 0

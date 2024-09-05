@@ -38,3 +38,4 @@ dataset_options:
     num_targets: 2
     num_groups: 2
 checkpoint: null
+local_training_id: null
