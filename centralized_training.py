@@ -155,6 +155,8 @@ def train(conf, conf_path=None):
             print("First stage training finished")
         else:
             print("First stage weights from: ", conf["checkpoint"])
+            model_path = conf["checkpoint"]
+            model_utils.load_model_weights(model, model_path)
         test_model(test_loader, model, device, conf, 0)
 
     if conf["client_opt"]["subpop_optimizer"] == "DFR" or "FEx" in conf["client_opt"]["subpop_optimizer"]:
