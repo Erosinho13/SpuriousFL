@@ -48,13 +48,14 @@ def train(conf, conf_path=None):
 
     train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
 
-    if conf["local_training_id"] is not None:
-        # Feature to do local training for one client's data only
-        ds_split = data_preparation.split_data(
-            train_ds,
-            conf
-        )
-        train_ds = ds_split[conf["local_training_id"]]
+    if 'local_training_id' in conf.keys():
+        if conf["local_training_id"] is not None:
+            # Feature to do local training for one client's data only
+            ds_split = data_preparation.split_data(
+                train_ds,
+                conf
+            )
+            train_ds = ds_split[conf["local_training_id"]]
     conf["len_total_data"] = len(train_ds)
     print("Dataset size: ", len(train_ds))
 
