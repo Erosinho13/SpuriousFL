@@ -128,6 +128,8 @@ def get_base_optimizer(params, conf={}):
             lr = float(copt["learning_rate"])
         else:
             lr = 0.001
+        if 'momentum' in copt.keys():
+            return opt(params, lr=lr, momentum=copt['momentum'])
         return opt(params, lr=lr)
     return torch.optim.SGD(params, lr=0.001)
 
