@@ -1,5 +1,6 @@
 import flwr as fl
 import src.optimizers.optim_utils
+import src.optimizers.subpopbench
 from src.utils import log
 from logging import ERROR, INFO
 import numpy as np
@@ -46,7 +47,9 @@ class FlowerClient(fl.client.NumPyClient):
 
             train_ds = self.train_data
             
-            history = src.optimizers.optim_utils.fit(self.model, train_ds, self.conf)
+            opt = src.optimizers.subpopbench.get_subpop_optimizer(self.model, train_ds, self.conf)
+            self.align_client_opt(opt, config)
+            history = src.optimizers.optim_utils.fit(self.model, train_ds, self.conf, opt=opt)
 
             if np.isnan(
                     history.history["loss"][-1]
@@ -54,6 +57,8 @@ class FlowerClient(fl.client.NumPyClient):
                 raise ValueError("Warning, client has NaN loss")
 
             shared_metrics = {"client_id": self.cid, "loss": history.history["loss"][-1]}
+            shared_metrics = self.share_client_opt_params(opt, shared_metrics)
+            print(shared_metrics)
 
             if "weight_clients" in self.conf["server_opt"].keys():
                 weight_mode = self.conf["server_opt"]["weight_clients"]
@@ -63,8 +68,10 @@ class FlowerClient(fl.client.NumPyClient):
                     client_weight = self.train_len
                 elif weight_mode == "reversesize":
                     client_weight = int(self.conf["len_total_data"]/self.train_len)
-                elif weight_mode.startswith("server_"):
-                    client_weight = config["client_weight"]
+                elif weight_mode.startswith("server_pre_"):
+                    client_weight = config["client_weight"]     # Calculated by server
+                elif weight_mode.startswith("server_post_"):
+                    client_weight = 1                           # Overriden at server
                 else:
                     raise NotImplementedError("Client weight method not recognized!")
             else: 
@@ -106,3 +113,12 @@ class FlowerClient(fl.client.NumPyClient):
                 str(e),
             )
             raise RuntimeError("Client evaluate terminated unexpectedly")
+
+    def align_client_opt(self, opt, config):
+        """Update client subpopbench optimizer with FL server config params"""
+        pass
+
+    def share_client_opt_params(self, opt, shared_metrics):
+        """Pass client opt params to FL server within the shared metrics dict"""
+        shared_metrics = src.optimizers.subpopbench.store_opt_params(opt, shared_metrics)
+        return shared_metrics

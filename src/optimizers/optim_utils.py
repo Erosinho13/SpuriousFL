@@ -11,10 +11,11 @@ class History:
         return str(self.history)
 
 
-def fit(model, data, conf, validation_data=None, verbose=0):
+def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
     model.train()  # switch to training mode
     history = History()
-    opt = get_subpop_optimizer(model, data, conf)
+    if opt is None:
+        opt = get_subpop_optimizer(model, data, conf)
     for epoch in range(conf["epochs"]):
         correct, total, epoch_loss = 0, 0, 0.0
         for images, (labels, groups) in data:

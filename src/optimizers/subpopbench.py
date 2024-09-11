@@ -153,6 +153,13 @@ def get_loss(conf={}):
     return torch.nn.CrossEntropyLoss(reduction="none")
 
 
+def store_opt_params(opt, out_dict):
+    """Save important params of the opt into a dict"""
+    if type(opt)==GroupDRO:
+        for i, q in enumerate(opt.q):
+            out_dict["GroupDRO_q_"+str(i)] = q.item()
+    return out_dict
+
 class ERM(Algorithm):
     """Empirical Risk Minimization (ERM)"""
     def __init__(self, model, conf):

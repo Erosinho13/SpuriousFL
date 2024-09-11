@@ -123,6 +123,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif server_round == 1:  # Only log this warning once
             log(WARNING, "No fit_metrics_aggregation_fn provided")
 
+        if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
+            results = self.post_calculate_weights(results)
+            
         # Aggregate weights
         fedavg_parameters_aggregated, metrics_aggregated = super().aggregate_fit(
             server_round=server_round, results=results, failures=failures
@@ -247,11 +250,45 @@ class MyStrategy(fl.server.strategy.FedOpt):
         for client in clients:
             client_config = {}
 
-            if self.conf["server_opt"]["weight_clients"].startswith("server_"):
-                #TODO: implement client weighting
-                client_config["client_weight"] = 1
+            if self.conf["server_opt"]["weight_clients"].startswith("server_pre_"):
+                c_w = self.pre_calculate_weights()
+                client_config["client_weight"] = c_w
 
             fit_configurations.append((client, FitIns(parameters, client_config)))
 
                 
         return fit_configurations
+    
+    def pre_calculate_weights(self):
+        """Override num_examples with weights defined before training round
+        to achieve weighted federated average using the prewritten code"""
+        #TODO: implement client weighting
+        return 1
+    
+    def post_calculate_weights(self, results):
+        """Override num_examples with weights defined based on training results
+        to achieve weighted federated average using the prewritten code"""
+
+        # Convert results
+        numpy_results = [
+            (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
+            for _, fit_res in results
+        ]
+        #import pdb
+        #pdb.set_trace()
+        if self.conf["server_opt"]["weight_clients"] == "server_post_IDA":
+            # https://arxiv.org/pdf/2008.07665
+            w_flats = [w[-1] for w,_ in numpy_results]
+            # w_flats = [np.concatenate([l.flatten() for l in w]) for w,_ in numpy_results]
+            w_avg = np.average(w_flats)
+            l1_norms = [np.linalg.norm(w-w_avg) for w in w_flats]
+            print(l1_norms)
+            l1_sum = sum(l1_norms)
+            client_weights = [l1/l1_sum for l1 in l1_norms]
+            print(client_weights)
+            for cw, (_, fit_res) in zip(client_weights, results):
+                fit_res.num_examples = cw
+
+            return results
+        else:
+            return results
