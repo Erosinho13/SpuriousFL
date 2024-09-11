@@ -21,6 +21,7 @@ from flwr.common import (
 )
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 
+from src.optimizers.subpopbench import init_shared_opt_params
 from src.utils import log
 from src.models import model_utils
 
@@ -90,6 +91,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         beta_1 = self.conf["server_opt"]["beta_1"]
         beta_2 = self.conf["server_opt"]["beta_2"]
         tau = self.conf["server_opt"]["tau"]
+        self.shared_copt_params = init_shared_opt_params(self.conf)
 
         super().__init__(evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
                          fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
@@ -123,9 +125,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif server_round == 1:  # Only log this warning once
             log(WARNING, "No fit_metrics_aggregation_fn provided")
 
+        # Calculate global client opt params from shared metrics
+        self.aggregate_client_opt_params([res.metrics for _, res in results])
+
+        # Calculate client weights with post-training methods
         if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
             results = self.post_calculate_weights(results)
-            
+
         # Aggregate weights
         fedavg_parameters_aggregated, metrics_aggregated = super().aggregate_fit(
             server_round=server_round, results=results, failures=failures
@@ -246,13 +252,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
         fit_configurations = []
 
 
-        # print(rands)
         for client in clients:
-            client_config = {}
+            client_config = self.shared_copt_params     # {}
 
             if self.conf["server_opt"]["weight_clients"].startswith("server_pre_"):
                 c_w = self.pre_calculate_weights()
                 client_config["client_weight"] = c_w
+
 
             fit_configurations.append((client, FitIns(parameters, client_config)))
 
@@ -292,3 +298,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
             return results
         else:
             return results
+    
+    def aggregate_client_opt_params(self, metric_list):
+        """Update shared client optimizer parameters for subpopbench optimizers"""
+        for k in self.shared_copt_params.keys():
+            if k in metric_list[0].keys():
+                avg = np.average([c_res[k] for c_res in metric_list])
+                self.shared_copt_params[k] = avg

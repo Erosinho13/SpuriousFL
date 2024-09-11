@@ -43,6 +43,7 @@ class FlowerClient(fl.client.NumPyClient):
         """Flower fit passing updated weights, data size and additional params in a dict"""
         # return self.get_parameters(config), 1, {"client_id": self.cid, "loss":-1}
         try:
+            #print(config)
             self.set_parameters(weights, config)
 
             train_ds = self.train_data
@@ -58,7 +59,7 @@ class FlowerClient(fl.client.NumPyClient):
 
             shared_metrics = {"client_id": self.cid, "loss": history.history["loss"][-1]}
             shared_metrics = self.share_client_opt_params(opt, shared_metrics)
-            print(shared_metrics)
+            #print(shared_metrics)
 
             if "weight_clients" in self.conf["server_opt"].keys():
                 weight_mode = self.conf["server_opt"]["weight_clients"]
@@ -116,7 +117,7 @@ class FlowerClient(fl.client.NumPyClient):
 
     def align_client_opt(self, opt, config):
         """Update client subpopbench optimizer with FL server config params"""
-        pass
+        src.optimizers.subpopbench.update_opt_with_shared_params(opt, config)
 
     def share_client_opt_params(self, opt, shared_metrics):
         """Pass client opt params to FL server within the shared metrics dict"""
