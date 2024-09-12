@@ -3,7 +3,7 @@ from wilds import get_dataset
 import torchvision
 import numpy as np
 
-from src.datasets.dataset_utils import SubsetDataset
+from src.datasets.dataset_utils import SubsetDataset, count_groups
 from src.datasets.dataset_utils import SubpopDataset, get_spurious_group_idx
 
 
@@ -71,6 +71,15 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
     1 - {(0,0),(1,1)} - everyone in the expected background
     2 - {(0,1),(1,0)} - everyone in unexpected background
     3 - {(0,1),(1,1)} - birds on water"""
+    def findgroup(y, s):
+        if y==0 and s==0:
+            return 0, 1
+        if y==0 and s==1:
+            return 2, 3
+        if y==1 and s==0:
+            return 0, 2
+        if y==1 and s==1:
+            return 1, 3
 
     rng = np.random.default_rng(seed=seed)
     subsets = [[],[],[],[]]
@@ -89,19 +98,34 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                 length = len(group_ids[y][s])//2
                 perm = rng.permutation(group_ids[y][s])
                 subset1, subset2 = perm[:length], perm[length:]
-                if y==0 and s==0:
-                    subsets[0].extend(subset1)
-                    subsets[1].extend(subset2)
-                elif y==0 and s==1:
-                    subsets[2].extend(subset1)
-                    subsets[3].extend(subset2)
-                elif y==1 and s==0:
-                    subsets[0].extend(subset1)
-                    subsets[2].extend(subset2)
-                elif y==1 and s==1:
-                    subsets[1].extend(subset1)
-                    subsets[3].extend(subset2)
+                id1, id2 = findgroup(y, s)
+                subsets[id1].extend(subset1)
+                subsets[id2].extend(subset2)
         return subsets
+    if split_mode=="maxclassbalance":
+        # each of the 4 clients have ~0.3 imbalance ratio
+        lengths = [[92,-92],[28,-28]]
+        for y in [0,1]:
+            for s in [0,1]:
+                length = lengths[y][s]
+                perm = rng.permutation(group_ids[y][s])
+                subset1, subset2 = perm[:length], perm[length:]
+                id1, id2 = findgroup(y, s)
+                subsets[id1].extend(subset1)
+                subsets[id2].extend(subset2)
+        return subsets
+    if split_mode=="balancedclients":
+        # 3 small balanced client and the biggest is ~0.25 imbalance
+        lengths = [[28,-156],[28,-156]]
+        for y in [0,1]:
+            for s in [0,1]:
+                length = lengths[y][s]
+                perm = rng.permutation(group_ids[y][s])
+                subset1, subset2 = perm[:length], perm[length:]
+                id1, id2 = findgroup(y, s)
+                subsets[id1].extend(subset1)
+                subsets[id2].extend(subset2)
+        return subsets       
     raise NotImplementedError("split_mode not recognized")
 
 
@@ -112,6 +136,11 @@ def split_data_waterbirds(ds, conf):
         raise NotImplementedError("Only 4 clients for now!")
     
     ids_by_groups = get_spurious_group_idx(ds)
+    for k in ids_by_groups.keys():
+        for l in ids_by_groups[k].keys():
+            print(k,l,len(ids_by_groups[k][l]))
     idx_split = get_envs(ids_by_groups, split_mode=conf["split_mode"], seed=conf["seed"])
     ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
+    for ds in ds_split:
+        print(count_groups(ds, False, 2, 2)["group_sizes"])
     return ds_split
