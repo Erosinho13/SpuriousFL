@@ -28,7 +28,7 @@ class WeightedDataLoader(torch.utils.data.DataLoader):
         batch_sampler = torch.utils.data.BatchSampler(
             sampler,
             batch_size=batch_size,
-            drop_last=True)
+            drop_last=False)
 
         super().__init__(dataset, batch_sampler=batch_sampler,
                          num_workers=num_workers)
@@ -51,7 +51,7 @@ class InfiniteDataLoader:
         batch_sampler = torch.utils.data.BatchSampler(
             sampler,
             batch_size=batch_size,
-            drop_last=True)
+            drop_last=False)
 
         self._infinite_iterator = iter(torch.utils.data.DataLoader(
             dataset,
