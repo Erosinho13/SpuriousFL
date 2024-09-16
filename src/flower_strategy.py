@@ -21,7 +21,7 @@ from flwr.common import (
 )
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 
-from src.optimizers.subpopbench import init_shared_opt_params
+from src.optimizers import subpop_federated 
 from src.utils import log
 from src.models import model_utils
 
@@ -91,7 +91,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         beta_1 = self.conf["server_opt"]["beta_1"]
         beta_2 = self.conf["server_opt"]["beta_2"]
         tau = self.conf["server_opt"]["tau"]
-        self.shared_copt_params = init_shared_opt_params(self.conf)
+        self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
 
         super().__init__(evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
                          fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
@@ -301,7 +301,4 @@ class MyStrategy(fl.server.strategy.FedOpt):
     
     def aggregate_client_opt_params(self, metric_list):
         """Update shared client optimizer parameters for subpopbench optimizers"""
-        for k in self.shared_copt_params.keys():
-            if k in metric_list[0].keys():
-                avg = np.average([c_res[k] for c_res in metric_list])
-                self.shared_copt_params[k] = avg
+        self.shared_copt_params = subpop_federated.aggregate_metrics(self.shared_copt_params, metric_list)

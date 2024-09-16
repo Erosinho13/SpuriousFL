@@ -1,13 +1,13 @@
 import flwr as fl
-import src.optimizers.optim_utils
-import src.optimizers.subpopbench
+from  src.optimizers import subpop_federated
 from src.utils import log
 from logging import ERROR, INFO
 import numpy as np
 import os
 from src.models import model_utils
 from src.datasets import data_preparation
-
+from src.optimizers import subpopbench
+from src.optimizers import optim_utils
 
 class FlowerClient(fl.client.NumPyClient):
     """Client implementation using Flower federated learning framework"""
@@ -48,9 +48,9 @@ class FlowerClient(fl.client.NumPyClient):
 
             train_ds = self.train_data
             
-            opt = src.optimizers.subpopbench.get_subpop_optimizer(self.model, train_ds, self.conf)
+            opt = subpopbench.get_subpop_optimizer(self.model, train_ds, self.conf)
             self.align_client_opt(opt, config)
-            history = src.optimizers.optim_utils.fit(self.model, train_ds, self.conf, opt=opt)
+            history = optim_utils.fit(self.model, train_ds, self.conf, opt=opt)
 
             if np.isnan(
                     history.history["loss"][-1]
@@ -94,7 +94,7 @@ class FlowerClient(fl.client.NumPyClient):
 
             # Local model eval
             self.set_parameters(weights, config)
-            loss, accuracy, group_acc = src.optimizers.optim_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
+            loss, accuracy, group_acc = optim_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
             metric_dict = {
                 "cid": self.cid,
                  "test_loss": loss,
@@ -117,9 +117,9 @@ class FlowerClient(fl.client.NumPyClient):
 
     def align_client_opt(self, opt, config):
         """Update client subpopbench optimizer with FL server config params"""
-        src.optimizers.subpopbench.update_opt_with_shared_params(opt, config)
+        subpop_federated.update_opt_with_shared_params(opt, config)
 
     def share_client_opt_params(self, opt, shared_metrics):
         """Pass client opt params to FL server within the shared metrics dict"""
-        shared_metrics = src.optimizers.subpopbench.store_opt_params(opt, shared_metrics)
+        shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics)
         return shared_metrics
