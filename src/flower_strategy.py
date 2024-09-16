@@ -292,12 +292,41 @@ class MyStrategy(fl.server.strategy.FedOpt):
             l1_sum = sum(l1_norms)
             client_weights = [l1/l1_sum for l1 in l1_norms]
             print(client_weights)
-            for cw, (_, fit_res) in zip(client_weights, results):
-                fit_res.num_examples = cw
 
-            return results
+        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights":
+            # Weighting with the known groups in mind
+            metric_list = [res.metrics for _, res in results]
+            client_weights = []
+            for m in metric_list:
+                group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
+                w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
+                client_weights.append(w)
+            cw_sum = np.sum(client_weights)
+            client_weights = [cw/cw_sum for cw in client_weights]
+            print(client_weights)
+        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA":
+            # Previous 2 combined
+            w_flats = [w[-1] for w,_ in numpy_results]
+            w_avg = np.average(w_flats)
+            l1_norms = [np.linalg.norm(w-w_avg) for w in w_flats]
+            print(l1_norms)
+            l1_sum = sum(l1_norms)
+            client_weights1 = [l1/l1_sum for l1 in l1_norms]
+
+            metric_list = [res.metrics for _, res in results]
+            client_weights2 = []
+            for m in metric_list:
+                group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
+                w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
+                client_weights2.append(w)
+            client_weights = [cw1*cw2 for cw1, cw2 in zip(client_weights1, client_weights2)]
+            cw_sum = np.sum(client_weights)
+            client_weights = [cw/cw_sum for cw in client_weights]
         else:
-            return results
+            raise NotImplementedError("Client weights not set!")
+        for i in range(len(results)):
+            results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
+        return results
     
     def aggregate_client_opt_params(self, metric_list):
         """Update shared client optimizer parameters for subpopbench optimizers"""

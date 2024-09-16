@@ -9,7 +9,7 @@ class SubpopDataset:
     def __getitem__(self,idx):
         pass
 
-    def update_metadata(self):
+    def update_metadata(self, num_attributes=None, num_labels=None):
         ds_y, ds_s= [], []
         for i in range(len(self)):
             _, (y, s) = self[i]
@@ -19,8 +19,14 @@ class SubpopDataset:
         ds_i = list(range(len(self)))
 
         self.weights_g, self.weights_y = [], []
-        self.num_attributes = len(set(ds_s))
-        self.num_labels = len(set(ds_y))
+        if num_attributes is None:
+            self.num_attributes = len(set(ds_s))
+        else:
+            self.num_attributes = num_attributes
+        if num_labels is None:
+            self.num_labels = len(set(ds_y))
+        else:
+            self.num_labels = num_labels
         self.group_sizes = [0] * self.num_attributes * self.num_labels
         self.class_sizes = [0] * self.num_labels
 
@@ -43,6 +49,7 @@ class SubsetDataset(Dataset, SubpopDataset):
     def __init__(self, dataset, indices):
         self.dataset = dataset
         self.indices = indices
+        
 
 
     def __getitem__(self, idx):

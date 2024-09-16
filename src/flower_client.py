@@ -121,5 +121,6 @@ class FlowerClient(fl.client.NumPyClient):
 
     def share_client_opt_params(self, opt, shared_metrics):
         """Pass client opt params to FL server within the shared metrics dict"""
-        shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics)
+        
+        shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics, self.train_data.dataset, self.conf)
         return shared_metrics
