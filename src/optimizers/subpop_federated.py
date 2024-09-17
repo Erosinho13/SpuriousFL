@@ -47,8 +47,9 @@ def aggregate_metrics(shared_opt_params, metric_list):
                 avg = np.average([c_res[k] for c_res in metric_list])
                 shared_opt_params[k] = avg
             elif k.startswith("groupsize_"):
-                total = np.sum([c_res[k] for c_res in metric_list])
+                total = float(np.sum([c_res[k] for c_res in metric_list]))
                 shared_opt_params[k] = total
             else:
                 print("Warning: unhandled shared params")
+
     return shared_opt_params

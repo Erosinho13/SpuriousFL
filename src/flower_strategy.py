@@ -1,5 +1,5 @@
 import flwr as fl
-from logging import ERROR, INFO
+from logging import ERROR, INFO, DEBUG
 from logging import WARNING
 import os
 import numpy as np
@@ -131,6 +131,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         # Calculate client weights with post-training methods
         if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
             results = self.post_calculate_weights(results)
+        log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
 
         # Aggregate weights
         fedavg_parameters_aggregated, metrics_aggregated = super().aggregate_fit(
@@ -274,7 +275,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
     def post_calculate_weights(self, results):
         """Override num_examples with weights defined based on training results
         to achieve weighted federated average using the prewritten code"""
-
+        metric_list = [res.metrics for _, res in results]
         # Convert results
         numpy_results = [
             (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
@@ -288,11 +289,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
             # w_flats = [np.concatenate([l.flatten() for l in w]) for w,_ in numpy_results]
             w_avg = np.average(w_flats)
             l1_norms = [np.linalg.norm(w-w_avg) for w in w_flats]
-            print(l1_norms)
             l1_sum = sum(l1_norms)
             client_weights = [l1/l1_sum for l1 in l1_norms]
-            print(client_weights)
-
         elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights":
             # Weighting with the known groups in mind
             metric_list = [res.metrics for _, res in results]
@@ -301,15 +299,11 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
                 w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
                 client_weights.append(w)
-            cw_sum = np.sum(client_weights)
-            client_weights = [cw/cw_sum for cw in client_weights]
-            print(client_weights)
         elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA":
             # Previous 2 combined
             w_flats = [w[-1] for w,_ in numpy_results]
             w_avg = np.average(w_flats)
             l1_norms = [np.linalg.norm(w-w_avg) for w in w_flats]
-            print(l1_norms)
             l1_sum = sum(l1_norms)
             client_weights1 = [l1/l1_sum for l1 in l1_norms]
 
@@ -320,10 +314,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
                 client_weights2.append(w)
             client_weights = [cw1*cw2 for cw1, cw2 in zip(client_weights1, client_weights2)]
-            cw_sum = np.sum(client_weights)
-            client_weights = [cw/cw_sum for cw in client_weights]
         else:
             raise NotImplementedError("Client weights not set!")
+        cw_sum = np.sum(client_weights)
+        client_weights = [cw/cw_sum*self.conf['len_total_data'] for cw in client_weights]
         for i in range(len(results)):
             results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
         return results
