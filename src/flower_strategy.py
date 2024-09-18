@@ -126,7 +126,6 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif server_round == 1:  # Only log this warning once
             log(WARNING, "No fit_metrics_aggregation_fn provided")
 
-        log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
         # Calculate global client opt params from shared metrics
         self.aggregate_client_opt_params([res.metrics for _, res in results])
 
