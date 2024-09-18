@@ -130,7 +130,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         # Calculate client weights with post-training methods
         if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
-            results = self.post_calculate_weights(results)
+            results = self.post_calculate_weights(results, server_round=server_round)
         log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
 
         # Aggregate weights
@@ -272,7 +272,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         #TODO: implement client weighting
         return 1
     
-    def post_calculate_weights(self, results):
+    def post_calculate_weights(self, results, server_round):
         """Override num_examples with weights defined based on training results
         to achieve weighted federated average using the prewritten code"""
         metric_list = [res.metrics for _, res in results]
@@ -283,7 +283,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         ]
         #import pdb
         #pdb.set_trace()
-        if self.conf["server_opt"]["weight_clients"] == "server_post_IDA":
+        if self.conf["server_opt"]["weight_clients"] == "server_post_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
             # https://arxiv.org/pdf/2008.07665
             w_flats = [w[-1] for w,_ in numpy_results]
             # w_flats = [np.concatenate([l.flatten() for l in w]) for w,_ in numpy_results]
@@ -291,7 +291,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
             l1_norms = [np.linalg.norm(w-w_avg) for w in w_flats]
             l1_sum = sum(l1_norms)
             client_weights = [l1/l1_sum for l1 in l1_norms]
-        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights":
+            if self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
+                client_weights = np.array(client_weights)
+                client_weights = np.exp(client_weights)/sum(np.exp(client_weights))
+        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights" or self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
             # Weighting with the known groups in mind
             metric_list = [res.metrics for _, res in results]
             client_weights = []
@@ -299,7 +302,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
                 w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
                 client_weights.append(w)
-        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA":
+            if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
+                client_weights = np.array(client_weights)
+                client_weights = np.exp(client_weights)/sum(np.exp(client_weights))
+        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
             # Previous 2 combined
             w_flats = [w[-1] for w,_ in numpy_results]
             w_avg = np.average(w_flats)
@@ -314,6 +320,15 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
                 client_weights2.append(w)
             client_weights = [cw1*cw2 for cw1, cw2 in zip(client_weights1, client_weights2)]
+            if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
+                temperature = (server_round)/self.conf["rounds"]*2
+                temperature1 = 0+temperature
+                temperature2 = 2-temperature
+                client_weights1 = np.array(client_weights1)
+                client_weights2 = np.array(client_weights2)
+                cw1sum = sum(np.exp(client_weights1/temperature1))
+                cw2sum = sum(np.exp(client_weights2/temperature2))
+                client_weights = [np.exp(cw1/temperature1)/cw1sum+np.exp(cw2/temperature2)/cw2sum for cw1, cw2 in zip(client_weights1, client_weights2)]
         else:
             raise NotImplementedError("Client weights not set!")
         cw_sum = np.sum(client_weights)
