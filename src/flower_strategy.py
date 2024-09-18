@@ -3,6 +3,7 @@ from logging import ERROR, INFO, DEBUG
 from logging import WARNING
 import os
 import numpy as np
+import copy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from flwr.server.strategy.aggregate import aggregate
 from flwr.server.client_proxy import ClientProxy
@@ -125,6 +126,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif server_round == 1:  # Only log this warning once
             log(WARNING, "No fit_metrics_aggregation_fn provided")
 
+        log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
         # Calculate global client opt params from shared metrics
         self.aggregate_client_opt_params([res.metrics for _, res in results])
 
@@ -254,23 +256,22 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
 
         for client in clients:
-            client_config = self.shared_copt_params     # {}
+            client_config = copy.deepcopy(self.shared_copt_params)     # {}
 
             if self.conf["server_opt"]["weight_clients"].startswith("server_pre_"):
-                c_w = self.pre_calculate_weights()
-                client_config["client_weight"] = c_w
-
+                c_w = self.pre_calculate_weights(client)
+                client_config['client_weight'] = c_w
 
             fit_configurations.append((client, FitIns(parameters, client_config)))
-
+            del client_config
                 
         return fit_configurations
     
-    def pre_calculate_weights(self):
+    def pre_calculate_weights(self, client):
         """Override num_examples with weights defined before training round
         to achieve weighted federated average using the prewritten code"""
-        #TODO: implement client weighting
-        return 1
+        #!TODO: I think because of the ClientProxy something is not good here
+        raise NotImplementedError("Unrecognized weighting")
     
     def post_calculate_weights(self, results, server_round):
         """Override num_examples with weights defined based on training results

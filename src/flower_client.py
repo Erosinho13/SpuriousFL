@@ -68,6 +68,9 @@ class FlowerClient(fl.client.NumPyClient):
                     client_weight = self.train_len
                 elif weight_mode == "reversesize":
                     client_weight = int(self.conf["len_total_data"]/self.train_len)
+                elif weight_mode == "fromlist":
+                    weight_list = self.conf["server_opt"]["weight_list"]
+                    client_weight = weight_list[int(self.cid)]
                 elif weight_mode.startswith("server_pre_"):
                     client_weight = config["client_weight"]     # Calculated by server
                 elif weight_mode.startswith("server_post_"):
