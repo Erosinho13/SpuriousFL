@@ -284,7 +284,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
         ]
         #import pdb
         #pdb.set_trace()
-        if self.conf["server_opt"]["weight_clients"] == "server_post_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
+        if self.conf["server_opt"]["weight_clients"] == "server_post_loss":
+            losses = [res.metrics["loss"] for _, res in results]
+            client_weights = losses
+        elif self.conf["server_opt"]["weight_clients"] == "server_post_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
             # https://arxiv.org/pdf/2008.07665
             w_flats = [w[-1] for w,_ in numpy_results]
             # w_flats = [np.concatenate([l.flatten() for l in w]) for w,_ in numpy_results]
