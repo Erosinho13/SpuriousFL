@@ -1,7 +1,10 @@
 import numpy as np
 from sklearn.metrics import mutual_info_score
+from scipy.stats import gmean
+
 
 def AI(N):
+    # Attribute Inbalance
     joint_prob = N / np.sum(N)
     P_feature = np.sum(joint_prob, axis=0)
     H_feature = -np.sum(P_feature * np.log(P_feature + 1e-9))
@@ -10,6 +13,7 @@ def AI(N):
 
 
 def CI(N):
+    # Class Inbalance
     joint_prob = N / np.sum(N)
     P_class = np.sum(joint_prob, axis=1)
     H_class = -np.sum(P_class * np.log(P_class + 1e-9))
@@ -18,6 +22,7 @@ def CI(N):
 
 
 def SC(N):
+    # Spurious Correlation
     joint_prob = N / np.sum(N)
     P_class = np.sum(joint_prob, axis=1)
     P_feature = np.sum(joint_prob, axis=0)
@@ -33,15 +38,18 @@ def global_N(M):
 
 
 def GSC(M):
+    # Global Spurious Correlation
     return SC(global_N(M))
 
 
 def LSC(M):
+    # Local Spurious Correlation
     K = M.shape[0]
     return sum([SC(M[k]) for k in range(K)])/K
 
 
 def FSC(M):
+    # Federated Spurious Correlation
     E = []
     for N in M:
         row_sums = N.sum(axis=1, keepdims=True)
@@ -59,38 +67,51 @@ def FSC(M):
     
 
 def GCI(M):
+    # Global Class Imbalance
     return CI(global_N(M))
 
 
 def LCI(M):
+    # Local Class Imbalance
     K = M.shape[0]
     return sum([CI(M[k]) for k in range(K)])/K
 
 
 def GAI(M):
+    # Global Attribute Imbalance
     return AI(global_N(M))
 
 
 def LAI(M):
+    # Local Attribute Imbalance
     K = M.shape[0]
     return sum([AI(M[k]) for k in range(K)]) / K
+
+
+def DSI(M):
+    # Dataset Size Imbalance
+    K = M.shape[0]
+    n_images = np.sum(M, axis=(1, 2))
+    tot_images = np.sum(n_images)
+    proportion = n_images / tot_images
+    return 1 - K * float(gmean(proportion))
 
 
 def main():
 
     M = np.array([
 
-        [[10, 1990],
-         [10, 1990]],
+        [[10, 10],
+         [10, 10]],
 
-        [[1990, 10],
-         [10, 1990]],
+        [[10, 10],
+         [10, 10]],
 
-        [[1990, 10],
-         [1990, 10]],
+        [[10, 10],
+         [10, 10]],
 
-        [[10, 1990],
-         [1990, 10]],
+        [[10, 10],
+         [10, 10]],
 
     ])
 
@@ -106,6 +127,7 @@ def main():
     print(f"LCI = {round(LCI(M), 2)}")
     print(f"GAI = {round(GAI(M), 2)}")
     print(f"LAI = {round(LAI(M), 2)}")
+    print(f"DSI = {round(DSI(M), 2)}")
 
 
 if __name__ == '__main__':
