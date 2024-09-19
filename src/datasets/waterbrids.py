@@ -137,6 +137,27 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                 subsets[id1].extend(subset1)
                 subsets[id2].extend(subset2)
         return subsets
+    if split_mode=="zeroCI_LSC":
+        client_samples=[
+            [ # Birds on land
+                [23,5],
+                [23,5]
+            ],
+            [ # Expected background
+                [896,5],
+                [5,896]
+            ],
+            [ # Unexpected background
+                [5,23],
+                [23,5]
+            ],
+            [ # Birds on water
+                [5,151],
+                [5,151]
+            ]
+        ]
+        subsets = create_subsets_from_list(group_ids, client_samples, rng)
+        return subsets
     if split_mode=="nCI_LSC":
         client_samples=[
             [ # Birds on land
@@ -179,14 +200,37 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
         ]
         subsets = create_subsets_from_list(group_ids, client_samples, rng)
         return subsets
+    if split_mode=="more_expected_clients":
+        client_samples=[
+            [ # Birds on land
+                [28,0],
+                [28,0]
+            ],
+            [ # Expected background
+                [28,0],
+                [0,28]
+            ],
+            [ # Unexpected background
+                [0,28],
+                [28,0]
+            ],
+            [ # Birds on water
+                [0,28],
+                [0,28]
+            ]
+        ]
+        for i in range(35):
+            client_samples.append([[28,0],[0,28]])
+        subsets = create_subsets_from_list(group_ids, client_samples, rng)
+        return subsets
     raise NotImplementedError("split_mode not recognized")
 
 
 def split_data_waterbirds(ds, conf):
     """Split data in X,Y between 'num_clients' number of clients"""
 
-    if conf["num_clients"]!=4:
-        raise NotImplementedError("Only 4 clients for now!")
+    # if conf["num_clients"]!=4:
+    #    raise NotImplementedError("Only 4 clients for now!")
     
     ids_by_groups = get_spurious_group_idx(ds)
     for k in ids_by_groups.keys():
