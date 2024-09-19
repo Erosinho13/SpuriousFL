@@ -80,6 +80,17 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
             return 0, 2
         if y==1 and s==1:
             return 1, 3
+    def create_subsets_from_list(group_ids, client_samples, rng=np.random.default_rng()):
+        subsets = [[] for _ in range(len(client_samples))]
+        for y in [0,1]:
+            for s in [0,1]:
+                perm = rng.permutation(group_ids[y][s])
+                cumulated_idx = 0
+                for i,c in enumerate(client_samples):
+                    subset = perm[cumulated_idx:cumulated_idx+c[y][s]]
+                    subsets[i].extend(subset)
+                    cumulated_idx += c[y][s]
+        return subsets
 
     rng = np.random.default_rng(seed=seed)
     subsets = [[],[],[],[]]
@@ -125,7 +136,49 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                 id1, id2 = findgroup(y, s)
                 subsets[id1].extend(subset1)
                 subsets[id2].extend(subset2)
-        return subsets       
+        return subsets
+    if split_mode=="nCI_LSC":
+        client_samples=[
+            [ # Birds on land
+                [23,5],
+                [23,5]
+            ],
+            [ # Expected background
+                [3465,5],
+                [5,896]
+            ],
+            [ # Unexpected background
+                [5,23],
+                [23,5]
+            ],
+            [ # Birds on water
+                [5,151],
+                [5,151]
+            ]
+        ]
+        subsets = create_subsets_from_list(group_ids, client_samples, rng)
+        return subsets
+    if split_mode=="nDI_nGSC":
+        client_samples=[
+            [ # Birds on land
+                [23,5],
+                [23,5]
+            ],
+            [ # Expected background
+                [23,5],
+                [5,23]
+            ],
+            [ # Unexpected background
+                [5,23],
+                [23,5]
+            ],
+            [ # Birds on water
+                [5,23],
+                [5,23]
+            ]
+        ]
+        subsets = create_subsets_from_list(group_ids, client_samples, rng)
+        return subsets
     raise NotImplementedError("split_mode not recognized")
 
 
