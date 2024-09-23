@@ -223,6 +223,27 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
             client_samples.append([[28,0],[0,28]])
         subsets = create_subsets_from_list(group_ids, client_samples, rng)
         return subsets
+    if split_mode=="CI_GSC_reverse": # global minority is local mayority
+        client_samples=[
+            [ # mayority land/land bird
+                [400,5],
+                [5,5]
+            ],
+            [ # mayority water/water bird
+                [5,5],
+                [5,400]
+            ],
+            [ # minority but class majority
+                [40,40],
+                [5,5]
+            ],
+            [ # minority but class majority
+                [5,5],
+                [40,40]
+            ]
+        ]
+        subsets = create_subsets_from_list(group_ids, client_samples, rng)
+        return subsets
     raise NotImplementedError("split_mode not recognized")
 
 
