@@ -1,4 +1,4 @@
-from src.datasets.dataset_utils import count_groups, get_metadata
+from src.datasets.dataset_utils import count_groups
 from src.optimizers.subpopbench import GroupDRO
 import numpy as np
 

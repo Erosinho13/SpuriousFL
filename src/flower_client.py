@@ -48,7 +48,7 @@ class FlowerClient(fl.client.NumPyClient):
 
             train_ds = self.train_data
             
-            opt = subpopbench.get_subpop_optimizer(self.model, train_ds, self.conf)
+            opt = subpopbench.get_subpop_optimizer(self.model, train_ds.dataset, self.conf)
             self.align_client_opt(opt, config)
             history = optim_utils.fit(self.model, train_ds, self.conf, opt=opt)
 

@@ -88,20 +88,22 @@ def get_subpop_optimizer(model, data, conf={}):
             elif copt["subpop_optimizer"] == "ReSample":
                 return ReSample(model, conf)
             elif copt["subpop_optimizer"] == "ReWeight":
-                metadata = get_metadata(data)
+                print(type(data))
+                print(data)
+                metadata = get_metadata(data, conf)
                 return ReWeight(model, conf, metadata)
             elif copt["subpop_optimizer"] == "SqrtReWeight":
-                metadata = get_metadata(data)
+                metadata = get_metadata(data, conf)
                 return SqrtReWeight(model, conf, metadata)
             elif copt["subpop_optimizer"] == "CBLoss":
-                metadata = get_metadata(data)
+                metadata = get_metadata(data, conf)
                 return CBLoss(model, conf, metadata)
             elif copt["subpop_optimizer"] == "Focal":
                 return Focal(model, conf)
             elif copt["subpop_optimizer"] == "CRT":
                 return CRT(model, conf)
             elif copt["subpop_optimizer"]== "ReWeightCRT":
-                metadata = get_metadata(data)
+                metadata = get_metadata(data, conf)
                 return ReWeightCRT(model, conf, metadata)
             elif copt["subpop_optimizer"] == "DFR":
                 return DFR(model, conf)
@@ -140,7 +142,7 @@ def get_sample_weights(ds, conf):
         copt = conf["client_opt"]
         if "subpop_optimizer" in copt.keys():
             if copt["subpop_optimizer"] in ["ReSample", "ReWeight"]:
-                ds.update_metadata()
+                ds.dataset.update_metadata()
             if copt["subpop_optimizer"] == "ReSample":
                 # if attribute not available, groups degenerate to classes
                 train_weights = np.asarray(ds.weights_g)

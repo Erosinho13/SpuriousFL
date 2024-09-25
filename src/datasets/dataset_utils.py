@@ -125,10 +125,12 @@ def count_groups(ds, update_ds=True, num_attributes=None, num_labels=None):
     }
 
 
-def get_metadata(ds):
+def get_metadata(ds, conf={}):
     """Return dataset descriptor metadata"""
+    if "dataset_options" not in conf.keys():
+        conf["dataset_options"] = {"num_groups":None, "num_targets":None}
     if not hasattr(ds, "group_sizes"):
-        ds.update_metadata()
+        ds.update_metadata(num_attributes=conf["dataset_options"]["num_groups"], num_labels=conf["dataset_options"]["num_targets"])
     return {
         "num_attributes": ds.num_attributes, 
         "num_labels": ds.num_labels,
