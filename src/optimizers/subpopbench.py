@@ -88,8 +88,6 @@ def get_subpop_optimizer(model, data, conf={}):
             elif copt["subpop_optimizer"] == "ReSample":
                 return ReSample(model, conf)
             elif copt["subpop_optimizer"] == "ReWeight":
-                print(type(data))
-                print(data)
                 metadata = get_metadata(data, conf)
                 return ReWeight(model, conf, metadata)
             elif copt["subpop_optimizer"] == "SqrtReWeight":
