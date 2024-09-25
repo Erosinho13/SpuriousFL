@@ -4,6 +4,7 @@ import os
 import copy
 import numpy as np
 
+from src.datasets.dataset_utils import concat_subsets
 import torch
 import wandb
 
@@ -50,12 +51,19 @@ def train(conf, conf_path=None):
 
     if 'local_training_id' in conf.keys():
         if conf["local_training_id"] is not None:
-            # Feature to do local training for one client's data only
+            
             ds_split = data_preparation.split_data(
-                train_ds,
-                conf
-            )
-            train_ds = ds_split[conf["local_training_id"]]
+                    train_ds,
+                    conf
+                )
+            if conf["local_training_id"]=="all":
+                # Reconstruct one global dataset if data dropping happened
+                total_length = sum([len(ds) for ds in ds_split])
+                if len(train_ds)!=total_length:
+                    train_ds = concat_subsets(ds_split)
+            else:
+                # Feature to do local training for one client's data only
+                train_ds = ds_split[conf["local_training_id"]]
     conf["len_total_data"] = len(train_ds)
     print("Dataset size: ", len(train_ds))
 

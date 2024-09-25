@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 from torch.utils.data import Dataset
 from abc import abstractmethod
@@ -64,6 +65,16 @@ class SubsetDataset(Dataset, SubpopDataset):
             return super().__getattribute__('dataset')
         return getattr(self.dataset, name)
 
+def concat_subsets(ds_list: List[SubsetDataset]) -> SubsetDataset:
+    """Gets a list of SubsetDataset and returns with a subset of the total ids"""
+    for i in range(len(ds_list)-1):
+        assert ds_list[i].dataset == ds_list[i+1].dataset
+    all_indeces = []
+    for ds in ds_list:
+        all_indeces.extend(ds.indices)
+    out_subset = type(ds_list[0])(ds_list[0].dataset, all_indeces)
+    return out_subset
+    
 
 def get_spurious_group_idx(ds):
     """Gets the list of idx for every (y,s) pair for y-label, s-spurious group.
