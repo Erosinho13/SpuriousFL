@@ -65,8 +65,11 @@ class SubsetDataset(Dataset, SubpopDataset):
             return super().__getattribute__('dataset')
         return getattr(self.dataset, name)
 
-def concat_subsets(ds_list: List[SubsetDataset]) -> SubsetDataset:
+def concat_subsets(ds_list: List[SubsetDataset], num_clients:int=0) -> SubsetDataset:
     """Gets a list of SubsetDataset and returns with a subset of the total ids"""
+    if num_clients==0:
+        num_clients=len(ds_list)
+    ds_list = ds_list[:num_clients]
     for i in range(len(ds_list)-1):
         assert ds_list[i].dataset == ds_list[i+1].dataset
     all_indeces = []

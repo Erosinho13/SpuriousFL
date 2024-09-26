@@ -43,7 +43,14 @@ def train(conf_path=None):
     val_ds = data_preparation.preprocess_data(val_ds, conf, shuffle=False)
     # X_val, Y_val = data_preparation.get_np_from_ds(val_ds)
     # X_train, Y_train = data_preparation.get_np_from_ds(train_ds)
-    conf["len_total_data"] = len(train_ds)
+    ds_split = data_preparation.split_data(
+        train_ds,
+        conf
+    )
+
+    total_length = sum([len(ds) for ds in ds_split[:conf["num_clients"]]])
+
+    conf["len_total_data"] = total_length
 
     if conf["wandb"]:
         import wandb
@@ -59,10 +66,6 @@ def train(conf_path=None):
             job_type="train",
             reinit=True
         )
-    ds_split = data_preparation.split_data(
-        train_ds,
-        conf
-    )
 
     initial_model = model_utils.init_model(
         conf=conf
