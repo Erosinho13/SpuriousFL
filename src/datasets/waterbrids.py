@@ -200,6 +200,27 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
         ]
         subsets = create_subsets_from_list(group_ids, client_samples, rng)
         return subsets
+    if split_mode=="LCI_LSC_noG":
+        client_samples=[
+            [ 
+                [23,23],
+                [5,5]
+            ],
+            [ 
+                [23,5],
+                [5,23]
+            ],
+            [ 
+                [5,23],
+                [23,5]
+            ],
+            [ 
+                [5,5],
+                [23,23]
+            ]
+        ]
+        subsets = create_subsets_from_list(group_ids, client_samples, rng)
+        return subsets
     if split_mode=="more_expected_clients":
         client_samples=[
             [ # Birds on land
