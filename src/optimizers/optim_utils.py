@@ -63,7 +63,7 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
 #!TODO update with subpopbench optims
 def evaluate(model, data, conf, verbose=0):
     model.eval()
-    loss_fn = get_loss(conf)
+    loss_fn = get_loss(conf=conf)
     correct, total, loss = 0, 0, 0.0
     label_group_correct, label_group_total = {}, {}
     with torch.no_grad():

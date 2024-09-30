@@ -149,8 +149,95 @@ def get_sample_weights(ds, conf):
     return None
 
 
-def get_loss(conf={}):
-    return torch.nn.CrossEntropyLoss(reduction="none")
+class GeneralizedCrossEntropyLoss(torch.nn.modules.loss._Loss):
+    """Generalized Cross Entropy Loss from https://proceedings.neurips.cc/paper_files/paper/2018/file/f2925f97bc13ad2852a7a551802feea0-Paper.pdf"""
+    def __init__(self, q=0.7,reduction='mean'):
+        """
+        Custom CrossEntropyLoss implementation.
+
+        Args:
+            q: a hyperparameter that controls the degree of amplification
+            reduction (str, optional): Specifies the reduction to apply to the output.
+                                       Must be one of 'none', 'mean', or 'sum'. Default: 'mean'
+        """
+        self.q = q
+        super(GeneralizedCrossEntropyLoss, self).__init__(reduction=reduction)
+        if reduction not in ['none', 'mean', 'sum']:
+            raise ValueError(f"Invalid reduction type: {reduction}. Choose from 'none', 'mean', or 'sum'.")
+
+    def forward(self, logits, target):
+        # Step 1: Compute the softmax
+        softmax_probs = torch.nn.functional.softmax(logits, dim=1)
+
+        # Step 2: Select the correct class probabilities
+        correct_class_probs = softmax_probs[range(logits.shape[0]), target]
+
+        # Compute loss
+        loss = (1-(correct_class_probs**self.q))/self.q
+
+        # Step 4: Apply reduction ('none', 'mean', or 'sum')
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:  # self.reduction == 'none'
+            return loss
+
+
+class CustomCrossEntropyLoss(torch.nn.modules.loss._Loss):
+    """Local implementation of CrossEntropy loss in Pytorch"""
+    def __init__(self, reduction='mean'):
+        """
+        Custom CrossEntropyLoss implementation.
+
+        Args:
+            reduction (str, optional): Specifies the reduction to apply to the output.
+                                       Must be one of 'none', 'mean', or 'sum'. Default: 'mean'
+        """
+        super(CustomCrossEntropyLoss, self).__init__(reduction=reduction)
+        if reduction not in ['none', 'mean', 'sum']:
+            raise ValueError(f"Invalid reduction type: {reduction}. Choose from 'none', 'mean', or 'sum'.")
+
+    def forward(self, logits, target):
+        """
+        Forward pass of the custom cross-entropy loss.
+
+        Args:
+            logits (Tensor): The input tensor of shape (batch_size, num_classes) containing raw, unnormalized scores.
+            target (Tensor): The target tensor of shape (batch_size,) containing class indices.
+
+        Returns:
+            Tensor: The computed cross-entropy loss.
+        """
+        # Step 1: Compute the softmax
+        softmax_probs = torch.nn.functional.softmax(logits, dim=1)
+
+        # Step 2: Select the correct class probabilities
+        correct_class_probs = softmax_probs[range(logits.shape[0]), target]
+
+        # Step 3: Compute the negative log-likelihood
+        loss = -torch.log(correct_class_probs)
+
+        # Step 4: Apply reduction ('none', 'mean', or 'sum')
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:  # self.reduction == 'none'
+            return loss
+
+
+def get_loss(mode="cross_entropy", conf={}):
+    if "client_opt" in conf.keys():
+        if "loss_function" in conf["client_opt"].keys():
+            mode = conf["client_opt"]["loss_function"]
+    if mode == "generalized_cross_entropy":
+        return GeneralizedCrossEntropyLoss(reduction="none")
+    if mode == "custom_cross_entropy":
+        return CustomCrossEntropyLoss(reduction="none")
+    if mode == "cross_entropy":
+        return torch.nn.CrossEntropyLoss(reduction="none")
+    raise NotImplementedError("Unrecognized loss function: ", mode)
 
 
 class ERM(Algorithm):
@@ -165,7 +252,7 @@ class ERM(Algorithm):
 
     def _init_model(self):
         self.optimizer = get_base_optimizer(self.network.parameters(), self.conf)
-        self.loss = get_loss(self.conf)
+        self.loss = get_loss(conf=self.conf)
         self.lr_scheduler = None
 
 
