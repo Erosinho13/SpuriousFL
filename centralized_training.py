@@ -176,9 +176,9 @@ def train(conf, conf_path=None):
         train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
                                           batch_size=conf['batch_size'], shuffle=True)
     print("Dataset size:", len(train_ds))
+    opt = get_subpop_optimizer(model, train_loader.dataset, conf)
     if is_two_stage_optimizer(conf):
         print("Trainable parameters:", model_utils.count_params(model, only_trainable=True))
-    opt = get_subpop_optimizer(model, train_loader.dataset, conf)
     for epoch in range(conf['epochs']):
 
         model.train()
