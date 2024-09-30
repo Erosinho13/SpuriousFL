@@ -18,12 +18,13 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
         opt = get_subpop_optimizer(model, data, conf)
     for epoch in range(conf["epochs"]):
         correct, total, epoch_loss = 0, 0, 0.0
-        for images, (labels, groups) in data:
+        for indeces, images, (labels, groups) in data:
+            indeces = indeces.to(get_device(conf))
             images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
             groups = groups.to(get_device(conf))
 
 
-            opt_out = opt.update((None, images, labels, groups), 1)
+            opt_out = opt.update((indeces, images, labels, groups), 1)
             loss = opt_out["loss"]
             minibatch_correct = opt_out["correct"]
 
@@ -39,9 +40,11 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
             model.eval()  # validation
             with torch.no_grad():
                 correct, total, val_loss = 0, 0, 0.0
-                for images, (labels, groups) in validation_data:
+                for indeces, images, (labels, groups) in validation_data:
+                    indeces = indeces.to(get_device(conf))
+                    groups = groups.to(get_device(conf))
                     images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
-                    opt_out = opt.update((None, images, labels, groups), 1)
+                    opt_out = opt.update((indeces, images, labels, groups), 1)
                     loss = opt_out["loss"]
                     minibatch_correct = opt_out["correct"]
                     correct += minibatch_correct
@@ -67,8 +70,8 @@ def evaluate(model, data, conf, verbose=0):
     correct, total, loss = 0, 0, 0.0
     label_group_correct, label_group_total = {}, {}
     with torch.no_grad():
-        for images, (labels, groups) in data:
-            images, labels, groups = images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(
+        for indeces, images, (labels, groups) in data:
+            indeces, images, labels, groups = indeces.to(get_device(conf)), images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(
                 get_device(conf))
             outputs = model(images)
             loss += loss_fn(outputs, labels).mean().item()

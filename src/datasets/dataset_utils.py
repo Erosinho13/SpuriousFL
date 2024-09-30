@@ -13,7 +13,7 @@ class SubpopDataset:
     def update_metadata(self, num_attributes=None, num_labels=None):
         ds_y, ds_s= [], []
         for i in range(len(self)):
-            _, (y, s) = self[i]
+            _, _, (y, s) = self[i]
             y, s = int(y), int(s)
             ds_y.append(y)
             ds_s.append(s)
@@ -39,10 +39,10 @@ class SubpopDataset:
             self.weights_y.append(len(self) / self.class_sizes[ds_y[i]])
 
     def get_weight_g(self, idx):
-            _, (y, s) = self[idx]
+            _, _, (y, s) = self[idx]
             return len(self) / self.group_sizes[self.num_attributes * y + s]
     def get_weight_y(self, idx):
-            _, (y, _) = self[idx]
+            _, _, (y, _) = self[idx]
             return len(self) / self.class_sizes[y]
     
 
@@ -84,7 +84,7 @@ def get_spurious_group_idx(ds):
     Expects dataloader with x,(y,s) getter where y and s are scalar ints"""
     d = {}
     for i in range(len(ds)):
-        _, (y, s) = ds[i]
+        _, _, (y, s) = ds[i]
         y,s = int(y), int(s)
         if y not in d.keys():
             d[y] = {}
@@ -97,7 +97,7 @@ def get_spurious_group_idx(ds):
 def count_groups(ds, update_ds=True, num_attributes=None, num_labels=None):
     ds_y, ds_s= [], []
     for i in range(len(ds)):
-        _, (y, s) = ds[i]
+        _, _, (y, s) = ds[i]
         y, s = int(y), int(s)
         ds_y.append(y)
         ds_s.append(s)

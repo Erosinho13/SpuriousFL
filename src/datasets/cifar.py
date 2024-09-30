@@ -25,7 +25,7 @@ class CIFAR10(VisionDataset):
     def __getitem__(self, index: int):
         x, y = self.dataset[index]
         s = 0
-        return np.asarray(x), (y, s)
+        return index, np.asarray(x), (y, s)
 
     def __getattr__(self, name):
         try:

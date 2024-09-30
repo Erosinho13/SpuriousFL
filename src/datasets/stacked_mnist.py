@@ -174,7 +174,7 @@ class StackedMNIST(MNIST):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return img, (self.target_ids[target], self.group_ids[group])
+        return index, img, (self.target_ids[target], self.group_ids[group])
 
     @property
     def mean(self):

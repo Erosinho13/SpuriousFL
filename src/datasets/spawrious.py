@@ -35,7 +35,7 @@ class Spawrious(VisionDataset, SubpopDataset):
         x = np.asarray(Image.open(x))
         x = np.transpose(x, (2, 0, 1))
         x = (x/255).astype(np.float32)
-        return x, (y, s)
+        return index, x, (y, s)
 
     def __getattr__(self, name):
         try:

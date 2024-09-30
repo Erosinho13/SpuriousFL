@@ -22,7 +22,7 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
     correct = 0
     total = 0
     with torch.no_grad():
-        for images, (labels, groups) in test_loader:
+        for indeces, images, (labels, groups) in test_loader:
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)
             _, predicted = torch.max(outputs.data, 1)
@@ -108,10 +108,11 @@ def train(conf, conf_path=None):
         for epoch in range(shallow_conf['epochs']):
             shallow_model.train()
             running_loss = 0.0
-            for images, (labels, groups) in train_loader_1:
+            for indeces, images, (labels, groups) in train_loader_1:
+                indeces = indeces.to(utils.get_device(shallow_conf))
                 images, labels = images.to(utils.get_device(shallow_conf)), labels.to(utils.get_device(shallow_conf))
                 groups = groups.to(utils.get_device(shallow_conf))
-                opt_out = opt.update((None, images, labels, groups), 1)
+                opt_out = opt.update((indeces, images, labels, groups), 1)
                 loss = opt_out["loss"]
                 running_loss += loss
             print(f"Epoch [{epoch + 1}/{shallow_conf['epochs']}], Loss: {running_loss / len(train_loader_1):.4f}")
@@ -119,7 +120,7 @@ def train(conf, conf_path=None):
             shallow_model.eval()
             with torch.no_grad():
                 correct_all = []
-                for images, (labels, groups) in train_loader_2:
+                for indeces, images, (labels, groups) in train_loader_2:
                     images, labels = images.to(device), labels.to(device)
                     outputs = shallow_model(images)
                     _, predicted = torch.max(outputs.data, 1)
@@ -153,11 +154,12 @@ def train(conf, conf_path=None):
             for epoch in range(first_stage_conf['epochs']):
                 model.train()
                 running_loss = 0.0
-                for images, (labels, groups) in train_loader:
+                for indeces, images, (labels, groups) in train_loader:
+                    indeces = indeces.to(utils.get_device(first_stage_conf))
                     images, labels = images.to(utils.get_device(first_stage_conf)), labels.to(
                         utils.get_device(first_stage_conf))
                     groups = groups.to(utils.get_device(first_stage_conf))
-                    opt_out = opt.update((None, images, labels, groups), 1)
+                    opt_out = opt.update((indeces, images, labels, groups), 1)
                     loss = opt_out["loss"]
                     running_loss += loss
                 print(f"Epoch [{epoch + 1}/{first_stage_conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
@@ -181,11 +183,12 @@ def train(conf, conf_path=None):
 
         model.train()
         running_loss = 0.0
-        for images, (labels, groups) in train_loader:
+        for indeces, images, (labels, groups) in train_loader:
+            indeces = indeces.to(utils.get_device(conf))
             images, labels = images.to(utils.get_device(conf)), labels.to(utils.get_device(conf))
             groups = groups.to(utils.get_device(conf))
 
-            opt_out = opt.update((None, images, labels, groups), 1)
+            opt_out = opt.update((indeces, images, labels, groups), 1)
             loss = opt_out["loss"]
 
             running_loss += loss

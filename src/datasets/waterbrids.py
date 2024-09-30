@@ -24,7 +24,7 @@ class WaterBirds(VisionDataset, SubpopDataset):
     def __getitem__(self, index: int):
         x, y, metadata = self.subset[index]
         s = metadata[0]
-        return x, (y, s)
+        return index, x, (y, s)
 
     def __getattr__(self, name):
         try:
