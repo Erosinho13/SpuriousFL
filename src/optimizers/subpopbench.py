@@ -232,6 +232,9 @@ def get_loss(mode="cross_entropy", conf={}):
         if "loss_function" in conf["client_opt"].keys():
             mode = conf["client_opt"]["loss_function"]
     if mode == "generalized_cross_entropy":
+        if "generalized_cross_entropy_q" in conf["client_opt"]:
+            q = conf["client_opt"]["generalized_cross_entropy_q"]
+            return GeneralizedCrossEntropyLoss(q=q, reduction="none")
         return GeneralizedCrossEntropyLoss(reduction="none")
     if mode == "custom_cross_entropy":
         return CustomCrossEntropyLoss(reduction="none")
