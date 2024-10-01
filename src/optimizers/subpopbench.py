@@ -4,6 +4,7 @@ from src.datasets.dataset_utils import get_metadata
 import torch
 import numpy as np
 from src.utils import get_device
+import copy
 
 class Algorithm(torch.nn.Module):
     """
@@ -109,6 +110,8 @@ def get_subpop_optimizer(model, data, conf={}):
                 return FEx(model, conf)
             elif copt["subpop_optimizer"] == "FExCRT":
                 return FExCRT(model, conf)
+            elif copt["subpop_optimizer"] == "LfF":
+                return LfF(model, conf)
             else:
                 raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)
@@ -416,3 +419,63 @@ class FEx(ERM):
 
 class FExCRT(CRT):
     """Forgetting examples but with classifier re-training"""
+
+class LfF(Algorithm):
+    """
+    Learning from Failure (LfF) [https://arxiv.org/pdf/2007.02561.pdf]
+    """
+    def __init__(self, model, conf):
+        super().__init__(
+            model, conf)
+
+        pred_model_conf = copy.deepcopy(conf)
+        pred_model_conf["client_opt"]["loss_function"] = "cross_entropy"
+        self.pred_model = ERM(model, pred_model_conf)
+        self.biased_network = copy.deepcopy(model)
+        self._init_model()
+
+    def _init_model(self):
+        self.pred_model._init_model()
+        
+        self.optimizer_b = get_base_optimizer(self.network.parameters(), self.conf)
+        if "generalized_cross_entropy_q" in self.conf["client_opt"]:
+            gce_q = self.conf["client_opt"]["generalized_cross_entropy_q"]
+        else:
+            gce_q = 0.7
+        self.gce_loss = get_loss(conf={"client_opt":{"loss_function":"generalized_cross_entropy",
+                                                     "generalized_cross_entropy_q":gce_q}})
+        self.lr_scheduler = None
+
+    def _compute_loss(self, i, pred, y, a, step):
+        pred_logits, biased_logits = pred
+        loss_gce = self.gce_loss(biased_logits, y)
+        ce_b = torch.nn.functional.cross_entropy(biased_logits, y, reduction='none')
+        ce_d = torch.nn.functional.cross_entropy(pred_logits, y, reduction='none')
+        weights = (ce_b/(ce_b + ce_d + 1e-8)).detach()
+        loss_pred = (ce_d * weights).mean()
+        loss = loss_pred.mean() + loss_gce.mean()
+        return loss, loss_pred, loss_gce
+
+
+    def update(self, minibatch, step):
+        all_i, all_x, all_y, all_a = minibatch   
+        pred_logits = self.pred_model.predict(all_x) 
+        biased_logits = self.biased_network(all_x)
+
+        self.optimizer_b.zero_grad()
+        self.pred_model.optimizer.zero_grad()
+
+        loss, loss_pred, loss_gce = self._compute_loss(all_i, (pred_logits, biased_logits), all_y, all_a, step)
+        loss.backward()
+
+        self.optimizer_b.step()
+        self.pred_model.optimizer.step()
+
+        correct = (torch.max(pred_logits.data, 1)[1] == all_y).sum().item()
+        return {'loss': loss.item(), 'loss_pred': loss_pred.mean().item(), 'loss_gce': loss_gce.mean().item(), "correct":correct}
+
+    def return_feats(self, x):
+        return self.pred_model.featurizer(x)
+
+    def predict(self, x):
+        return self.pred_model.predict(x)
