@@ -4,7 +4,7 @@ import os
 import copy
 import numpy as np
 
-from src.datasets.dataset_utils import concat_subsets
+from src.datasets.dataset_utils import SubsetDataset, concat_subsets, count_groups
 import torch
 import wandb
 
@@ -119,16 +119,64 @@ def train(conf, conf_path=None):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-            for i, v in zip(indeces.to('cpu').numpy(), np.logical_not((predicted == labels).to('cpu').numpy()).astype(int)):
-                predictions[i] = v
+            for i, v in zip(indeces.to('cpu').numpy(), (predicted == labels).to('cpu').numpy()):
+                predictions[i] = int(v)
+    biased_model.to('cpu')
+    # Classify majority-minority
+
+    print(sorted(list(predictions.keys()))[:40])
+    if sorted(list(predictions.keys()))[42]!=42:
+        raise IndexError("Shouldn't be missing indeces")
+
+    # Train spurious classifier
+    print("Train spurious classifier")
+    metadata = count_groups(train_ds)
+    print(metadata["class_sizes"])
+    most_populus_class = np.argmax(metadata["class_sizes"])
+
+    ids_most_pop = [i for i,_,(y,s) in train_ds if y==most_populus_class]
+    spurious_ds = SubsetDataset(train_ds, ids_most_pop)
+    spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
+                                      batch_size=conf['batch_size'], shuffle=True)
+    print(len(ids_most_pop))
+
+    print(metadata.keys())
+
+    print("Train on data for class: ", most_populus_class)
+
+    spurious_conf = copy.deepcopy(conf)
+    spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
+    spurious_conf["client_opt"]["subpop_optimizer"] = "ERM"
+    spurious_conf["epochs"] = 1
+    spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
+    spurious_model = model_utils.init_model(conf)
+
     
-   # Classify majority-minority
 
-   # print(predictions)
-   
-   # Train spurious classifier
+    opt = get_subpop_optimizer(spurious_model, spurious_loader.dataset, spurious_conf)
+    for epoch in range(spurious_conf['epochs']):
 
-   # Evaluate predicted N matrix
+        biased_model.train()
+        running_loss = 0.0
+        for indeces, images, (_, groups) in spurious_loader:
+            labels = torch.Tensor([predictions[i.item()] for i in indeces])
+            images, labels = images.to(device), labels.to(device)
+            indeces, groups = indeces.to(device), groups.to(device)
+
+            opt_out = opt.update((indeces, images, labels, groups), 1)
+            loss = opt_out["loss"]
+
+            running_loss += loss
+
+        print(f"Epoch [{epoch + 1}/{spurious_conf['epochs']}], Loss: {running_loss / len(spurious_loader):.4f}")
+
+    # Predict groups on orig train set
+
+    with torch.no_grad():
+        for indeces, images, (labels, groups) in train_loader:
+            pass
+
+    # Evaluate predicted N matrix
 
 
 def main():
