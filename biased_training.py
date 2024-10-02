@@ -23,7 +23,8 @@ def train(conf, conf_path=None):
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
 
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = utils.get_device(conf)
 
     train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
 
@@ -53,11 +54,12 @@ def train(conf, conf_path=None):
 
 
     # Train ERM for a few epoch
+    print("Pre-train with ERM")
     train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
                                       batch_size=conf['batch_size'], shuffle=True)
     erm_conf = copy.deepcopy(conf)
     erm_conf["client_opt"]["subpop_optimizer"] = "ERM"
-    erm_conf["epochs"] = 10
+    erm_conf["epochs"] = 1
     erm_conf["client_opt"]["loss_function"] = "cross_entropy"
 
     opt = get_subpop_optimizer(model, train_loader.dataset, erm_conf)
@@ -65,11 +67,11 @@ def train(conf, conf_path=None):
 
         model.train()
         running_loss = 0.0
-        for images, (labels, groups) in train_loader:
-            images, labels = images.to(utils.get_device(erm_conf)), labels.to(utils.get_device(erm_conf))
-            groups = groups.to(utils.get_device(erm_conf))
+        for indeces, images, (labels, groups) in train_loader:
+            images, labels = images.to(device), labels.to(device)
+            indeces, groups = indeces.to(device), groups.to(device)
 
-            opt_out = opt.update((None, images, labels, groups), 1)
+            opt_out = opt.update((indeces, images, labels, groups), 1)
             loss = opt_out["loss"]
 
             running_loss += loss
@@ -79,23 +81,25 @@ def train(conf, conf_path=None):
     model.to("cpu")
 
     # Train the biased classifier
+    print("Train biased classifier")
     biased_model = copy.deepcopy(model).to(device)
 
     biased_conf = copy.deepcopy(conf)
     biased_conf["client_opt"]["subpop_optimizer"] = "CRT"
     biased_conf["client_opt"]["loss_function"] = "generalized_cross_entropy"
     biased_conf["client_opt"]["generalized_cross_entropy_q"] = 0.7
+    biased_conf["epochs"] = 1
 
     opt = get_subpop_optimizer(biased_model, train_loader.dataset, biased_conf)
     for epoch in range(biased_conf['epochs']):
 
         biased_model.train()
         running_loss = 0.0
-        for images, (labels, groups) in train_loader:
-            images, labels = images.to(utils.get_device(biased_conf)), labels.to(utils.get_device(biased_conf))
-            groups = groups.to(utils.get_device(biased_conf))
+        for indeces, images, (labels, groups) in train_loader:
+            images, labels = images.to(device), labels.to(device)
+            indeces, groups = indeces.to(device), groups.to(device)
 
-            opt_out = opt.update((None, images, labels, groups), 1)
+            opt_out = opt.update((indeces, images, labels, groups), 1)
             loss = opt_out["loss"]
 
             running_loss += loss
@@ -103,19 +107,25 @@ def train(conf, conf_path=None):
         print(f"Epoch [{epoch + 1}/{biased_conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
 
     # Get biased predictions
+    print("Get biased predictions")
+    predictions = {}
     biased_model.eval()
     correct = 0
     total = 0
     with torch.no_grad():
-        for images, (labels, groups) in train_loader:
+        for indeces, images, (labels, groups) in train_loader:
             images, labels = images.to(device), labels.to(device)
-            outputs = model(images)
+            outputs = biased_model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-
+            for i, v in zip(indeces.to('cpu').numpy(), np.logical_not((predicted == labels).to('cpu').numpy()).astype(int)):
+                predictions[i] = v
+    
    # Classify majority-minority
 
+   # print(predictions)
+   
    # Train spurious classifier
 
    # Evaluate predicted N matrix
