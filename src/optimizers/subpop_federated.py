@@ -1,6 +1,7 @@
 from src.datasets.dataset_utils import count_groups
 from src.optimizers.subpopbench import GroupDRO
 import numpy as np
+from src import corr
 
 def store_opt_params(opt, out_dict, data, conf):
     """Save important params of the opt into a dict"""
@@ -14,6 +15,15 @@ def store_opt_params(opt, out_dict, data, conf):
 
         for i, v in enumerate(metadata["group_sizes"]):
             out_dict["groupsize_"+str(i)] = v
+    if conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
+        metadata = count_groups(data, 
+                                num_attributes=conf["dataset_options"]["num_groups"],
+                                num_labels=conf["dataset_options"]["num_targets"])
+        N = np.resize(np.array(metadata["group_sizes"]),
+                      (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
+        out_dict["SC"] = corr.SC(N)
+        out_dict["AI"] = corr.AI(N)
+        out_dict["CI"] = corr.CI(N)
     return out_dict
 
 

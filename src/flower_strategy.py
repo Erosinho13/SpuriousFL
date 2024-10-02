@@ -4,6 +4,7 @@ from logging import WARNING
 import os
 import numpy as np
 import copy
+import random
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from flwr.server.strategy.aggregate import aggregate
 from flwr.server.client_proxy import ClientProxy
@@ -332,8 +333,26 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 cw1sum = sum(np.exp(client_weights1/temperature1))
                 cw2sum = sum(np.exp(client_weights2/temperature2))
                 client_weights = [np.exp(cw1/temperature1)/cw1sum+np.exp(cw2/temperature2)/cw2sum for cw1, cw2 in zip(client_weights1, client_weights2)]
+        elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
+            log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
+            if self.conf["server_opt"]["weight_clients"] == "server_post_triplets_importanceclusters":
+                
+                clusters = {"SC":[],"CI":[],"AI":[]}
+                for _, res in results:
+                    keys_to_check = ["SC", "CI", "AI"]
+                    max_key = max(keys_to_check, key=res.metrics.get)
+                    clusters[max_key].append(res.metrics["cid"])
+                # Sample one element from each list if the list is not empty
+                weighted_clients = {key: random.sample(value, 1) if value else [] for key, value in clusters.items()}
+                weighted_clients = [elem for sublist in weighted_clients.values() for elem in sublist]
+                client_weights = [1 if res.metrics["cid"] in weighted_clients else 0 for _, res in results]
+                for i in range(len(results)):
+                    results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
+                return results
+            else:
+                raise NotImplementedError("method not implemented:", self.conf["server_opt"]["weight_clients"])
         else:
-            raise NotImplementedError("Client weights not set!")
+            raise NotImplementedError("Client weights not set!", self.conf["server_opt"]["weight_clients"])
         cw_sum = np.sum(client_weights)
         client_weights = [cw/cw_sum*self.conf['len_total_data'] for cw in client_weights]
         for i in range(len(results)):
