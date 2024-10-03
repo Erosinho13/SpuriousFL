@@ -40,4 +40,4 @@ dataset_options:
 eval_interval: 1
 test_interval: 1
 checkpoint: null
-local_training_id: 0
+local_training_id: null

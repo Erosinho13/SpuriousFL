@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 import copy
 import numpy as np
-
+from collections import Counter
 from src.datasets.dataset_utils import SubsetDataset, concat_subsets, count_groups
 import torch
 import wandb
@@ -125,8 +125,9 @@ def train(conf, conf_path=None):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-            for i, v in zip(indeces.to('cpu').numpy(), (predicted == labels).to('cpu').numpy()):
+            for i, v in zip(indeces.to('cpu').numpy(), (predicted != labels).to('cpu').numpy()):
                 biased_predictions[i] = int(v)
+    print(f"Biased prediction accuracy: {100 * correct / total}%")
     biased_model.to('cpu')
 
     # Classify majority-minority
@@ -148,6 +149,12 @@ def train(conf, conf_path=None):
     #print(metadata.keys())
 
     print("Train on data for class: ", most_populus_class)
+    # Step 1: Filter the dictionary to include only keys that are in the ids_most_pop list
+    filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_most_pop}
+    # Step 2: Count the occurrences of each value in the filtered dictionary
+    value_counts = Counter(filtered_predictions.values())
+    # Display the result
+    print("with class imbalance: ", value_counts)
 
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
