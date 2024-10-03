@@ -114,7 +114,7 @@ def train(conf, conf_path=None):
     print("Get biased predictions")
     train_loader_seq = WeightedDataLoader(dataset=train_ds, weights=None,
                                           batch_size=conf['batch_size'], shuffle=False)
-    predictions = {}
+    biased_predictions = {}
     biased_model.eval()
     correct = 0
     total = 0
@@ -126,7 +126,7 @@ def train(conf, conf_path=None):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
             for i, v in zip(indeces.to('cpu').numpy(), (predicted == labels).to('cpu').numpy()):
-                predictions[i] = int(v)
+                biased_predictions[i] = int(v)
     biased_model.to('cpu')
 
     # Classify majority-minority
@@ -161,10 +161,10 @@ def train(conf, conf_path=None):
     opt = get_subpop_optimizer(spurious_model, spurious_loader.dataset, spurious_conf)
     for epoch in range(spurious_conf['epochs']):
 
-        biased_model.train()
+        spurious_model.train()
         running_loss = 0.0
-        for indeces, images, (_, groups) in spurious_loader:
-            labels = torch.Tensor([predictions[i.item()] for i in indeces])
+        for indeces, images, (labels, groups) in spurious_loader:
+            labels = torch.tensor([biased_predictions[i.item()] for i in indeces], dtype=labels.dtype)
             images, labels = images.to(device), labels.to(device)
             indeces, groups = indeces.to(device), groups.to(device)
 
@@ -177,12 +177,21 @@ def train(conf, conf_path=None):
 
     # Predict groups on orig train set
 
+    predicted_groups = {}
+    spurious_model.eval()
+    correct = 0
+    total = 0
     with torch.no_grad():
-        for indeces, images, (labels, groups) in train_loader:
-            pass
-
+        for indeces, images, (labels, groups) in train_loader_seq:
+            images, groups = images.to(device), groups.to(device)
+            outputs = spurious_model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += groups.size(0)
+            correct += (predicted == groups).sum().item()
+            for i, v in zip(indeces.to('cpu').numpy(), predicted.to('cpu').numpy()):
+                predicted_groups[i] = int(v)
     # Evaluate predicted N matrix
-
+    print(f"Group prediction accuracy: {100 * correct / total}%")
 
 def main():
     parser = argparse.ArgumentParser(
