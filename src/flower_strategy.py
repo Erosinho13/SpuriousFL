@@ -346,11 +346,28 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 weighted_clients = {key: random.sample(value, 1) if value else [] for key, value in clusters.items()}
                 weighted_clients = [elem for sublist in weighted_clients.values() for elem in sublist]
                 client_weights = [1 if res.metrics["cid"] in weighted_clients else 0 for _, res in results]
-                for i in range(len(results)):
-                    results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
-                return results
+                
+            if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix"):
+                M = [res.metrics for _, res in results]
+                M = np.array([[a['SC'],a['AI'],a['CI']] for a in M])
+                column_sums = M.sum(axis=0)  # Sum of each column
+                M_norm = M / column_sums 
+                sampled_row_ids = np.apply_along_axis(lambda col: np.random.choice(len(col), p=col), axis=0, arr=M_norm)
+                counts = np.bincount(sampled_row_ids, minlength=len(results))
+                binary_arr = (counts > 0).astype(int)
+                client_weights = counts
+
+                if "smoothing" in self.conf["server_opt"]["weight_clients"]:
+                    smoothing_value = 0.0001
+                    if "weight_smoothing" in self.conf["server_opt"]:
+                        smoothing_value = self.conf["server_opt"]["weight_smoothing"]
+                    smoothed_labels = counts - binary_arr + binary_arr * (1 - smoothing_value) + (1 - binary_arr) * smoothing_value
+                    client_weights = smoothed_labels
             else:
                 raise NotImplementedError("method not implemented:", self.conf["server_opt"]["weight_clients"])
+            for i in range(len(results)):
+                    results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
+            return results
         else:
             raise NotImplementedError("Client weights not set!", self.conf["server_opt"]["weight_clients"])
         cw_sum = np.sum(client_weights)
