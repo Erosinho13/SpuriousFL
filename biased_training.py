@@ -181,17 +181,39 @@ def train(conf, conf_path=None):
     spurious_model.eval()
     correct = 0
     total = 0
+    label_group_correct, label_group_total = {}, {}
     with torch.no_grad():
         for indeces, images, (labels, groups) in train_loader_seq:
-            images, groups = images.to(device), groups.to(device)
+            indeces, images = indeces.to(device), images.to(device)
+            labels, groups = labels.to(device), groups.to(device)
             outputs = spurious_model(images)
             _, predicted = torch.max(outputs.data, 1)
             total += groups.size(0)
             correct += (predicted == groups).sum().item()
             for i, v in zip(indeces.to('cpu').numpy(), predicted.to('cpu').numpy()):
                 predicted_groups[i] = int(v)
+            unique_pairs = torch.unique(torch.stack((labels, groups), dim=1), dim=0)
+            for label, group in unique_pairs:
+                mask = (labels == label) & (groups == group)
+                pair_groups = groups[mask]
+                pair_predictions = predicted[mask]
+                correct_count = (pair_predictions == pair_groups).sum().item()
+                total_count = mask.sum().item()
+
+                pair_key = (label.item(), group.item())
+                if pair_key not in label_group_total:
+                    label_group_total[pair_key] = 0
+                    label_group_correct[pair_key] = 0
+
+                label_group_total[pair_key] += total_count
+                label_group_correct[pair_key] += correct_count
     # Evaluate predicted N matrix
     print(f"Group prediction accuracy: {100 * correct / total}%")
+    group_accuracies = {("y" + str(pair[0]) + "g" + str(pair[1])): 100* label_group_correct[pair] / label_group_total[pair]
+                        for pair in label_group_total}
+    worst_acc = min(group_accuracies.values())
+    group_accuracies["worst_group"] = worst_acc
+    print(group_accuracies)
 
 def main():
     parser = argparse.ArgumentParser(
