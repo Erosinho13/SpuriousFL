@@ -46,17 +46,21 @@ def train(conf, conf_path=None):
     conf["len_total_data"] = len(train_ds)
     print("Dataset size: ", len(train_ds))
 
+ 
     # Loading model
     model = model_utils.init_model(conf).to(device)
     # model = mobilenet_v2(pretrained=False).to(device)
     model_utils.print_summary(model)
 
 
+        
 
     # Train ERM for a few epoch
     print("Pre-train with ERM")
     train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
                                       batch_size=conf['batch_size'], shuffle=True)
+    
+
     erm_conf = copy.deepcopy(conf)
     erm_conf["client_opt"]["subpop_optimizer"] = "ERM"
     erm_conf["epochs"] = 1
@@ -108,12 +112,14 @@ def train(conf, conf_path=None):
 
     # Get biased predictions
     print("Get biased predictions")
+    train_loader_seq = WeightedDataLoader(dataset=train_ds, weights=None,
+                                          batch_size=conf['batch_size'], shuffle=False)
     predictions = {}
     biased_model.eval()
     correct = 0
     total = 0
     with torch.no_grad():
-        for indeces, images, (labels, groups) in train_loader:
+        for indeces, images, (labels, groups) in train_loader_seq:
             images, labels = images.to(device), labels.to(device)
             outputs = biased_model(images)
             _, predicted = torch.max(outputs.data, 1)
@@ -122,11 +128,10 @@ def train(conf, conf_path=None):
             for i, v in zip(indeces.to('cpu').numpy(), (predicted == labels).to('cpu').numpy()):
                 predictions[i] = int(v)
     biased_model.to('cpu')
-    # Classify majority-minority
 
-    print(sorted(list(predictions.keys()))[:40])
-    if sorted(list(predictions.keys()))[42]!=42:
-        raise IndexError("Shouldn't be missing indeces")
+    # Classify majority-minority
+    
+    # print(predictions)
 
     # Train spurious classifier
     print("Train spurious classifier")
@@ -140,7 +145,7 @@ def train(conf, conf_path=None):
                                       batch_size=conf['batch_size'], shuffle=True)
     print(len(ids_most_pop))
 
-    print(metadata.keys())
+    #print(metadata.keys())
 
     print("Train on data for class: ", most_populus_class)
 
