@@ -1,3 +1,4 @@
+from typing import Callable
 import numpy as np
 from src.optimizers.subpopbench import get_base_optimizer, get_loss, get_subpop_optimizer
 from src.utils import get_cpu, get_device, np_to_tensor
@@ -15,7 +16,7 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
     model.train()  # switch to training mode
     history = History()
     if opt is None:
-        opt = get_subpop_optimizer(model, data, conf)
+        opt = get_subpop_optimizer(model, data.dataset, conf)
     for epoch in range(conf["epochs"]):
         correct, total, epoch_loss = 0, 0, 0.0
         for indeces, images, (labels, groups) in data:
@@ -58,13 +59,22 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
             v_string = ''
             if validation_data is not None:
                 v_string = f" val_loss:{val_loss}, val_acc:{val_acc}"
-            print(f"Epoch {epoch + 1}: loss:{epoch_loss}, acc:{epoch_acc}" + v_string)
+            print(f"Epoch {epoch + 1}: loss:{epoch_loss:.4f}, acc:{epoch_acc:.4f}" + v_string)
         history.history["loss"].append(epoch_loss)
         history.history["accuracy"].append(epoch_acc)
     return history
 
 #!TODO update with subpopbench optims
-def evaluate(model, data, conf, verbose=0):
+def evaluate(model, data, conf, verbose=0,
+             extra_eval_fn: Callable[[
+                 torch.Tensor, # indeces
+                 torch.Tensor, # images
+                 torch.Tensor, # labels
+                 torch.Tensor, # groups
+                 torch.Tensor, # predicted
+                 dict], None]=None): # outdict
+    if extra_eval_fn:
+        extra_ret = {}
     model.eval()
     loss_fn = get_loss(conf=conf)
     correct, total, loss = 0, 0, 0.0
@@ -79,6 +89,9 @@ def evaluate(model, data, conf, verbose=0):
 
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+
+            if extra_eval_fn:
+                extra_eval_fn(indeces, images, labels, groups, predicted, extra_ret)
 
             unique_pairs = torch.unique(torch.stack((labels, groups), dim=1), dim=0)
             for label, group in unique_pairs:
@@ -101,6 +114,8 @@ def evaluate(model, data, conf, verbose=0):
                         for pair in label_group_total}
     worst_acc = min(group_accuracies.values())
     group_accuracies["worst_group"] = worst_acc
+    if extra_eval_fn:
+        return loss, accuracy, group_accuracies, extra_ret
     return loss, accuracy, group_accuracies
 
 

@@ -13,7 +13,7 @@ from src.models import model_utils
 from src.datasets import data_preparation
 from src.datasets.data_preparation import subsample
 from src.optimizers.dataloaders import WeightedDataLoader
-import src.optimizers.optim_utils
+from src.optimizers import optim_utils
 from src.optimizers.subpopbench import ERM, get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
 
 
@@ -66,21 +66,7 @@ def train(conf, conf_path=None):
     erm_conf["epochs"] = 1
     erm_conf["client_opt"]["loss_function"] = "cross_entropy"
 
-    opt = get_subpop_optimizer(model, train_loader.dataset, erm_conf)
-    for epoch in range(erm_conf['epochs']):
-
-        model.train()
-        running_loss = 0.0
-        for indeces, images, (labels, groups) in train_loader:
-            images, labels = images.to(device), labels.to(device)
-            indeces, groups = indeces.to(device), groups.to(device)
-
-            opt_out = opt.update((indeces, images, labels, groups), 1)
-            loss = opt_out["loss"]
-
-            running_loss += loss
-
-        print(f"Epoch [{epoch + 1}/{erm_conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
+    history = optim_utils.fit(model, train_loader, erm_conf, verbose=1)
 
     model.to("cpu")
 
@@ -94,40 +80,26 @@ def train(conf, conf_path=None):
     biased_conf["client_opt"]["generalized_cross_entropy_q"] = 0.7
     biased_conf["epochs"] = 1
 
-    opt = get_subpop_optimizer(biased_model, train_loader.dataset, biased_conf)
-    for epoch in range(biased_conf['epochs']):
-
-        biased_model.train()
-        running_loss = 0.0
-        for indeces, images, (labels, groups) in train_loader:
-            images, labels = images.to(device), labels.to(device)
-            indeces, groups = indeces.to(device), groups.to(device)
-
-            opt_out = opt.update((indeces, images, labels, groups), 1)
-            loss = opt_out["loss"]
-
-            running_loss += loss
-
-        print(f"Epoch [{epoch + 1}/{biased_conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
+    history = optim_utils.fit(biased_model, train_loader, biased_conf, verbose=1)
 
     # Get biased predictions
     print("Get biased predictions")
     train_loader_seq = WeightedDataLoader(dataset=train_ds, weights=None,
                                           batch_size=conf['batch_size'], shuffle=False)
-    biased_predictions = {}
-    biased_model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for indeces, images, (labels, groups) in train_loader_seq:
-            images, labels = images.to(device), labels.to(device)
-            outputs = biased_model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-            for i, v in zip(indeces.to('cpu').numpy(), (predicted != labels).to('cpu').numpy()):
-                biased_predictions[i] = int(v)
-    print(f"Biased prediction accuracy: {100 * correct / total}%")
+    
+    def predict_biased(indeces, images, labels, groups, predicted, outdict):
+        if "biased_predictions" not in outdict:
+            outdict["biased_predictions"] = {}
+        for i, v in zip(indeces.to('cpu').numpy(), (predicted != labels).to('cpu').numpy()):
+                outdict["biased_predictions"][i] = int(v)
+
+    loss, accuracy, group_accuracies, extra_dict = optim_utils.evaluate(biased_model,
+                                                                        train_loader_seq,
+                                                                        biased_conf,
+                                                                        extra_eval_fn=predict_biased)
+    print(f"Biased prediction accuracy: {accuracy:.4f}%")
+    print(group_accuracies)
+    biased_predictions = extra_dict["biased_predictions"]
     biased_model.to('cpu')
 
     # Classify majority-minority
@@ -161,68 +133,35 @@ def train(conf, conf_path=None):
 
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
-    spurious_conf["client_opt"]["subpop_optimizer"] = "ERM"
+    spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeight"
     spurious_conf["epochs"] = 1
     spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
-    spurious_model = model_utils.init_model(conf)
-
+    spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
+    spurious_model = copy.deepcopy(model).to(device)
     
 
-    opt = get_subpop_optimizer(spurious_model, spurious_loader.dataset, spurious_conf)
-    for epoch in range(spurious_conf['epochs']):
-
-        spurious_model.train()
-        running_loss = 0.0
-        for indeces, images, (labels, groups) in spurious_loader:
-            images, labels = images.to(device), labels.to(device)
-            indeces, groups = indeces.to(device), groups.to(device)
-
-            opt_out = opt.update((indeces, images, labels, groups), 1)
-            loss = opt_out["loss"]
-
-            running_loss += loss
-
-        print(f"Epoch [{epoch + 1}/{spurious_conf['epochs']}], Loss: {running_loss / len(spurious_loader):.4f}")
+    optim_utils.fit(spurious_model, spurious_loader, spurious_conf, verbose=1)
 
     # Predict groups on orig train set
 
-    predicted_groups = {}
-    spurious_model.eval()
-    correct = 0
-    total = 0
-    label_group_correct, label_group_total = {}, {}
-    with torch.no_grad():
-        for indeces, images, (labels, groups) in train_loader_seq:
-            indeces, images = indeces.to(device), images.to(device)
-            labels, groups = labels.to(device), groups.to(device)
-            outputs = spurious_model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += groups.size(0)
-            correct += (predicted == groups).sum().item()
-            for i, v in zip(indeces.to('cpu').numpy(), predicted.to('cpu').numpy()):
-                predicted_groups[i] = int(v)
-            unique_pairs = torch.unique(torch.stack((labels, groups), dim=1), dim=0)
-            for label, group in unique_pairs:
-                mask = (labels == label) & (groups == group)
-                pair_groups = groups[mask]
-                pair_predictions = predicted[mask]
-                correct_count = (pair_predictions == pair_groups).sum().item()
-                total_count = mask.sum().item()
+    def predict_all(indeces, images, labels, groups, predicted, outdict):
+        if "predictions" not in outdict:
+            outdict["predictions"] = {}
+        for i, v in zip(indeces.to('cpu').numpy(), predicted.to('cpu').numpy()):
+                outdict["predictions"][i] = int(v)
 
-                pair_key = (label.item(), group.item())
-                if pair_key not in label_group_total:
-                    label_group_total[pair_key] = 0
-                    label_group_correct[pair_key] = 0
+    groups_ds = ModifiedDataset(train_ds, use_groups=True) # Swap label to pred
+    group_loader_seq = WeightedDataLoader(dataset=groups_ds, weights=None,
+                                          batch_size=conf['batch_size'], shuffle=False)
+    loss, accuracy, group_accuracies, extra_dict = optim_utils.evaluate(spurious_model,
+                                                                        group_loader_seq,
+                                                                        spurious_conf,
+                                                                        extra_eval_fn=predict_all)
+    predicted_groups = extra_dict["predictions"]
 
-                label_group_total[pair_key] += total_count
-                label_group_correct[pair_key] += correct_count
     # Evaluate predicted N matrix
-    print(f"Group prediction accuracy: {100 * correct / total}%")
-    group_accuracies = {("y" + str(pair[0]) + "g" + str(pair[1])): 100* label_group_correct[pair] / label_group_total[pair]
-                        for pair in label_group_total}
-    worst_acc = min(group_accuracies.values())
-    group_accuracies["worst_group"] = worst_acc
-    print(group_accuracies)
+    print(f"Group prediction accuracy: {accuracy}%")
+    print("Flipped (y,g):",group_accuracies)
 
 def main():
     parser = argparse.ArgumentParser(
