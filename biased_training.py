@@ -4,7 +4,7 @@ import os
 import copy
 import numpy as np
 from collections import Counter
-from src.datasets.dataset_utils import SubsetDataset, concat_subsets, count_groups
+from src.datasets.dataset_utils import ModifiedDataset, SubsetDataset, concat_subsets, count_groups
 import torch
 import wandb
 
@@ -141,7 +141,8 @@ def train(conf, conf_path=None):
     most_populus_class = np.argmax(metadata["class_sizes"])
 
     ids_most_pop = [i for i,_,(y,s) in train_ds if y==most_populus_class]
-    spurious_ds = SubsetDataset(train_ds, ids_most_pop)
+    prediction_ds = ModifiedDataset(train_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
+    spurious_ds = SubsetDataset(prediction_ds, ids_most_pop) # Filter for most populus class
     spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
                                       batch_size=conf['batch_size'], shuffle=True)
     print(len(ids_most_pop))
@@ -155,6 +156,8 @@ def train(conf, conf_path=None):
     value_counts = Counter(filtered_predictions.values())
     # Display the result
     print("with class imbalance: ", value_counts)
+    metadata = count_groups(spurious_ds)
+    print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
 
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
@@ -171,7 +174,6 @@ def train(conf, conf_path=None):
         spurious_model.train()
         running_loss = 0.0
         for indeces, images, (labels, groups) in spurious_loader:
-            labels = torch.tensor([biased_predictions[i.item()] for i in indeces], dtype=labels.dtype)
             images, labels = images.to(device), labels.to(device)
             indeces, groups = indeces.to(device), groups.to(device)
 

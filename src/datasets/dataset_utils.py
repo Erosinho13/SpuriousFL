@@ -46,6 +46,32 @@ class SubpopDataset:
             return len(self) / self.class_sizes[y]
     
 
+class ModifiedDataset(Dataset, SubpopDataset):
+    def __init__(self, dataset, predictions=None, use_groups=False):
+        self.dataset = dataset
+        self.predicitons = predictions
+        self.use_groups = use_groups
+    
+    def __getitem__(self, index):
+        idx, img, (y, s) = self.dataset[index]
+        if self.use_groups:
+            tmp = y
+            y = s 
+            s = tmp
+        if self.predicitons:
+            y = self.predicitons[idx]
+
+        return idx, img, (y, s)
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getattr__(self, name):
+        if name == "dataset":
+            return super().__getattribute__('dataset')
+        return getattr(self.dataset, name)   
+
+
 class SubsetDataset(Dataset, SubpopDataset):
     def __init__(self, dataset, indices):
         self.dataset = dataset
