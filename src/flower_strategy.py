@@ -350,13 +350,56 @@ class MyStrategy(fl.server.strategy.FedOpt):
             if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix"):
                 M = [res.metrics for _, res in results]
                 M = np.array([[a['SC'],a['AI'],a['CI']] for a in M])
-                column_sums = M.sum(axis=0)  # Sum of each column
-                M_norm = M / column_sums 
-                sampled_row_ids = np.apply_along_axis(lambda col: np.random.choice(len(col), p=col), axis=0, arr=M_norm)
-                counts = np.bincount(sampled_row_ids, minlength=len(results))
-                binary_arr = (counts > 0).astype(int)
-                client_weights = counts
+                
+                if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_replacement"):
+                    column_sums = M.sum(axis=0)  # Sum of each column
+                    M_norm = M / column_sums 
+                    sampled_row_ids = np.apply_along_axis(lambda col: np.random.choice(len(col), p=col), axis=0, arr=M_norm)
+                    counts = np.bincount(sampled_row_ids, minlength=len(results))
+                    binary_arr = (counts > 0).astype(int)
+                    client_weights = counts
+                if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_noreplacement"):
+                    if "num_active_clients" in self.conf["server_opt"]:
+                        active_clients = self.conf["server_opt"]["num_active_clients"]
+                    else:
+                        active_clients = 3
+                    M = M.T
+                    M_original = copy.deepcopy(M)
+                    selected_clients = []
+                    num_clients = len(results)
+                    while len(selected_clients) - active_clients < 0:
+                        M /= M.sum(axis=1, keepdims=True)
 
+                        index = np.random.choice(num_clients, p=M[0])
+                        selected_clients.append(index)
+
+                        with np.errstate(divide='ignore', invalid='ignore'):
+                            M /= np.linalg.norm(M, axis=0)
+                            M = np.nan_to_num(M, nan=0.0)
+                        client1 = np.copy(M[:, index])
+
+                        dot_products = np.dot(M.T, client1)
+                        for i in selected_clients:
+                            dot_products[i] = 1.0
+                        min_dot_product_index = np.argmin(dot_products)
+
+                        selected_clients.append(min_dot_product_index)
+                        client2 = np.copy(M[:, min_dot_product_index])
+
+                        M[:, index] = np.zeros(3)
+                        M[:, min_dot_product_index] = np.zeros(3)
+
+                        orthogonal_vector = np.cross(client1, client2)
+                        orthonormal_vector = orthogonal_vector / np.linalg.norm(orthogonal_vector)
+                        dot_products = np.dot(M.T, orthonormal_vector)
+                        for i in selected_clients:
+                            dot_products[i] = -1.0
+                        max_dot_product_index = np.argmax(dot_products)
+                        selected_clients.append(max_dot_product_index)
+                        M[:, max_dot_product_index] = np.zeros(3)
+                    counts = np.bincount(selected_clients, minlength=num_clients)
+                    client_weights = counts
+                    binary_arr = (counts > 0).astype(int)
                 if "smoothing" in self.conf["server_opt"]["weight_clients"]:
                     smoothing_value = 0.0001
                     if "weight_smoothing" in self.conf["server_opt"]:
