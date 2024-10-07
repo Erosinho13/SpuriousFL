@@ -24,6 +24,19 @@ def load_config(env_path="env.json", config_path="config.json"):
     return config
 
 
+def load_env_config(env_path, config):
+    with open(env_path, "r") as f:
+        env = yaml.safe_load(f)
+    if "paths" in config.keys():
+        for k, v in config["paths"].items():
+            if "root_path" in config.keys():
+                if v[: len(config["root_path"])] == config["root_path"]:
+                    v = v[len(config["root_path"]):]
+            config["paths"][k] = str(os.path.join(env["root_path"], v))
+    config.update(env)
+    return config
+
+
 def set_seed(random_seed):
     random.seed(random_seed)
     np.random.seed(random_seed)

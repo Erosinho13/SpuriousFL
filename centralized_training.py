@@ -1,20 +1,26 @@
 import argparse
-from datetime import datetime
-import os
 import copy
-import numpy as np
+import os
+from dataclasses import dataclass
+from datetime import datetime
+from typing import List, Optional
 
-from src.datasets.dataset_utils import concat_subsets
+import hydra
+import numpy as np
 import torch
 import wandb
+from hydra.core.config_store import ConfigStore
+from hydra.utils import to_absolute_path
+from omegaconf import OmegaConf
 
+import src.optimizers.optim_utils
 from src import utils
-from src.models import model_utils
 from src.datasets import data_preparation
 from src.datasets.data_preparation import subsample
+from src.datasets.dataset_utils import concat_subsets
+from src.models import model_utils
 from src.optimizers.dataloaders import WeightedDataLoader
-import src.optimizers.optim_utils
-from src.optimizers.subpopbench import ERM, get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
+from src.optimizers.subpopbench import ERM, get_sample_weights, get_subpop_optimizer, is_two_stage_optimizer
 
 
 def test_model(test_loader, model, device, conf, epoch, train_set=False):
@@ -31,7 +37,7 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
 
     print(f"{'Test' if not train_set else 'Train'} accuracy: {100 * correct / total}%")
     if conf["wandb"]:
-        key = 'test_accuracy' if not train_set else 'train_accuracy'
+        key = "test_accuracy" if not train_set else "train_accuracy"
         wandb.log({key: 100 * correct / total}, step=epoch)
     if not train_set:
         _, _, group_acc = src.optimizers.optim_utils.evaluate(model, test_loader, conf)
@@ -44,22 +50,18 @@ def train(conf, conf_path=None):
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
 
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
 
-    if 'local_training_id' in conf.keys():
+    if "local_training_id" in conf.keys():
         if conf["local_training_id"] is not None:
-            
-            ds_split = data_preparation.split_data(
-                    train_ds,
-                    conf
-                )
-            if conf["local_training_id"]=="all":
+
+            ds_split = data_preparation.split_data(train_ds, conf)
+            if conf["local_training_id"] == "all":
                 # Reconstruct one global dataset if data dropping happened
-                total_length = sum([len(ds) for ds in ds_split[:conf["num_clients"]]])
-                if len(train_ds)!=total_length:
+                total_length = sum([len(ds) for ds in ds_split[: conf["num_clients"]]])
+                if len(train_ds) != total_length:
                     train_ds = concat_subsets(ds_split, conf["num_clients"])
             else:
                 # Feature to do local training for one client's data only
@@ -70,9 +72,9 @@ def train(conf, conf_path=None):
     if conf["wandb"]:
         if "store_id" in conf.keys():
             if conf["store_id"]:
-                conf["run_id"] = conf_path.split('/')[-1].split('.')[0]
+                conf["run_id"] = conf_path.split("/")[-1].split(".")[0]
         else:
-            conf["run_id"] = conf_path.split('/')[-1].split('.')[0]
+            conf["run_id"] = conf_path.split("/")[-1].split(".")[0]
         wandb.init(
             project="spurious_FL",
             entity="predictive-analytics-lab",
@@ -80,23 +82,24 @@ def train(conf, conf_path=None):
             config=conf,
             id=conf["exp_id"],
             job_type="train",
-            reinit=True
+            reinit=True,
         )
 
     train_sample_weights = get_sample_weights(train_ds, conf)
-    train_loader = WeightedDataLoader(dataset=train_ds, weights=train_sample_weights,
-                                      batch_size=conf['batch_size'], shuffle=True)
-    eval_loader = WeightedDataLoader(dataset=eval_ds, batch_size=conf['batch_size'], shuffle=False)
-    test_loader = WeightedDataLoader(dataset=test_ds, batch_size=conf['batch_size'], shuffle=False)
+    train_loader = WeightedDataLoader(
+        dataset=train_ds, weights=train_sample_weights, batch_size=conf["batch_size"], shuffle=True
+    )
+    eval_loader = WeightedDataLoader(dataset=eval_ds, batch_size=conf["batch_size"], shuffle=False)
+    test_loader = WeightedDataLoader(dataset=test_ds, batch_size=conf["batch_size"], shuffle=False)
 
     # Shallow model training for Forgettable Examples
     if "FEx" in conf["client_opt"]["subpop_optimizer"]:
         #!TODO: train shallow model
         #!TODO: get forgetting accuracies
-        train_loader_1 = WeightedDataLoader(dataset=train_ds, weights=None,
-                                            batch_size=conf['batch_size'], shuffle=True)
-        train_loader_2 = WeightedDataLoader(dataset=train_ds, weights=train_sample_weights,
-                                            batch_size=conf['batch_size'], shuffle=False)
+        train_loader_1 = WeightedDataLoader(dataset=train_ds, weights=None, batch_size=conf["batch_size"], shuffle=True)
+        train_loader_2 = WeightedDataLoader(
+            dataset=train_ds, weights=train_sample_weights, batch_size=conf["batch_size"], shuffle=False
+        )
         shallow_conf = copy.deepcopy(conf)
         shallow_conf["model_type"] = conf["client_opt"]["fex_shallow_model"]
         shallow_conf["client_opt"]["subpop_optimizer"] = "ERM"
@@ -105,7 +108,7 @@ def train(conf, conf_path=None):
         print("Shallow model training for FEx (Forgettable examples)")
         opt = get_subpop_optimizer(shallow_model, train_ds, shallow_conf)
         correct_preds = None
-        for epoch in range(shallow_conf['epochs']):
+        for epoch in range(shallow_conf["epochs"]):
             shallow_model.train()
             running_loss = 0.0
             for indeces, images, (labels, groups) in train_loader_1:
@@ -151,13 +154,14 @@ def train(conf, conf_path=None):
         if conf["checkpoint"] is None:
             print("First stage training with ERM")
             opt = get_subpop_optimizer(model, train_ds, first_stage_conf)
-            for epoch in range(first_stage_conf['epochs']):
+            for epoch in range(first_stage_conf["epochs"]):
                 model.train()
                 running_loss = 0.0
                 for indeces, images, (labels, groups) in train_loader:
                     indeces = indeces.to(utils.get_device(first_stage_conf))
                     images, labels = images.to(utils.get_device(first_stage_conf)), labels.to(
-                        utils.get_device(first_stage_conf))
+                        utils.get_device(first_stage_conf)
+                    )
                     groups = groups.to(utils.get_device(first_stage_conf))
                     opt_out = opt.update((indeces, images, labels, groups), 1)
                     loss = opt_out["loss"]
@@ -173,13 +177,12 @@ def train(conf, conf_path=None):
     if conf["client_opt"]["subpop_optimizer"] == "DFR" or "FEx" in conf["client_opt"]["subpop_optimizer"]:
         # Subsample for 2nd stage training
         train_ds = subsample(train_ds, conf, accuracies=correct_preds)
-        train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
-                                          batch_size=conf['batch_size'], shuffle=True)
+        train_loader = WeightedDataLoader(dataset=train_ds, weights=None, batch_size=conf["batch_size"], shuffle=True)
     print("Dataset size:", len(train_ds))
     opt = get_subpop_optimizer(model, train_loader.dataset, conf)
     if is_two_stage_optimizer(conf):
         print("Trainable parameters:", model_utils.count_params(model, only_trainable=True))
-    for epoch in range(conf['epochs']):
+    for epoch in range(conf["epochs"]):
 
         model.train()
         running_loss = 0.0
@@ -195,50 +198,98 @@ def train(conf, conf_path=None):
 
         print(f"Epoch [{epoch + 1}/{conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
         if conf["wandb"]:
-            wandb.log({'train_loss': running_loss / len(train_loader)}, step=epoch)
+            wandb.log({"train_loss": running_loss / len(train_loader)}, step=epoch)
 
-        if (epoch + 1) % conf['eval_interval'] == 0:
+        if (epoch + 1) % conf["eval_interval"] == 0:
             test_model(eval_loader, model, device, conf, epoch, train_set=True)
 
-        if (epoch + 1) % conf['test_interval'] == 0:
+        if (epoch + 1) % conf["test_interval"] == 0:
             test_model(test_loader, model, device, conf, epoch)
 
-    test_model(test_loader, model, device, conf, conf['epochs'])
+    test_model(test_loader, model, device, conf, conf["epochs"])
 
-    save_path = os.path.join(
-        "checkpoints",
-        conf["exp_id"],
-        "final"
-    )
+    save_path = os.path.join("checkpoints", conf["exp_id"], "final")
     print("Saving model to %s", save_path)
     model_utils.save_model(model, save_path)
-    
+
     if conf["wandb"]:
         wandb.finish()
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description=""
-    )
-    parser.add_argument(
-        "--config_path",
-        type=str,
-        help="Config path",
-        default="config.yaml",
-    )
-    parser.add_argument(
-        "--env_path",
-        type=str,
-        help="Environment path",
-        default="env.yaml",
-    )
-    args = parser.parse_args()
-
-    conf = utils.load_config(config_path=args.config_path, env_path=args.env_path)
-    print(conf)
-    train(conf, conf_path=args.config_path)
+@dataclass
+class ClientOptConfig:
+    subpop_optimizer: str
+    base_optimizer: str
+    learning_rate: float
+    groupdro_eta: float
+    cbloss_beta: float
+    focal_gamma: int
+    dfr_reg: float
+    fex_shallow_model: str
+    fex_epochs: int
+    fex_balance_classes: bool
 
 
-if __name__ == '__main__':
+@dataclass
+class ServerOptConfig:
+    optimizer: str
+    learning_rate: float
+    beta_1: float
+    beta_2: float
+    tau: float
+    weight_clients: str
+
+
+@dataclass
+class DatasetConfig:
+    name: str
+    num_targets: int
+    num_groups: int
+
+
+@dataclass
+class ModelConfig:
+    model_type: str
+    norm_layer: str
+    pretrained: bool
+
+
+@dataclass
+class Config:
+    seed: int
+    data_shuffle_seed: Optional[int]
+    dirichlet_alpha: float
+    batch_size: int
+    epochs: int
+    rounds: int
+    num_clients: int
+    norm: bool
+    aug_crop: int
+    aug_horizontal_flip: bool
+    split_mode: str
+    client_opt: ClientOptConfig
+    server_opt: ServerOptConfig
+    wandb: bool
+    model_options: ModelConfig
+    dataset_options: DatasetConfig
+    checkpoint: Optional[str]
+    local_training_id: Optional[int]
+    env_path: str
+
+
+cs = ConfigStore.instance()
+cs.store(group="job", name="centralized_training", node=Config)
+
+
+@hydra.main(config_path="conf", config_name="centralized_training", version_base=None)
+def main(cfg: Config):
+    cfg.env_path = to_absolute_path(cfg.env_path)
+    conf = OmegaConf.to_container(cfg, resolve=True)
+    print(cfg)
+    if cfg.env_path:
+        conf = utils.load_env_config(cfg.env_path, conf)
+    train(conf)
+
+
+if __name__ == "__main__":
     main()

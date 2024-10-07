@@ -1,0 +1,45 @@
+defaults:
+  - job/centralized_training@_here_
+  - _self_
+
+seed: 42
+data_shuffle_seed: null
+dirichlet_alpha: 0.5
+batch_size: 32
+epochs: 1
+rounds: 10
+num_clients: 10
+norm: true
+aug_crop: 4
+aug_horizontal_flip: true
+split_mode: dirichlet
+client_opt:
+  subpop_optimizer: ERM
+  base_optimizer: SGD
+  learning_rate: 0.0316
+  groupdro_eta: 1e-2
+  cbloss_beta: 0.9999
+  focal_gamma: 1
+  dfr_reg: 0.1
+  fex_shallow_model: CNN
+  fex_epochs: 5
+  fex_balance_classes: true
+server_opt:
+  optimizer: FedAvgM
+  learning_rate: 0.316
+  beta_1: 0.9
+  beta_2: 0.99
+  tau: 0.000000001
+  weight_clients: same
+wandb: false
+model_options:
+  model_type: ResNet
+  norm_layer: gn
+  pretrained: false
+dataset_options:
+  name: CIFAR10
+  num_targets: 10
+  num_groups: 1
+checkpoint: null
+local_training_id: null
+env_path: env.yaml
