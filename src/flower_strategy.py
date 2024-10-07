@@ -22,7 +22,7 @@ from flwr.common import (
     parameters_to_ndarrays,
 )
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
-
+from sklearn.cluster import kmeans_plusplus
 from src.optimizers import subpop_federated 
 from src.utils import log
 from src.models import model_utils
@@ -355,6 +355,17 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     column_sums = M.sum(axis=0)  # Sum of each column
                     M_norm = M / column_sums 
                     sampled_row_ids = np.apply_along_axis(lambda col: np.random.choice(len(col), p=col), axis=0, arr=M_norm)
+                    counts = np.bincount(sampled_row_ids, minlength=len(results))
+                    binary_arr = (counts > 0).astype(int)
+                    client_weights = counts
+                if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_kmeans"):
+                    if "num_active_clients" in self.conf["server_opt"]:
+                        active_clients = self.conf["server_opt"]["num_active_clients"]
+                    else:
+                        active_clients = 3
+                    column_sums = M.sum(axis=0)  # Sum of each column
+                    M_norm = M / column_sums 
+                    _, sampled_row_ids = kmeans_plusplus(M_norm, active_clients)
                     counts = np.bincount(sampled_row_ids, minlength=len(results))
                     binary_arr = (counts > 0).astype(int)
                     client_weights = counts
