@@ -113,8 +113,9 @@ def train(conf, conf_path=None):
     most_populus_class = np.argmax(metadata["class_sizes"])
 
     ids_most_pop = [i for i,_,(y,s) in train_ds if y==most_populus_class]
-    prediction_ds = ModifiedDataset(train_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
-    spurious_ds = SubsetDataset(prediction_ds, ids_most_pop) # Filter for most populus class
+    # print(ids_most_pop)
+    spurious_ds = SubsetDataset(train_ds, ids_most_pop) # Filter for most populus class
+    spurious_ds = ModifiedDataset(spurious_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
     spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
                                       batch_size=conf['batch_size'], shuffle=True)
     print(len(ids_most_pop))
@@ -133,7 +134,7 @@ def train(conf, conf_path=None):
 
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
-    spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeight"
+    spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
     spurious_conf["epochs"] = 1
     spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
     spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class

@@ -74,10 +74,12 @@ class ModifiedDataset(Dataset, SubpopDataset):
 
 class SubsetDataset(Dataset, SubpopDataset):
     def __init__(self, dataset, indices):
-        self.dataset = dataset
-        self.indices = indices
-        
-
+        if isinstance(dataset, SubsetDataset):
+            self.indices = indices
+            self.dataset = dataset.dataset
+        else:
+            self.dataset = dataset
+            self.indices = indices
 
     def __getitem__(self, idx):
         actual_idx = self.indices[idx]
