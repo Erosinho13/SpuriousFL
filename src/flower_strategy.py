@@ -376,14 +376,15 @@ class MyStrategy(fl.server.strategy.FedOpt):
                         active_clients = 3
                     M = M.T
                     M_original = copy.deepcopy(M)
-                    np.random.shuffle(M_original)
-                    selected_clients = []
-                    num_clients = len(results)
-                    while len(selected_clients) - active_clients < 0:
+
+                    def select_3_clients(M, all_selected_clients, tolerance=1e-6):
+
+                        _selected_clients = []
+
                         M /= M.sum(axis=1, keepdims=True)
 
-                        index = np.random.choice(num_clients, p=M[0])
-                        selected_clients.append(index)
+                        index = np.random.choice(M.shape[1], p=M[0])
+                        _selected_clients.append(index)
 
                         with np.errstate(divide='ignore', invalid='ignore'):
                             M /= np.linalg.norm(M, axis=0)
@@ -391,11 +392,14 @@ class MyStrategy(fl.server.strategy.FedOpt):
                         client1 = np.copy(M[:, index])
 
                         dot_products = np.dot(M.T, client1)
-                        for i in selected_clients:
+                        for i in all_selected_clients + _selected_clients:
                             dot_products[i] = 1.0
-                        min_dot_product_index = np.argmin(dot_products)
 
-                        selected_clients.append(min_dot_product_index)
+                        min_value = np.min(dot_products)
+                        min_indices = np.where(np.abs(dot_products - min_value) <= tolerance)[0]
+                        min_dot_product_index = np.random.choice(min_indices)
+
+                        _selected_clients.append(min_dot_product_index)
                         client2 = np.copy(M[:, min_dot_product_index])
 
                         M[:, index] = np.zeros(3)
@@ -404,14 +408,37 @@ class MyStrategy(fl.server.strategy.FedOpt):
                         orthogonal_vector = np.cross(client1, client2)
                         orthonormal_vector = orthogonal_vector / np.linalg.norm(orthogonal_vector)
                         dot_products = np.dot(M.T, orthonormal_vector)
-                        for i in selected_clients:
+                        for i in all_selected_clients + _selected_clients:
                             dot_products[i] = -1.0
-                        max_dot_product_index = np.argmax(dot_products)
-                        selected_clients.append(max_dot_product_index)
+
+                        max_value = np.max(dot_products)
+                        max_indices = np.where(np.abs(dot_products - max_value) <= tolerance)[0]
+                        max_dot_product_index = np.random.choice(max_indices)
+
+                        _selected_clients.append(max_dot_product_index)
                         M[:, max_dot_product_index] = np.zeros(3)
 
-                        M_original = M_original[[2, 0, 1], :]
-                        M = M_original.copy()
+                        M = M[[2, 0, 1], :]
+
+                        return _selected_clients, M
+
+                    def select_clients(original_M, p):
+
+                        indices = np.random.permutation(original_M.shape[0])
+                        original_M = original_M[indices]
+
+                        _selected_clients = []
+                        np.random.shuffle(original_M)
+                        M = original_M.copy()
+
+                        while len(_selected_clients) - p < 0:
+                            three_new_clients, M = select_3_clients(M, _selected_clients)
+                            _selected_clients += three_new_clients
+
+                        return _selected_clients
+
+                    selected_clients = select_clients(M_original, active_clients)
+                    num_clients = len(results)
 
                     counts = np.bincount(selected_clients, minlength=num_clients)
                     client_weights = counts
