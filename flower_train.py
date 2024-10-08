@@ -6,12 +6,24 @@ import flwr as fl
 from flwr.common import ndarrays_to_parameters
 import os
 
+import hydra
+from hydra.core.config_store import ConfigStore
+from hydra.core.hydra_config import HydraConfig
+from hydra.utils import to_absolute_path
+from omegaconf import OmegaConf
+from dataclasses import dataclass
+from typing import List, Optional
+
+
 # Own modules
 from src import utils
 from src.datasets import data_preparation
 from src.models import model_utils
 from src.flower_strategy import MyStrategy
 from src.flower_client import FlowerClient
+
+
+
 
 global conf
 global ds_split
@@ -30,7 +42,7 @@ def client_fn(cid: str) -> fl.client.Client:
     return client.to_client()
 
 
-def train(conf_path=None):
+def train(conf, conf_name):
     """Flower training simulation using global config"""
     global ds_split
     global val_ds
@@ -56,7 +68,7 @@ def train(conf_path=None):
         import wandb
         if "store_id" in conf.keys():
             if conf["store_id"]:
-                conf["run_id"] = conf_path.split('/')[-1].split('.')[0]
+                conf["run_id"] = conf_name.split('.')[0]
         wandb.init(
             project="spurious_FL",
             entity="predictive-analytics-lab",
@@ -93,8 +105,8 @@ def train(conf_path=None):
         num_clients=conf["num_clients"],
         config=fl.server.ServerConfig(num_rounds=conf["rounds"]),
         strategy=strategy,
-        ray_init_args=conf["ray_init_args"],
-        client_resources=conf["client_resources"],
+        ray_init_args=conf["machine"]["ray_init_args"],
+        client_resources=conf["machine"]["client_resources"],
     )
     if conf["wandb"]:
         wandb.finish()
@@ -110,25 +122,79 @@ def train(conf_path=None):
     return model
 
 
-if __name__ == "__main__":
-    # Instantiate the parser
-    parser = argparse.ArgumentParser(
-        description=""
-    )
-    parser.add_argument(
-        "--config_path",
-        type=str,
-        help="Config path",
-        default="config.yaml",
-    )
-    parser.add_argument(
-        "--env_path",
-        type=str,
-        help="Environment path",
-        default="env.yaml",
-    )
-    args = parser.parse_args()
+@dataclass
+class ClientOptConfig:
+    subpop_optimizer: str
+    base_optimizer: str
+    learning_rate: float
+    groupdro_eta: float
+    cbloss_beta: float
+    focal_gamma: int
+    dfr_reg: float
+    fex_shallow_model: str
+    fex_epochs: int
+    fex_balance_classes: bool
 
-    conf = utils.load_config(config_path=args.config_path, env_path=args.env_path)
+
+@dataclass
+class ServerOptConfig:
+    optimizer: str
+    learning_rate: float
+    beta_1: float
+    beta_2: float
+    tau: float
+    weight_clients: str
+
+
+@dataclass
+class DatasetConfig:
+    name: str
+    num_targets: int
+    num_groups: int
+
+
+@dataclass
+class ModelConfig:
+    model_type: str
+    norm_layer: str
+    pretrained: bool
+
+
+@dataclass
+class Config:
+    seed: int
+    data_shuffle_seed: Optional[int]
+    dirichlet_alpha: float
+    batch_size: int
+    epochs: int
+    rounds: int
+    num_clients: int
+    norm: bool
+    aug_crop: int
+    aug_horizontal_flip: bool
+    split_mode: str
+    client_opt: ClientOptConfig
+    server_opt: ServerOptConfig
+    wandb: bool
+    model_options: ModelConfig
+    dataset_options: DatasetConfig
+    checkpoint: Optional[str]
+    local_training_id: Optional[int]
+
+
+cs = ConfigStore.instance()
+cs.store(group="job", name="centralized_training", node=Config)
+
+
+@hydra.main(config_path="conf", config_name="federated_training", version_base=None)
+def main(cfg: Config):
+    global conf
+    hydra_cfg = HydraConfig.get()
+    conf_name = hydra_cfg.job.config_name
+    conf = OmegaConf.to_container(cfg, resolve=True)
     print(conf)
-    train(conf_path=args.config_path)
+    train(conf, conf_name=conf_name)
+
+
+if __name__ == "__main__":
+    main()

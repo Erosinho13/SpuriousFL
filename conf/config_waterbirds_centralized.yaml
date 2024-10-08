@@ -1,3 +1,6 @@
+defaults:
+ - machine: env
+
 seed: 42
 data_shuffle_seed : null
 dirichlet_alpha: 0.5
@@ -41,4 +44,3 @@ eval_interval: 1
 test_interval: 1
 checkpoint: null
 local_training_id: null
-env_path: env.yaml

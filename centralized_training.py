@@ -275,7 +275,6 @@ class Config:
     dataset_options: DatasetConfig
     checkpoint: Optional[str]
     local_training_id: Optional[int]
-    env_path: str
 
 
 cs = ConfigStore.instance()
@@ -286,10 +285,7 @@ cs.store(group="job", name="centralized_training", node=Config)
 def main(cfg: Config):
     hydra_cfg = HydraConfig.get()
     conf_name = hydra_cfg.job.config_name
-    cfg.env_path = to_absolute_path(cfg.env_path)
     conf = OmegaConf.to_container(cfg, resolve=True)
-    if cfg.env_path:
-        conf = utils.load_env_config(cfg.env_path, conf)
     print(conf)
     train(conf, conf_name=conf_name)
 

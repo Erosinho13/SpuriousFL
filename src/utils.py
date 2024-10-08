@@ -95,10 +95,10 @@ def get_cpu():
 
 def get_device(conf):
     """Check gpu availability in environment config"""
-    if len(conf["CUDA_VISIBLE_DEVICES"]) > 0:
-        if "client_resources" in conf.keys() and conf["client_resources"] is not None:
-            if "num_gpus" in conf["client_resources"].keys():
-                if conf["client_resources"]["num_gpus"] > 0:
+    if "machine" in conf.keys() and len(conf["machine"]["CUDA_VISIBLE_DEVICES"]) > 0:
+        if "client_resources" in conf["machine"].keys() and conf["machine"]["client_resources"] is not None:
+            if "num_gpus" in conf["machine"]["client_resources"].keys():
+                if conf["machine"]["client_resources"]["num_gpus"] > 0:
                     device = torch.device("cuda")
                     return device
     return get_cpu()

@@ -1,6 +1,7 @@
 defaults:
   - job/centralized_training@_here_
   - _self_
+  - machine: env
 
 seed: 42
 data_shuffle_seed: null
@@ -42,4 +43,3 @@ dataset_options:
   num_groups: 1
 checkpoint: null
 local_training_id: null
-env_path: env.yaml
