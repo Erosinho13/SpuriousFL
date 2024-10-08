@@ -10,6 +10,7 @@ import numpy as np
 import torch
 import wandb
 from hydra.core.config_store import ConfigStore
+from hydra.core.hydra_config import HydraConfig
 from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
 
@@ -45,7 +46,7 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
         wandb.log(group_acc, step=epoch)
 
 
-def train(conf, conf_path=None):
+def train(conf, conf_name=None):
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
@@ -72,9 +73,9 @@ def train(conf, conf_path=None):
     if conf["wandb"]:
         if "store_id" in conf.keys():
             if conf["store_id"]:
-                conf["run_id"] = conf_path.split("/")[-1].split(".")[0]
+                conf["run_id"] = conf_name.split(".")[0]
         else:
-            conf["run_id"] = conf_path.split("/")[-1].split(".")[0]
+            conf["run_id"] = conf_name.split(".")[0]
         wandb.init(
             project="spurious_FL",
             entity="predictive-analytics-lab",
@@ -283,12 +284,14 @@ cs.store(group="job", name="centralized_training", node=Config)
 
 @hydra.main(config_path="conf", config_name="centralized_training", version_base=None)
 def main(cfg: Config):
+    hydra_cfg = HydraConfig.get()
+    conf_name = hydra_cfg.job.config_name
     cfg.env_path = to_absolute_path(cfg.env_path)
     conf = OmegaConf.to_container(cfg, resolve=True)
-    print(cfg)
     if cfg.env_path:
         conf = utils.load_env_config(cfg.env_path, conf)
-    train(conf)
+    print(conf)
+    train(conf, conf_name=conf_name)
 
 
 if __name__ == "__main__":

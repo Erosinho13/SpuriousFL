@@ -41,3 +41,4 @@ eval_interval: 1
 test_interval: 1
 checkpoint: null
 local_training_id: null
+env_path: env.yaml

@@ -40,3 +40,4 @@ test_interval: 1
 wandb: true
 checkpoint: null
 local_training_id: null
+env_path: env.yaml

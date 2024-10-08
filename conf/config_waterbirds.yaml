@@ -27,7 +27,7 @@ server_opt:
     beta_1: 0.9
     beta_2: 0.99
     tau: 0.000000001
-    weight_clients: server_post_triplets_stochasticmatrix_smoothing
+    weight_clients: server_post_triplets_stochasticmatrix_noreplacement
 wandb: false
 model_options:
     model_type: ResNet
@@ -39,3 +39,4 @@ dataset_options:
     num_groups: 2
 checkpoint: null
 local_training_id: null
+env_path: env.yaml
