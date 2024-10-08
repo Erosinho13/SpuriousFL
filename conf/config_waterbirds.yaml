@@ -3,6 +3,9 @@ defaults:
   - _self_
   - machine: env
   - client_opt: all_defaults
+  - server_opt: all_defaults
+  - dataset_options: waterbirds
+  - model_options: resnet
 seed: 42
 data_shuffle_seed : null
 dirichlet_alpha: 0.5
@@ -17,20 +20,9 @@ split_mode: balancedclients
 client_opt:
     subpop_optimizer: ERM
 server_opt:
-    optimizer: FedAvg
-    learning_rate: 0.1
-    beta_1: 0.9
-    beta_2: 0.99
-    tau: 0.000000001
     weight_clients: server_post_triplets_stochasticmatrix_noreplacement
 wandb: false
-model_options:
-    model_type: ResNet
-    norm_layer: gn
 dataset_options:
-    name: WaterBirds
     input_size: 16
-    num_targets: 2
-    num_groups: 2
 checkpoint: null
 local_training_id: null

@@ -25,6 +25,7 @@ class ServerOptConfig:
     beta_2: float
     tau: float
     weight_clients: str
+    weight_list: Optional[List]
 
 
 @dataclass
@@ -39,7 +40,7 @@ class DatasetConfig:
 class ModelConfig:
     model_type: str
     norm_layer: str
-    pretrained: bool
+    pretrained: Optional[bool]
 
 @dataclass
 class EnvironmentConfig:

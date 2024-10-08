@@ -1,0 +1,4 @@
+name: WaterBirds
+input_size: 224
+num_targets: 2
+num_groups: 2

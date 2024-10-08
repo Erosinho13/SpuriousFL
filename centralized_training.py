@@ -218,6 +218,9 @@ def train(conf, conf_name=None):
         wandb.finish()
 
 
+cs = ConfigStore.instance()
+cs.store(group="job", name="centralized_training", node=Config)
+
 @hydra.main(config_path="conf", config_name="centralized_training", version_base=None)
 def main(cfg: Config):
     hydra_cfg = HydraConfig.get()

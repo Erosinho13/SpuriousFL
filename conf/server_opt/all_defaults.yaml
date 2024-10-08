@@ -1,0 +1,7 @@
+optimizer: FedAvg
+learning_rate: 0.1
+beta_1: 0.9
+beta_2: 0.99
+tau: 0.000000001
+weight_clients: same
+weight_list: []
