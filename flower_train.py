@@ -134,6 +134,7 @@ class ClientOptConfig:
     fex_shallow_model: str
     fex_epochs: int
     fex_balance_classes: bool
+    momentum: float
 
 
 @dataclass
@@ -151,6 +152,7 @@ class DatasetConfig:
     name: str
     num_targets: int
     num_groups: int
+    input_size: Optional[int]
 
 
 @dataclass
@@ -159,6 +161,12 @@ class ModelConfig:
     norm_layer: str
     pretrained: bool
 
+@dataclass
+class EnvironmentConfig:
+    root_path: str
+    ray_init_args: dict
+    client_resources : dict
+    CUDA_VISIBLE_DEVICES : str
 
 @dataclass
 class Config:
@@ -180,10 +188,11 @@ class Config:
     dataset_options: DatasetConfig
     checkpoint: Optional[str]
     local_training_id: Optional[int]
+    machine: Optional[EnvironmentConfig]
 
 
 cs = ConfigStore.instance()
-cs.store(group="job", name="centralized_training", node=Config)
+cs.store(group="job", name="federated_training", node=Config)
 
 
 @hydra.main(config_path="conf", config_name="federated_training", version_base=None)
