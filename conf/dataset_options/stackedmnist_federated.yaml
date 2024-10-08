@@ -1,0 +1,25 @@
+name: StackedMNIST
+root: 'datasets/'
+num_train_images: 60000
+num_test_images: 10000
+num_targets: 2
+num_groups: 2
+prevent_class_shuffling: False
+prevent_group_shuffling: False
+dirichlet_targets_alpha: 1.0
+dirichlet_groups_alpha: 1.0
+uniform_targets: True
+uniform_groups: True
+force_targets:
+- 23
+- 45
+force_groups:
+- 0
+- 1
+force_targets_proportions: null
+force_groups_proportions: null
+force_proportions:
+- - 0.05
+  - 0.45
+- - 0.45
+  - 0.05

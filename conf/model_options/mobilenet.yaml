@@ -1,0 +1,2 @@
+model_type: MobileNet
+norm_layer: gn

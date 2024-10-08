@@ -1,43 +1,17 @@
+defaults:
+  - machine: env
+  - client_opt: all_defaults
+  - server_opt: all_defaults
+  - model_options: mobilenet
+  - dataset_options: stackedmnist_centralized
 seed: 42
 data_shuffle_seed : null  # TODO: check
 dataset_options:
-    name: StackedMNIST
     root: '/home/efani/DATASETS'
-    num_train_images: 60000
-    num_test_images: 10000
-    num_targets: 100
-    num_groups: 10
-    prevent_class_shuffling: False
-    prevent_group_shuffling: False
-    dirichlet_targets_alpha: 1000.0
-    dirichlet_groups_alpha: 100.0
-    uniform_targets: True
-    uniform_groups: True
-    force_targets: null
-    force_groups: null
-    force_targets_proportions: null
-    force_groups_proportions: null
-    force_proportions: null
 batch_size: 32
 epochs: 100
-client_opt:
-    subpop_optimizer: ERM
-    base_optimizer: SGD
-    learning_rate: 0.01
-    momentum: 0.9
-    groupdro_eta: 1e-2
-    cbloss_beta: 0.9999
-    focal_gamma: 1
-    dfr_reg: 0.1
-    fex_shallow_model: CNN
-    fex_epochs: 5
-    fex_balance_classes: true
-model_options:
-    model_type: MobileNet
-    norm_layer: gn
 eval_interval: 1
 test_interval: 1
 wandb: true
 checkpoint: null
 local_training_id: null
-env_path: env.yaml

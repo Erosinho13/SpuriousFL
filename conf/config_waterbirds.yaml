@@ -1,6 +1,4 @@
 defaults:
-  - job/federated_training@_here_
-  - _self_
   - machine: env
   - client_opt: all_defaults
   - server_opt: all_defaults
