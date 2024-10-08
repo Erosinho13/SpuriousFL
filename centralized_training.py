@@ -13,6 +13,7 @@ from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
+from src.config_params import Config
 
 import src.optimizers.optim_utils
 from src import utils
@@ -215,70 +216,6 @@ def train(conf, conf_name=None):
 
     if conf["wandb"]:
         wandb.finish()
-
-
-@dataclass
-class ClientOptConfig:
-    subpop_optimizer: str
-    base_optimizer: str
-    learning_rate: float
-    groupdro_eta: float
-    cbloss_beta: float
-    focal_gamma: int
-    dfr_reg: float
-    fex_shallow_model: str
-    fex_epochs: int
-    fex_balance_classes: bool
-
-
-@dataclass
-class ServerOptConfig:
-    optimizer: str
-    learning_rate: float
-    beta_1: float
-    beta_2: float
-    tau: float
-    weight_clients: str
-
-
-@dataclass
-class DatasetConfig:
-    name: str
-    num_targets: int
-    num_groups: int
-
-
-@dataclass
-class ModelConfig:
-    model_type: str
-    norm_layer: str
-    pretrained: bool
-
-
-@dataclass
-class Config:
-    seed: int
-    data_shuffle_seed: Optional[int]
-    dirichlet_alpha: float
-    batch_size: int
-    epochs: int
-    rounds: int
-    num_clients: int
-    norm: bool
-    aug_crop: int
-    aug_horizontal_flip: bool
-    split_mode: str
-    client_opt: ClientOptConfig
-    server_opt: ServerOptConfig
-    wandb: bool
-    model_options: ModelConfig
-    dataset_options: DatasetConfig
-    checkpoint: Optional[str]
-    local_training_id: Optional[int]
-
-
-cs = ConfigStore.instance()
-cs.store(group="job", name="centralized_training", node=Config)
 
 
 @hydra.main(config_path="conf", config_name="centralized_training", version_base=None)
