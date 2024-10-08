@@ -376,6 +376,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                         active_clients = 3
                     M = M.T
                     M_original = copy.deepcopy(M)
+                    np.random.shuffle(M_original)
                     selected_clients = []
                     num_clients = len(results)
                     while len(selected_clients) - active_clients < 0:
@@ -408,6 +409,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
                         max_dot_product_index = np.argmax(dot_products)
                         selected_clients.append(max_dot_product_index)
                         M[:, max_dot_product_index] = np.zeros(3)
+
+                        M_original = M_original[[2, 0, 1], :]
+                        M = M_original.copy()
+
                     counts = np.bincount(selected_clients, minlength=num_clients)
                     client_weights = counts
                     binary_arr = (counts > 0).astype(int)
