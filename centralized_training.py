@@ -89,18 +89,18 @@ def train(conf, conf_name=None):
 
     train_sample_weights = get_sample_weights(train_ds, conf)
     train_loader = WeightedDataLoader(
-        dataset=train_ds, weights=train_sample_weights, batch_size=conf["batch_size"], shuffle=True
+        dataset=train_ds, weights=train_sample_weights, batch_size=conf["client_opt"]["batch_size"], shuffle=True
     )
-    eval_loader = WeightedDataLoader(dataset=eval_ds, batch_size=conf["batch_size"], shuffle=False)
-    test_loader = WeightedDataLoader(dataset=test_ds, batch_size=conf["batch_size"], shuffle=False)
+    eval_loader = WeightedDataLoader(dataset=eval_ds, batch_size=conf["client_opt"]["batch_size"], shuffle=False)
+    test_loader = WeightedDataLoader(dataset=test_ds, batch_size=conf["client_opt"]["batch_size"], shuffle=False)
 
     # Shallow model training for Forgettable Examples
     if "FEx" in conf["client_opt"]["subpop_optimizer"]:
         #!TODO: train shallow model
         #!TODO: get forgetting accuracies
-        train_loader_1 = WeightedDataLoader(dataset=train_ds, weights=None, batch_size=conf["batch_size"], shuffle=True)
+        train_loader_1 = WeightedDataLoader(dataset=train_ds, weights=None, batch_size=conf["client_opt"]["batch_size"], shuffle=True)
         train_loader_2 = WeightedDataLoader(
-            dataset=train_ds, weights=train_sample_weights, batch_size=conf["batch_size"], shuffle=False
+            dataset=train_ds, weights=train_sample_weights, batch_size=conf["client_opt"]["batch_size"], shuffle=False
         )
         shallow_conf = copy.deepcopy(conf)
         shallow_conf["model_type"] = conf["client_opt"]["fex_shallow_model"]
@@ -179,7 +179,7 @@ def train(conf, conf_name=None):
     if conf["client_opt"]["subpop_optimizer"] == "DFR" or "FEx" in conf["client_opt"]["subpop_optimizer"]:
         # Subsample for 2nd stage training
         train_ds = subsample(train_ds, conf, accuracies=correct_preds)
-        train_loader = WeightedDataLoader(dataset=train_ds, weights=None, batch_size=conf["batch_size"], shuffle=True)
+        train_loader = WeightedDataLoader(dataset=train_ds, weights=None, batch_size=conf["client_opt"]["batch_size"], shuffle=True)
     print("Dataset size:", len(train_ds))
     opt = get_subpop_optimizer(model, train_loader.dataset, conf)
     if is_two_stage_optimizer(conf):

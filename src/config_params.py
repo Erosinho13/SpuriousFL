@@ -15,6 +15,7 @@ class ClientOptConfig:
     fex_epochs: int
     fex_balance_classes: bool
     momentum: float
+    batch_size: int
 
 
 @dataclass
@@ -34,6 +35,8 @@ class DatasetConfig:
     num_targets: int
     num_groups: int
     input_size: Optional[int]
+    data_shuffle_seed: Optional[int]
+    dirichlet_alpha: Optional[float]
 
 
 @dataclass
@@ -52,9 +55,6 @@ class EnvironmentConfig:
 @dataclass
 class Config:
     seed: int
-    data_shuffle_seed: Optional[int]
-    dirichlet_alpha: float
-    batch_size: int
     epochs: int
     rounds: int
     num_clients: int

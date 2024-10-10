@@ -58,7 +58,7 @@ def train(conf, conf_path=None):
     # Train ERM for a few epoch
     print("Pre-train with ERM")
     train_loader = WeightedDataLoader(dataset=train_ds, weights=None,
-                                      batch_size=conf['batch_size'], shuffle=True)
+                                      batch_size=conf['client_opt']['batch_size'], shuffle=True)
     
 
     erm_conf = copy.deepcopy(conf)
@@ -85,7 +85,7 @@ def train(conf, conf_path=None):
     # Get biased predictions
     print("Get biased predictions")
     train_loader_seq = WeightedDataLoader(dataset=train_ds, weights=None,
-                                          batch_size=conf['batch_size'], shuffle=False)
+                                          batch_size=conf['client_opt']['batch_size'], shuffle=False)
     
     def predict_biased(indeces, images, labels, groups, predicted, outdict):
         if "biased_predictions" not in outdict:
@@ -117,7 +117,7 @@ def train(conf, conf_path=None):
     spurious_ds = SubsetDataset(train_ds, ids_most_pop) # Filter for most populus class
     spurious_ds = ModifiedDataset(spurious_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
     spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
-                                      batch_size=conf['batch_size'], shuffle=True)
+                                      batch_size=conf['client_opt']['batch_size'], shuffle=True)
     print(len(ids_most_pop))
 
     #print(metadata.keys())
@@ -153,7 +153,7 @@ def train(conf, conf_path=None):
 
     groups_ds = ModifiedDataset(train_ds, use_groups=True) # Swap label to pred
     group_loader_seq = WeightedDataLoader(dataset=groups_ds, weights=None,
-                                          batch_size=conf['batch_size'], shuffle=False)
+                                          batch_size=conf['client_opt']['batch_size'], shuffle=False)
     loss, accuracy, group_accuracies, extra_dict = optim_utils.evaluate(spurious_model,
                                                                         group_loader_seq,
                                                                         spurious_conf,

@@ -123,7 +123,7 @@ def preprocess_data(data, conf, shuffle=True):
     """From dataset to dataloader in PyTorch
     Transforms, augmentations, etc. are now stored in the dataset"""
     ds = WeightedDataLoader(
-        data, batch_size=conf["batch_size"], shuffle=shuffle
+        data, batch_size=conf["client_opt"]["batch_size"], shuffle=shuffle
     )
     return ds
 

@@ -7,7 +7,6 @@ defaults:
 seed: 42
 dataset_options:
     root: '/home/efani/DATASETS'
-batch_size: 32
 epochs: 100
 eval_interval: 1
 test_interval: 1
