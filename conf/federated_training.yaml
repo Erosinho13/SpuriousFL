@@ -9,7 +9,7 @@ defaults:
 seed: 42
 client_opt:
   batch_size: 32
-epochs: 1
+  epochs: 1
 rounds: 10
 num_clients: 10
 norm: true
