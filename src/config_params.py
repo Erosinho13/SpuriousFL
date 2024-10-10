@@ -22,6 +22,7 @@ class ClientOptConfig:
 @dataclass
 class ServerOptConfig:
     optimizer: str
+    rounds: int
     learning_rate: float
     beta_1: float
     beta_2: float
@@ -35,9 +36,15 @@ class DatasetConfig:
     name: str
     num_targets: int
     num_groups: int
+    norm: bool
+    aug_crop: int
+    aug_horizontal_flip: bool
+    num_clients: int
+    split_mode: str
     input_size: Optional[int]
     data_shuffle_seed: Optional[int]
     dirichlet_alpha: Optional[float]
+    local_training_id: Optional[int]
 
 
 @dataclass
@@ -56,17 +63,10 @@ class EnvironmentConfig:
 @dataclass
 class Config:
     seed: int
-    rounds: int
-    num_clients: int
-    norm: bool
-    aug_crop: int
-    aug_horizontal_flip: bool
-    split_mode: str
     client_opt: ClientOptConfig
     server_opt: ServerOptConfig
     wandb: bool
     model_options: ModelConfig
     dataset_options: DatasetConfig
     checkpoint: Optional[str]
-    local_training_id: Optional[int]
     machine: Optional[EnvironmentConfig]
