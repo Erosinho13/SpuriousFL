@@ -140,8 +140,8 @@ def split_data(ds, conf):
             split_mode=conf["split_mode"],
             mode="clients",
             distribution_seed=conf["seed"],
-            shuffle_seed=conf["data_shuffle_seed"],
-            dirichlet_alpha=conf["dirichlet_alpha"],
+            shuffle_seed=conf["dataset_options"]["data_shuffle_seed"],
+            dirichlet_alpha=conf["dataset_options"]["dirichlet_alpha"],
         )
         
     elif dataset_mode == "WaterBirds":

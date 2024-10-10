@@ -7,8 +7,6 @@ defaults:
   - model_options: resnet
   - dataset_options: cifar10
 seed: 42
-data_shuffle_seed : null
-dirichlet_alpha: 0.5
 batch_size: 32
 epochs: 1
 rounds: 10

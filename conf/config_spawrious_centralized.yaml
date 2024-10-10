@@ -5,8 +5,6 @@ defaults:
   - model_options: resnet
   - dataset_options: spawrious
 seed: 42
-data_shuffle_seed : null
-dirichlet_alpha: 0.5
 batch_size: 16
 epochs: 4
 rounds: 10

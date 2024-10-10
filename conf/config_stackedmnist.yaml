@@ -5,7 +5,6 @@ defaults:
   - model_options: mobilenet
   - dataset_options: stackedmnist_federated
 seed: 42
-data_shuffle_seed : null  # TODO: check
 dataset_options:
     root: '/home/efani/DATASETS'
 split_mode: mode3
