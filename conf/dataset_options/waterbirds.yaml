@@ -6,3 +6,5 @@ norm: true
 aug_crop: 24
 aug_horizontal_flip: true
 local_training_id: null
+split_mode: homogen
+num_clients: 4

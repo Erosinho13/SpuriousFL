@@ -10,8 +10,6 @@ defaults:
 seed: 42
 client_opt:
   epochs: 200
-num_clients: 10
-split_mode: dirichlet
 server_opt:
   optimizer: FedAvgM
 wandb: false

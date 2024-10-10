@@ -12,6 +12,7 @@ client_opt:
   epochs: 1
 server_opt:
   rounds: 200
-num_clients: 10
-split_mode: dirichlet
+dataset_options:
+  num_clients: 4
+  split_mode: homogen
 checkpoint: null

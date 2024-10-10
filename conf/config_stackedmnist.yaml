@@ -6,14 +6,14 @@ defaults:
   - dataset_options: stackedmnist_federated
 seed: 42
 dataset_options:
-    root: '/home/efani/DATASETS'
-split_mode: mode3
+  root: '/home/efani/DATASETS'
+  split_mode: mode3
+  num_clients: 20
 #uniform_proportion: 0.2
 client_opt:
   epochs: 1
 server_opt:
   rounds: 1000
-num_clients: 20
 wandb: true
 store_id: true
 checkpoint: null

@@ -9,11 +9,9 @@ client_opt:
   epochs: 4
 server_opt:
   rounds: 10
-num_clients: 4
-split_mode: sameratio
 wandb: true
 dataset_options:
-    input_size: 16
+  input_size: 16
 eval_interval: 1
 test_interval: 1
 checkpoint: null

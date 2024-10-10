@@ -271,15 +271,13 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
 def split_data_waterbirds(ds, conf):
     """Split data in X,Y between 'num_clients' number of clients"""
 
-    # if conf["num_clients"]!=4:
-    #    raise NotImplementedError("Only 4 clients for now!")
-    
     ids_by_groups = get_spurious_group_idx(ds)
     for k in ids_by_groups.keys():
         for l in ids_by_groups[k].keys():
             print(k,l,len(ids_by_groups[k][l]))
-    idx_split = get_envs(ids_by_groups, split_mode=conf["split_mode"], seed=conf["seed"])
+    idx_split = get_envs(ids_by_groups, split_mode=conf["dataset_options"]["split_mode"], seed=conf["seed"])
     ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
+    assert len(ds_split) == conf["dataset_options"]["num_clients"]
     for ds in ds_split:
         print(count_groups(ds, False, 2, 2)["group_sizes"])
     return ds_split

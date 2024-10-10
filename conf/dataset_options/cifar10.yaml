@@ -7,3 +7,5 @@ norm: true
 aug_crop: 4
 aug_horizontal_flip: true
 local_training_id: null
+split_mode: dirichlet
+num_clients: 10

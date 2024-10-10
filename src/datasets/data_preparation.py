@@ -136,8 +136,8 @@ def split_data(ds, conf):
     if dataset_mode == 'CIFAR10':
         return cifar_split_data(
             ds,
-            conf["num_clients"],
-            split_mode=conf["split_mode"],
+            conf["dataset_options"]["num_clients"],
+            split_mode=conf["dataset_options"]["split_mode"],
             mode="clients",
             distribution_seed=conf["seed"],
             shuffle_seed=conf["dataset_options"]["data_shuffle_seed"],
@@ -152,8 +152,8 @@ def split_data(ds, conf):
     elif dataset_mode == "StackedMNIST":
         ds_split = \
             split_stackedmnist_data(
-                ds, conf['split_mode'], conf['num_clients'],
-                uniform_proportion=conf['uniform_proportion'] if 'uniform_proportion' in conf.keys() else 0
+                ds, conf['dataset_options']['split_mode'], conf['dataset_options']['num_clients'],
+                uniform_proportion=conf['dataset_options']['uniform_proportion'] if 'uniform_proportion' in conf['dataset_options'].keys() else 0
             )
     elif dataset_mode == "Spawrious":
         ds_split = split_data_spawrious(

@@ -9,8 +9,6 @@ client_opt:
   epochs: 4
 server_opt:
   rounds: 10
-num_clients: 4
-split_mode: homogen
 wandb: true
 dataset_options:
     input_size: 16

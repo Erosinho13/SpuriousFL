@@ -24,3 +24,5 @@ force_proportions:
 - - 0.45
   - 0.05
 local_training_id: null
+split_mode: mode3
+num_clients: 20
