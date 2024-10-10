@@ -9,9 +9,6 @@ client_opt:
   epochs: 4
 rounds: 10
 num_clients: 4
-norm: true
-aug_crop: 24
-aug_horizontal_flip: true
 split_mode: sameratio
 wandb: true
 dataset_options:

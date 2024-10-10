@@ -95,14 +95,14 @@ def data_transforms_spawrious(conf={}):
     if input_size != 224:
         train_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
         test_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
-    if conf["aug_crop"] > 0:
-        train_tr_list.append(torchvision.transforms.RandomCrop(input_size, padding=conf['aug_crop']))
-    if conf["aug_horizontal_flip"]:
+    if conf["dataset_options"]["aug_crop"] > 0:
+        train_tr_list.append(torchvision.transforms.RandomCrop(input_size, padding=conf["dataset_options"]['aug_crop']))
+    if conf["dataset_options"]["aug_horizontal_flip"]:
         train_tr_list.append(torchvision.transforms.RandomHorizontalFlip())
     train_tr_list.append(torchvision.transforms.ToTensor())
     test_tr_list.append(torchvision.transforms.ToTensor())
 
-    if conf["norm"]:
+    if conf["dataset_options"]["norm"]:
         raise NotImplementedError("Get norms")
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 

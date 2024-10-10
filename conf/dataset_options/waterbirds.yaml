@@ -2,3 +2,6 @@ name: WaterBirds
 input_size: 224
 num_targets: 2
 num_groups: 2
+norm: true
+aug_crop: 24
+aug_horizontal_flip: true

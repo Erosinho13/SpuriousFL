@@ -43,9 +43,9 @@ def data_transforms_waterbirds(conf={}):
         torchvision.transforms.Resize((int(input_size * (256 / input_size)), int(input_size * (256 / input_size)),), interpolation=torchvision.transforms.InterpolationMode.BILINEAR),
         torchvision.transforms.CenterCrop(input_size),
     ]
-    if conf["aug_crop"] > 0:
-        train_tr_list.append(torchvision.transforms.RandomCrop(input_size, padding=conf['aug_crop']))
-    if conf["aug_horizontal_flip"]:
+    if conf["dataset_options"]["aug_crop"] > 0:
+        train_tr_list.append(torchvision.transforms.RandomCrop(input_size, padding=conf["dataset_options"]['aug_crop']))
+    if conf["dataset_options"]["aug_horizontal_flip"]:
         train_tr_list.append(torchvision.transforms.RandomHorizontalFlip())
     train_tr_list.append(torchvision.transforms.ToTensor())
     test_tr_list = [
@@ -54,7 +54,7 @@ def data_transforms_waterbirds(conf={}):
         torchvision.transforms.ToTensor()
     ]
 
-    if conf["norm"]:
+    if conf["dataset_options"]["norm"]:
         train_tr_list.append(torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
         test_tr_list.append(torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)

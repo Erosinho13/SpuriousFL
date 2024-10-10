@@ -3,3 +3,6 @@ num_targets: 10
 num_groups: 1
 dirichlet_alpha: 0.5
 data_shuffle_seed: null
+norm: true
+aug_crop: 4
+aug_horizontal_flip: true

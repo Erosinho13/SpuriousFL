@@ -37,16 +37,16 @@ class CIFAR10(VisionDataset):
 def data_transforms_cifar10(conf={}):
     train_tr_list = [
     ]
-    if conf["aug_crop"] > 0:
-        train_tr_list.append(torchvision.transforms.RandomCrop(32, padding=conf['aug_crop']))
-    if conf["aug_horizontal_flip"]:
+    if conf["dataset_options"]["aug_crop"] > 0:
+        train_tr_list.append(torchvision.transforms.RandomCrop(32, padding=conf["dataset_options"]['aug_crop']))
+    if conf["dataset_options"]["aug_horizontal_flip"]:
         train_tr_list.append(torchvision.transforms.RandomHorizontalFlip())
     train_tr_list.append(torchvision.transforms.ToTensor())
     test_tr_list = [
         torchvision.transforms.ToTensor()
     ]
 
-    if conf["norm"]:
+    if conf["dataset_options"]["norm"]:
         train_tr_list.append(torchvision.transforms.Normalize(
                 (0.4914, 0.4822, 0.4465), (0.2470, 0.2434, 0.2615)
             ))

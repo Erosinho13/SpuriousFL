@@ -12,9 +12,6 @@ client_opt:
   epochs: 1
 rounds: 10
 num_clients: 10
-norm: true
-aug_crop: 4
-aug_horizontal_flip: true
 split_mode: dirichlet
 checkpoint: null
 local_training_id: null
