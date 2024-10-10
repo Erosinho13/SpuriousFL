@@ -1,3 +1,4 @@
+from src.datasets.data_splits import create_subsets_from_list, split_mode_to_matrix
 from torchvision.datasets import VisionDataset
 from wilds import get_dataset
 import torchvision
@@ -80,17 +81,7 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
             return 0, 2
         if y==1 and s==1:
             return 1, 3
-    def create_subsets_from_list(group_ids, client_samples, rng=np.random.default_rng()):
-        subsets = [[] for _ in range(len(client_samples))]
-        for y in [0,1]:
-            for s in [0,1]:
-                perm = rng.permutation(group_ids[y][s])
-                cumulated_idx = 0
-                for i,c in enumerate(client_samples):
-                    subset = perm[cumulated_idx:cumulated_idx+c[y][s]]
-                    subsets[i].extend(subset)
-                    cumulated_idx += c[y][s]
-        return subsets
+    
 
     rng = np.random.default_rng(seed=seed)
     subsets = [[],[],[],[]]
@@ -137,132 +128,8 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                 subsets[id1].extend(subset1)
                 subsets[id2].extend(subset2)
         return subsets
-    if split_mode=="zeroCI_LSC":
-        client_samples=[
-            [ # Birds on land
-                [23,5],
-                [23,5]
-            ],
-            [ # Expected background
-                [896,5],
-                [5,896]
-            ],
-            [ # Unexpected background
-                [5,23],
-                [23,5]
-            ],
-            [ # Birds on water
-                [5,151],
-                [5,151]
-            ]
-        ]
-        subsets = create_subsets_from_list(group_ids, client_samples, rng)
-        return subsets
-    if split_mode=="nCI_LSC":
-        client_samples=[
-            [ # Birds on land
-                [23,5],
-                [23,5]
-            ],
-            [ # Expected background
-                [3465,5],
-                [5,896]
-            ],
-            [ # Unexpected background
-                [5,23],
-                [23,5]
-            ],
-            [ # Birds on water
-                [5,151],
-                [5,151]
-            ]
-        ]
-        subsets = create_subsets_from_list(group_ids, client_samples, rng)
-        return subsets
-    if split_mode=="nDI_nGSC":
-        client_samples=[
-            [ # Birds on land
-                [23,5],
-                [23,5]
-            ],
-            [ # Expected background
-                [23,5],
-                [5,23]
-            ],
-            [ # Unexpected background
-                [5,23],
-                [23,5]
-            ],
-            [ # Birds on water
-                [5,23],
-                [5,23]
-            ]
-        ]
-        subsets = create_subsets_from_list(group_ids, client_samples, rng)
-        return subsets
-    if split_mode=="LCI_LSC_noG":
-        client_samples=[
-            [ 
-                [23,23],
-                [5,5]
-            ],
-            [ 
-                [23,5],
-                [5,23]
-            ],
-            [ 
-                [5,23],
-                [23,5]
-            ],
-            [ 
-                [5,5],
-                [23,23]
-            ]
-        ]
-        subsets = create_subsets_from_list(group_ids, client_samples, rng)
-        return subsets
-    if split_mode=="more_expected_clients":
-        client_samples=[
-            [ # Birds on land
-                [28,0],
-                [28,0]
-            ],
-            [ # Expected background
-                [28,0],
-                [0,28]
-            ],
-            [ # Unexpected background
-                [0,28],
-                [28,0]
-            ],
-            [ # Birds on water
-                [0,28],
-                [0,28]
-            ]
-        ]
-        for i in range(35):
-            client_samples.append([[28,0],[0,28]])
-        subsets = create_subsets_from_list(group_ids, client_samples, rng)
-        return subsets
-    if split_mode=="CI_GSC_reverse": # global minority is local mayority
-        client_samples=[
-            [ # mayority land/land bird
-                [400,5],
-                [5,5]
-            ],
-            [ # mayority water/water bird
-                [5,5],
-                [5,400]
-            ],
-            [ # minority but class majority
-                [40,40],
-                [5,5]
-            ],
-            [ # minority but class majority
-                [5,5],
-                [40,40]
-            ]
-        ]
+    client_samples = split_mode_to_matrix(split_mode)
+    if client_samples is not None:
         subsets = create_subsets_from_list(group_ids, client_samples, rng)
         return subsets
     raise NotImplementedError("split_mode not recognized")
