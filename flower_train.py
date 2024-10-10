@@ -61,7 +61,7 @@ def train(conf, conf_name):
         conf
     )
 
-    total_length = sum([len(ds) for ds in ds_split[:conf["num_clients"]]])
+    total_length = sum([len(ds) for ds in ds_split[:conf["dataset_options"]["num_clients"]]])
 
     conf["len_total_data"] = total_length
 
@@ -103,7 +103,7 @@ def train(conf, conf_name):
 
     fl.simulation.start_simulation(
         client_fn=client_fn,
-        num_clients=conf["num_clients"],
+        num_clients=conf["dataset_options"]["num_clients"],
         config=fl.server.ServerConfig(num_rounds=conf["server_opt"]["rounds"]),
         strategy=strategy,
         ray_init_args=conf["machine"]["ray_init_args"],

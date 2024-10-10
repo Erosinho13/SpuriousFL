@@ -62,9 +62,9 @@ def train(conf, conf_name=None):
             ds_split = data_preparation.split_data(train_ds, conf)
             if conf["dataset_options"]["local_training_id"] == "all":
                 # Reconstruct one global dataset if data dropping happened
-                total_length = sum([len(ds) for ds in ds_split[: conf["num_clients"]]])
+                total_length = sum([len(ds) for ds in ds_split[: conf["dataset_options"]["num_clients"]]])
                 if len(train_ds) != total_length:
-                    train_ds = concat_subsets(ds_split, conf["num_clients"])
+                    train_ds = concat_subsets(ds_split, conf["dataset_options"]["num_clients"])
             else:
                 # Feature to do local training for one client's data only
                 train_ds = ds_split[conf["dataset_options"]["local_training_id"]]
