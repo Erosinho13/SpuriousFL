@@ -103,14 +103,14 @@ def train(conf, conf_name=None):
             dataset=train_ds, weights=train_sample_weights, batch_size=conf["client_opt"]["batch_size"], shuffle=False
         )
         shallow_conf = copy.deepcopy(conf)
-        shallow_conf["model_type"] = conf["client_opt"]["fex_shallow_model"]
+        shallow_conf["model_options"]["model_type"] = conf["client_opt"]["fex_shallow_model"]
         shallow_conf["client_opt"]["subpop_optimizer"] = "ERM"
-        shallow_conf["epochs"] = conf["client_opt"]["fex_epochs"]
+        shallow_conf["client_opt"]["epochs"] = conf["client_opt"]["fex_epochs"]
         shallow_model = model_utils.init_model(shallow_conf)
         print("Shallow model training for FEx (Forgettable examples)")
         opt = get_subpop_optimizer(shallow_model, train_ds, shallow_conf)
         correct_preds = None
-        for epoch in range(shallow_conf["epochs"]):
+        for epoch in range(shallow_conf["client_opt"]["epochs"]):
             shallow_model.train()
             running_loss = 0.0
             for indeces, images, (labels, groups) in train_loader_1:
@@ -120,7 +120,7 @@ def train(conf, conf_name=None):
                 opt_out = opt.update((indeces, images, labels, groups), 1)
                 loss = opt_out["loss"]
                 running_loss += loss
-            print(f"Epoch [{epoch + 1}/{shallow_conf['epochs']}], Loss: {running_loss / len(train_loader_1):.4f}")
+            print(f"Epoch [{epoch + 1}/{shallow_conf['client_opt']['epochs']}], Loss: {running_loss / len(train_loader_1):.4f}")
             # Collect accuracies
             shallow_model.eval()
             with torch.no_grad():
@@ -156,7 +156,7 @@ def train(conf, conf_name=None):
         if conf["checkpoint"] is None:
             print("First stage training with ERM")
             opt = get_subpop_optimizer(model, train_ds, first_stage_conf)
-            for epoch in range(first_stage_conf["epochs"]):
+            for epoch in range(first_stage_conf["client_opt"]["epochs"]):
                 model.train()
                 running_loss = 0.0
                 for indeces, images, (labels, groups) in train_loader:
@@ -168,7 +168,7 @@ def train(conf, conf_name=None):
                     opt_out = opt.update((indeces, images, labels, groups), 1)
                     loss = opt_out["loss"]
                     running_loss += loss
-                print(f"Epoch [{epoch + 1}/{first_stage_conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
+                print(f"Epoch [{epoch + 1}/{first_stage_conf['client_opt']['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
             print("First stage training finished")
         else:
             print("First stage weights from: ", conf["checkpoint"])
@@ -184,7 +184,7 @@ def train(conf, conf_name=None):
     opt = get_subpop_optimizer(model, train_loader.dataset, conf)
     if is_two_stage_optimizer(conf):
         print("Trainable parameters:", model_utils.count_params(model, only_trainable=True))
-    for epoch in range(conf["epochs"]):
+    for epoch in range(conf["client_opt"]["epochs"]):
 
         model.train()
         running_loss = 0.0
@@ -198,7 +198,7 @@ def train(conf, conf_name=None):
 
             running_loss += loss
 
-        print(f"Epoch [{epoch + 1}/{conf['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
+        print(f"Epoch [{epoch + 1}/{conf['client_opt']['epochs']}], Loss: {running_loss / len(train_loader):.4f}")
         if conf["wandb"]:
             wandb.log({"train_loss": running_loss / len(train_loader)}, step=epoch)
 
@@ -208,7 +208,7 @@ def train(conf, conf_name=None):
         if (epoch + 1) % conf["test_interval"] == 0:
             test_model(test_loader, model, device, conf, epoch)
 
-    test_model(test_loader, model, device, conf, conf["epochs"])
+    test_model(test_loader, model, device, conf, conf["client_opt"]["epochs"])
 
     save_path = os.path.join("checkpoints", conf["exp_id"], "final")
     print("Saving model to %s", save_path)

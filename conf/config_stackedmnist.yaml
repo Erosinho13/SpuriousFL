@@ -9,7 +9,8 @@ dataset_options:
     root: '/home/efani/DATASETS'
 split_mode: mode3
 #uniform_proportion: 0.2
-epochs: 1
+client_opt:
+  epochs: 1
 rounds: 1000
 num_clients: 20
 server_opt:

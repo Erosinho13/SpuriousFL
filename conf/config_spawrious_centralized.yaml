@@ -5,7 +5,8 @@ defaults:
   - model_options: resnet
   - dataset_options: spawrious
 seed: 42
-epochs: 4
+client_opt:
+  epochs: 4
 rounds: 10
 num_clients: 4
 norm: false

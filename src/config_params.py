@@ -16,6 +16,7 @@ class ClientOptConfig:
     fex_balance_classes: bool
     momentum: float
     batch_size: int
+    epochs: int
 
 
 @dataclass
@@ -55,7 +56,6 @@ class EnvironmentConfig:
 @dataclass
 class Config:
     seed: int
-    epochs: int
     rounds: int
     num_clients: int
     norm: bool

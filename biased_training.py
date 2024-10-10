@@ -63,7 +63,7 @@ def train(conf, conf_path=None):
 
     erm_conf = copy.deepcopy(conf)
     erm_conf["client_opt"]["subpop_optimizer"] = "ERM"
-    erm_conf["epochs"] = 1
+    erm_conf["client_opt"]["epochs"] = 1
     erm_conf["client_opt"]["loss_function"] = "cross_entropy"
 
     history = optim_utils.fit(model, train_loader, erm_conf, verbose=1)
@@ -78,7 +78,7 @@ def train(conf, conf_path=None):
     biased_conf["client_opt"]["subpop_optimizer"] = "CRT"
     biased_conf["client_opt"]["loss_function"] = "generalized_cross_entropy"
     biased_conf["client_opt"]["generalized_cross_entropy_q"] = 0.7
-    biased_conf["epochs"] = 1
+    biased_conf["client_opt"]["epochs"] = 1
 
     history = optim_utils.fit(biased_model, train_loader, biased_conf, verbose=1)
 
@@ -135,7 +135,7 @@ def train(conf, conf_path=None):
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
     spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
-    spurious_conf["epochs"] = 1
+    spurious_conf["client_opt"]["epochs"] = 1
     spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
     spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
     spurious_model = copy.deepcopy(model).to(device)

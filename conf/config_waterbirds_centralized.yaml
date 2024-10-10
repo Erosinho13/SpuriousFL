@@ -5,7 +5,8 @@ defaults:
   - dataset_options: waterbirds
   - model_options: resnet
 seed: 42
-epochs: 4
+client_opt:
+  epochs: 4
 rounds: 10
 num_clients: 4
 norm: true

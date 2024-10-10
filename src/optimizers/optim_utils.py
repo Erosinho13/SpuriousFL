@@ -17,7 +17,7 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
     history = History()
     if opt is None:
         opt = get_subpop_optimizer(model, data.dataset, conf)
-    for epoch in range(conf["epochs"]):
+    for epoch in range(conf["client_opt"]["epochs"]):
         correct, total, epoch_loss = 0, 0, 0.0
         for indeces, images, (labels, groups) in data:
             indeces = indeces.to(get_device(conf))

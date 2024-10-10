@@ -103,7 +103,7 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
         else:
             model = mobilenetv2(num_classes=num_classes, return_features=False, pretrained_path=None)
     else:
-        raise NotImplementedError("conf['model_type']")
+        raise NotImplementedError("conf['model_options']['model_type']")
     if model_path is not None:
         load_model_weights(model, model_path)
     if weights is not None:
