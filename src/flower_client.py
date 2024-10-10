@@ -58,7 +58,8 @@ class FlowerClient(fl.client.NumPyClient):
                 raise ValueError("Warning, client has NaN loss")
 
             shared_metrics = {"cid": self.cid, "loss": history.history["loss"][-1]}
-            shared_metrics = self.share_client_opt_params(opt, shared_metrics)
+            if config["update_info"]:
+                shared_metrics = self.share_client_opt_params(opt, shared_metrics)
 
             if "weight_clients" in self.conf["server_opt"].keys():
                 weight_mode = self.conf["server_opt"]["weight_clients"]

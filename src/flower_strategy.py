@@ -94,6 +94,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
         beta_2 = self.conf["server_opt"]["beta_2"]
         tau = self.conf["server_opt"]["tau"]
         self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
+        self.stored_client_data = {}
+        self.client_update_requested = []
 
         super().__init__(evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
                          fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
@@ -129,6 +131,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         # Calculate global client opt params from shared metrics
         self.aggregate_client_opt_params([res.metrics for _, res in results])
+        # Update stored client info with new data
+        self.update_stored_client_info(results)
+        # Get stored client info to look like client sent it
+        results = self.update_results_from_cache(results)
 
         # Calculate client weights with post-training methods
         if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
@@ -242,7 +248,6 @@ class MyStrategy(fl.server.strategy.FedOpt):
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
     ) -> List[Tuple[ClientProxy, FitIns]]:
         """Configure the next round of training."""
-
         # Sample clients
         sample_size, min_num_clients = self.num_fit_clients(
             client_manager.num_available()
@@ -253,10 +258,17 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         # Create custom configs
         fit_configurations = []
-
+        self.client_update_requested = []
 
         for client in clients:
             client_config = copy.deepcopy(self.shared_copt_params)     # {}
+            client_config["round"] = server_round
+
+            if int(client.cid) not in self.stored_client_data.keys():
+                client_config["update_info"] = True
+                self.client_update_requested.append(int(client.cid))
+            else:
+                client_config["update_info"] = False
 
             if self.conf["server_opt"]["weight_clients"].startswith("server_pre_"):
                 c_w = self.pre_calculate_weights(client)
@@ -334,7 +346,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 cw2sum = sum(np.exp(client_weights2/temperature2))
                 client_weights = [np.exp(cw1/temperature1)/cw1sum+np.exp(cw2/temperature2)/cw2sum for cw1, cw2 in zip(client_weights1, client_weights2)]
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
-            log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
+            # log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
             if self.conf["server_opt"]["weight_clients"] == "server_post_triplets_importanceclusters":
                 
                 clusters = {"SC":[],"CI":[],"AI":[]}
@@ -465,3 +477,25 @@ class MyStrategy(fl.server.strategy.FedOpt):
     def aggregate_client_opt_params(self, metric_list):
         """Update shared client optimizer parameters for subpopbench optimizers"""
         self.shared_copt_params = subpop_federated.aggregate_metrics(self.shared_copt_params, metric_list)
+
+
+    def update_results_from_cache(self, results):
+        """Add stored data for client from server cache if available"""
+        for _, res in results:
+            cid = res.metrics["cid"]
+            if cid in self.stored_client_data.keys():
+                for k,v in self.stored_client_data[cid].items():
+                    res.metrics[k] = v
+        return results
+    
+    def update_stored_client_info(self, results):
+        """Save data from clients so they don't have to compute again"""
+        metrics = [res.metrics for _, res in results]
+        for client_metric in metrics:
+            if client_metric["cid"] in self.client_update_requested:
+                store_dict = copy.deepcopy(client_metric)
+                del store_dict['cid']
+                del store_dict['loss']
+                self.stored_client_data[client_metric["cid"]] = store_dict
+        if len(self.client_update_requested)>0:
+            log(DEBUG, "Updated client info %s", str(self.stored_client_data))
