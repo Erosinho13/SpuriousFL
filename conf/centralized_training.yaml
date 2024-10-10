@@ -10,7 +10,6 @@ defaults:
 seed: 42
 client_opt:
   epochs: 200
-rounds: 10
 num_clients: 10
 split_mode: dirichlet
 server_opt:
@@ -19,4 +18,3 @@ wandb: false
 model_options:
   pretrained: false
 checkpoint: null
-local_training_id: null

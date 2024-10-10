@@ -6,16 +6,14 @@ defaults:
   - model_options: resnet
 seed: 42
 client_opt:
+    subpop_optimizer: ERM
     epochs: 1
-rounds: 10
 num_clients: 4
 split_mode: balancedclients
-client_opt:
-    subpop_optimizer: ERM
 server_opt:
+    rounds: 10
     weight_clients: server_post_triplets_stochasticmatrix_noreplacement
 wandb: false
 dataset_options:
     input_size: 16
 checkpoint: null
-local_training_id: null

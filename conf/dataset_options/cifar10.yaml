@@ -6,3 +6,4 @@ data_shuffle_seed: null
 norm: true
 aug_crop: 4
 aug_horizontal_flip: true
+local_training_id: null

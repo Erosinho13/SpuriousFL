@@ -11,10 +11,9 @@ split_mode: mode3
 #uniform_proportion: 0.2
 client_opt:
   epochs: 1
-rounds: 1000
-num_clients: 20
 server_opt:
+  rounds: 1000
+num_clients: 20
 wandb: true
 store_id: true
 checkpoint: null
-local_training_id: null

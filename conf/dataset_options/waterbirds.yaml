@@ -5,3 +5,4 @@ num_groups: 2
 norm: true
 aug_crop: 24
 aug_horizontal_flip: true
+local_training_id: null

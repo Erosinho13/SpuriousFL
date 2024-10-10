@@ -10,8 +10,8 @@ seed: 42
 client_opt:
   batch_size: 32
   epochs: 1
-rounds: 10
+server_opt:
+  rounds: 200
 num_clients: 10
 split_mode: dirichlet
 checkpoint: null
-local_training_id: null

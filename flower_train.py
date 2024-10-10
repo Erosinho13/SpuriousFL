@@ -104,7 +104,7 @@ def train(conf, conf_name):
     fl.simulation.start_simulation(
         client_fn=client_fn,
         num_clients=conf["num_clients"],
-        config=fl.server.ServerConfig(num_rounds=conf["rounds"]),
+        config=fl.server.ServerConfig(num_rounds=conf["server_opt"]["rounds"]),
         strategy=strategy,
         ray_init_args=conf["machine"]["ray_init_args"],
         client_resources=conf["machine"]["client_resources"],

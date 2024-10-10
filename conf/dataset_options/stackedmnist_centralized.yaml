@@ -15,3 +15,4 @@ force_groups: null
 force_targets_proportions: null
 force_groups_proportions: null
 force_proportions: null
+local_training_id: null

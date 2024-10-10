@@ -7,7 +7,8 @@ defaults:
 seed: 42
 client_opt:
   epochs: 4
-rounds: 10
+server_opt:
+  rounds: 10
 num_clients: 4
 split_mode: sameratio
 wandb: true
@@ -16,4 +17,3 @@ dataset_options:
 eval_interval: 1
 test_interval: 1
 checkpoint: null
-local_training_id: null

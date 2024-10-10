@@ -207,7 +207,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
     ):
         """Save final model"""
         aggregated_result = super().aggregate_evaluate(rnd, results, failures)
-        if rnd == self.conf["rounds"]:
+        if rnd == self.conf["server_opt"]["rounds"]:
             # end of training calls
             save_path = os.path.join(
                 "checkpoints",
@@ -325,7 +325,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 client_weights2.append(w)
             client_weights = [cw1*cw2 for cw1, cw2 in zip(client_weights1, client_weights2)]
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
-                temperature = (server_round)/self.conf["rounds"]*2
+                temperature = (server_round)/self.conf["server_opt"]["rounds"]*2
                 temperature1 = 0+temperature
                 temperature2 = 2-temperature
                 client_weights1 = np.array(client_weights1)
