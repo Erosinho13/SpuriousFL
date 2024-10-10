@@ -3,7 +3,7 @@ defaults:
   - client_opt: all_defaults
   - server_opt: all_defaults
   - model_options: resnet
-  - dataset_options: waterbirds
+  - dataset_options: spawrious
 seed: 42
 client_opt:
   batch_size: 32
@@ -16,4 +16,4 @@ dataset_options:
   split_mode: more_expected_clients
   num_samples_per_class: null
 checkpoint: null
-wandb: false
+wandb: true

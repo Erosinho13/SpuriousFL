@@ -1,6 +1,6 @@
 name: Spawrious
 input_size: 224
-num_samples_per_class: 100
+num_samples_per_class: null
 num_targets: 2
 num_groups: 2
 norm: false

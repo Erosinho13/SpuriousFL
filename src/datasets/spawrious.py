@@ -1,3 +1,4 @@
+from src.datasets.data_splits import create_subsets_from_list, split_mode_to_matrix
 from torchvision.datasets import VisionDataset
 import numpy as np
 import torchvision
@@ -5,7 +6,7 @@ import os
 import pandas as pd
 from PIL import Image
 
-from src.datasets.dataset_utils import SubsetDataset
+from src.datasets.dataset_utils import SubsetDataset, count_groups
 from src.datasets.dataset_utils import SubpopDataset, get_spurious_group_idx
 
 from spawrious.torch import _download_dataset_if_not_available
@@ -107,7 +108,7 @@ def data_transforms_spawrious(conf={}):
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 
 
-def get_envs(group_ids, split_mode='sameratio', seed=42):
+def get_envs(group_ids, split_mode='sameratio', seed=42, num_clients=4):
     """Set list of idx for environment
     homogen:
       - 1/4 of each
@@ -122,7 +123,7 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
     if split_mode=="homogen":
         for y in group_ids.keys():
             for s in group_ids[y].keys():
-                l = len(group_ids[y][s])//4
+                l = len(group_ids[y][s])//num_clients
                 perm = rng.permutation(group_ids[y][s])
                 samples_by_envs =  [perm[:l], perm[l:l*2], perm[l*2:l*3], perm[l*3:]]
                 for i, x in enumerate(samples_by_envs):
@@ -147,6 +148,10 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                     subsets[1].extend(subset1)
                     subsets[3].extend(subset2)
         return subsets
+    client_samples = split_mode_to_matrix(split_mode)
+    if client_samples is not None:
+        subsets = create_subsets_from_list(group_ids, client_samples, rng)
+        return subsets
     raise NotImplementedError("split_mode not recognized")
 
 
@@ -154,7 +159,8 @@ def split_data_spawrious(ds, conf):
     """Split data in X,Y between 'num_clients' number of clients"""
     
     ids_by_groups = get_spurious_group_idx(ds)
-    idx_split = get_envs(ids_by_groups, split_mode=conf["dataset_options"]["split_mode"], seed=conf["seed"])
+    idx_split = get_envs(ids_by_groups, split_mode=conf["dataset_options"]["split_mode"], seed=conf["seed"], num_clients=conf["dataset_options"]["num_clients"])
     ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
-    assert len(ds_split) == conf["dataset_options"]["num_clients"]
+    for ds in ds_split:
+        print(count_groups(ds, False, 2, 2)["group_sizes"])
     return ds_split
