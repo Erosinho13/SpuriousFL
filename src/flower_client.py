@@ -1,4 +1,5 @@
 import flwr as fl
+from src.datasets.dataset_utils import count_groups
 from  src.optimizers import subpop_federated
 from src.utils import log
 from logging import ERROR, INFO
@@ -45,20 +46,27 @@ class FlowerClient(fl.client.NumPyClient):
         try:
             #print(config)
             self.set_parameters(weights, config)
-
+            shared_metrics = {"cid": self.cid}
             train_ds = self.train_data
-            
             opt = subpopbench.get_subpop_optimizer(self.model, train_ds.dataset, self.conf)
+            # Update client info, eg N matrix with model params from server
+            if config["update_info"]:
+                shared_metrics = self.share_client_opt_params(opt, shared_metrics, before_train=True)
+            # Update client optimizer data from server
             self.align_client_opt(opt, config)
+
+
             history = optim_utils.fit(self.model, train_ds, self.conf, opt=opt)
 
             if np.isnan(
                     history.history["loss"][-1]
             ):  # or np.isnan(history.history['val_loss'][-1]):
                 raise ValueError("Warning, client has NaN loss")
-
-            shared_metrics = {"cid": self.cid, "loss": history.history["loss"][-1]}
-            shared_metrics = self.share_client_opt_params(opt, shared_metrics)
+            
+            # Share client training metadata
+            shared_metrics["loss"] = history.history["loss"][-1]
+            if config["update_info"]:
+                shared_metrics = self.share_client_opt_params(opt, shared_metrics, before_train=False)
 
             if "weight_clients" in self.conf["server_opt"].keys():
                 weight_mode = self.conf["server_opt"]["weight_clients"]
@@ -121,8 +129,23 @@ class FlowerClient(fl.client.NumPyClient):
         """Update client subpopbench optimizer with FL server config params"""
         subpop_federated.update_opt_with_shared_params(opt, config)
 
-    def share_client_opt_params(self, opt, shared_metrics):
+    def share_client_opt_params(self, opt, shared_metrics, before_train=False):
         """Pass client opt params to FL server within the shared metrics dict"""
-        
-        shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics, self.train_data.dataset, self.conf)
+        N = None
+        if before_train:
+            if self.conf["server_opt"]["weight_clients"].startswith("server_post_groupweights") or self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
+                if "Npredicted" in self.conf["server_opt"]["weight_clients"]:
+                    N = self.predict_n_matrix()
+                else:
+                    metadata = count_groups(self.train_data.dataset,
+                                            num_attributes=self.conf["dataset_options"]["num_groups"],
+                                            num_labels=self.conf["dataset_options"]["num_targets"])
+                    group_sizes = metadata["group_sizes"]
+                    N = np.resize(group_sizes, (self.conf["dataset_options"]["num_targets"],self.conf["dataset_options"]["num_groups"]))
+        shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics, self.conf, n_matrix=N, before_train=before_train)
         return shared_metrics
+    
+    def predict_n_matrix(self):
+        """Predict N matrix by training biased and spurious classifier"""
+        N = np.ones((self.conf["dataset_options"]["num_targets"], self.conf["dataset_options"]["num_groups"]))
+        return N

@@ -29,6 +29,7 @@ class ServerOptConfig:
     tau: float
     weight_clients: str
     weight_list: Optional[List]
+    pretrain_rounds: Optional[int]
 
 
 @dataclass
