@@ -4,9 +4,20 @@ defaults:
   - server_opt: all_defaults
   - model_options: mobilenet
   - dataset_options: stackedmnist_federated
+  - override hydra/launcher: kyiv
+  - _self_
+
+hydra:
+  mode: MULTIRUN
+  launcher:
+    cpus_per_task: 4
+    mem_gb: 24
+    additional_parameters:
+      gres: "shard:2"
+
 seed: 42
 dataset_options:
-  root: '/home/efani/DATASETS'
+  root: "/home/efani/DATASETS"
   split_mode: mode3
   num_clients: 20
 #uniform_proportion: 0.2

@@ -1,0 +1,13 @@
+defaults:
+  - submitit_slurm
+
+partition: kyiv
+cpus_per_task: 12
+mem_gb: 64
+timeout_min: 99999
+
+additional_parameters:
+  gres: "gpu:1"
+
+hydra:
+  mode: MULTIRUN
