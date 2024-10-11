@@ -24,6 +24,7 @@ from flwr.common import (
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from sklearn.cluster import kmeans_plusplus
 from src.optimizers import subpop_federated 
+from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, select_noreplacement, temperature_weighted_values
 from src.utils import log
 from src.models import model_utils
 
@@ -292,11 +293,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         """Override num_examples with weights defined based on training results
         to achieve weighted federated average using the prewritten code"""
         metric_list = [res.metrics for _, res in results]
-        # Convert results
-        numpy_results = [
-            (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
-            for _, fit_res in results
-        ]
+        
         #import pdb
         #pdb.set_trace()
         if "pretrain_rounds" in self.conf["server_opt"].keys():
@@ -309,50 +306,25 @@ class MyStrategy(fl.server.strategy.FedOpt):
             client_weights = losses
         elif self.conf["server_opt"]["weight_clients"] == "server_post_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
             # https://arxiv.org/pdf/2008.07665
-            w_flats = [w[-1] for w,_ in numpy_results]
-            # w_flats = [np.concatenate([l.flatten() for l in w]) for w,_ in numpy_results]
-            w_avg = np.average(w_flats)
-            l1_norms = [np.linalg.norm(w-w_avg) for w in w_flats]
-            l1_sum = sum(l1_norms)
-            client_weights = [l1/l1_sum for l1 in l1_norms]
+            client_weights = client_weights_IDA(results)
             if self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
-                client_weights = np.array(client_weights)
-                client_weights = np.exp(client_weights)/sum(np.exp(client_weights))
+                client_weights = apply_softmax(client_weights)
         elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights" or self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
             # Weighting with the known groups in mind
-            metric_list = [res.metrics for _, res in results]
-            client_weights = []
-            for m in metric_list:
-                group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
-                w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
-                client_weights.append(w)
+            client_weights = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
-                client_weights = np.array(client_weights)
-                client_weights = np.exp(client_weights)/sum(np.exp(client_weights))
+                client_weights = apply_softmax(client_weights)
         elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
             # Previous 2 combined
-            w_flats = [w[-1] for w,_ in numpy_results]
-            w_avg = np.average(w_flats)
-            l1_norms = [np.linalg.norm(w-w_avg) for w in w_flats]
-            l1_sum = sum(l1_norms)
-            client_weights1 = [l1/l1_sum for l1 in l1_norms]
+            client_weights1 = client_weights_IDA(results)
+            client_weights2 = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
 
-            metric_list = [res.metrics for _, res in results]
-            client_weights2 = []
-            for m in metric_list:
-                group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
-                w = np.sum([self.shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
-                client_weights2.append(w)
             client_weights = [cw1*cw2 for cw1, cw2 in zip(client_weights1, client_weights2)]
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
                 temperature = (server_round)/self.conf["server_opt"]["rounds"]*2
-                temperature1 = 0+temperature
-                temperature2 = 2-temperature
-                client_weights1 = np.array(client_weights1)
-                client_weights2 = np.array(client_weights2)
-                cw1sum = sum(np.exp(client_weights1/temperature1))
-                cw2sum = sum(np.exp(client_weights2/temperature2))
-                client_weights = [np.exp(cw1/temperature1)/cw1sum+np.exp(cw2/temperature2)/cw2sum for cw1, cw2 in zip(client_weights1, client_weights2)]
+                client_weights = temperature_weighted_values(client_weights1, client_weights2, temperature)
+
+
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
             # log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
             if self.conf["server_opt"]["weight_clients"] == "server_post_triplets_importanceclusters":
@@ -368,107 +340,35 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 client_weights = [1 if res.metrics["cid"] in weighted_clients else 0 for _, res in results]
                 
             if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix"):
+                if "num_active_clients" in self.conf["server_opt"]:
+                    active_clients = self.conf["server_opt"]["num_active_clients"]
+                else:
+                    active_clients = 3
                 M = [res.metrics for _, res in results]
                 M = np.array([[a['SC'],a['AI'],a['CI']] for a in M])
+                column_sums = M.sum(axis=0)  # Sum of each column
+                M_norm = M / column_sums 
                 
                 if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_replacement"):
-                    column_sums = M.sum(axis=0)  # Sum of each column
-                    M_norm = M / column_sums 
                     sampled_row_ids = np.apply_along_axis(lambda col: np.random.choice(len(col), p=col), axis=0, arr=M_norm)
-                    counts = np.bincount(sampled_row_ids, minlength=len(results))
-                    binary_arr = (counts > 0).astype(int)
-                    client_weights = counts
-                if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_kmeans"):
-                    if "num_active_clients" in self.conf["server_opt"]:
-                        active_clients = self.conf["server_opt"]["num_active_clients"]
-                    else:
-                        active_clients = 3
-                    column_sums = M.sum(axis=0)  # Sum of each column
-                    M_norm = M / column_sums 
+                    client_weights = np.bincount(sampled_row_ids, minlength=len(results))
+
+                elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_kmeans"):
                     _, sampled_row_ids = kmeans_plusplus(M_norm, active_clients)
-                    counts = np.bincount(sampled_row_ids, minlength=len(results))
-                    binary_arr = (counts > 0).astype(int)
-                    client_weights = counts
-                if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_noreplacement"):
-                    if "num_active_clients" in self.conf["server_opt"]:
-                        active_clients = self.conf["server_opt"]["num_active_clients"]
-                    else:
-                        active_clients = 3
-                    M = M.T
-                    M_original = copy.deepcopy(M)
+                    client_weights = np.bincount(sampled_row_ids, minlength=len(results))
 
-                    def select_3_clients(M, all_selected_clients, tolerance=1e-6):
-
-                        _selected_clients = []
-
-                        M /= M.sum(axis=1, keepdims=True)
-
-                        index = np.random.choice(M.shape[1], p=M[0])
-                        _selected_clients.append(index)
-
-                        with np.errstate(divide='ignore', invalid='ignore'):
-                            M /= np.linalg.norm(M, axis=0)
-                            M = np.nan_to_num(M, nan=0.0)
-                        client1 = np.copy(M[:, index])
-
-                        dot_products = np.dot(M.T, client1)
-                        for i in all_selected_clients + _selected_clients:
-                            dot_products[i] = 1.0
-
-                        min_value = np.min(dot_products)
-                        min_indices = np.where(np.abs(dot_products - min_value) <= tolerance)[0]
-                        min_dot_product_index = np.random.choice(min_indices)
-
-                        _selected_clients.append(min_dot_product_index)
-                        client2 = np.copy(M[:, min_dot_product_index])
-
-                        M[:, index] = np.zeros(3)
-                        M[:, min_dot_product_index] = np.zeros(3)
-
-                        orthogonal_vector = np.cross(client1, client2)
-                        orthonormal_vector = orthogonal_vector / np.linalg.norm(orthogonal_vector)
-                        dot_products = np.dot(M.T, orthonormal_vector)
-                        for i in all_selected_clients + _selected_clients:
-                            dot_products[i] = -1.0
-
-                        max_value = np.max(dot_products)
-                        max_indices = np.where(np.abs(dot_products - max_value) <= tolerance)[0]
-                        max_dot_product_index = np.random.choice(max_indices)
-
-                        _selected_clients.append(max_dot_product_index)
-                        M[:, max_dot_product_index] = np.zeros(3)
-
-                        M = M[[2, 0, 1], :]
-
-                        return _selected_clients, M
-
-                    def select_clients(original_M, p):
-
-                        indices = np.random.permutation(original_M.shape[0])
-                        original_M = original_M[indices]
-
-                        _selected_clients = []
-                        np.random.shuffle(original_M)
-                        M = original_M.copy()
-
-                        while len(_selected_clients) - p < 0:
-                            three_new_clients, M = select_3_clients(M, _selected_clients)
-                            _selected_clients += three_new_clients
-
-                        return _selected_clients
-
-                    selected_clients = select_clients(M_original, active_clients)
+                elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_noreplacement"):
+                    M_original = copy.deepcopy(M.T)
+                    selected_clients = select_noreplacement(M_original, active_clients)
                     num_clients = len(results)
+                    client_weights = np.bincount(selected_clients, minlength=num_clients)
 
-                    counts = np.bincount(selected_clients, minlength=num_clients)
-                    client_weights = counts
-                    binary_arr = (counts > 0).astype(int)
+
                 if "smoothing" in self.conf["server_opt"]["weight_clients"]:
                     smoothing_value = 0.0001
                     if "weight_smoothing" in self.conf["server_opt"]:
                         smoothing_value = self.conf["server_opt"]["weight_smoothing"]
-                    smoothed_labels = counts - binary_arr + binary_arr * (1 - smoothing_value) + (1 - binary_arr) * smoothing_value
-                    client_weights = smoothed_labels
+                    client_weights = apply_smoothing(client_weights, smoothing_value)
             else:
                 raise NotImplementedError("method not implemented:", self.conf["server_opt"]["weight_clients"])
             for i in range(len(results)):
