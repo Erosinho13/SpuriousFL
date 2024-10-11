@@ -264,11 +264,14 @@ class MyStrategy(fl.server.strategy.FedOpt):
             client_config = copy.deepcopy(self.shared_copt_params)     # {}
             client_config["round"] = server_round
 
-            if int(client.cid) not in self.stored_client_data.keys():
-                client_config["update_info"] = True
-                self.client_update_requested.append(int(client.cid))
+            if "pretrain_rounds" in self.conf["server_opt"].keys() and server_round<=self.conf["server_opt"]["pretrain_rounds"]:
+                    client_config["update_info"] = False
             else:
-                client_config["update_info"] = False
+                if int(client.cid) not in self.stored_client_data.keys():
+                    client_config["update_info"] = True
+                    self.client_update_requested.append(int(client.cid))
+                else:
+                    client_config["update_info"] = False
 
             if self.conf["server_opt"]["weight_clients"].startswith("server_pre_"):
                 c_w = self.pre_calculate_weights(client)
@@ -296,6 +299,11 @@ class MyStrategy(fl.server.strategy.FedOpt):
         ]
         #import pdb
         #pdb.set_trace()
+        if "pretrain_rounds" in self.conf["server_opt"].keys():
+            if server_round<=self.conf["server_opt"]["pretrain_rounds"]:
+                for i in range(len(results)):
+                    results[i][1].num_examples = 1  # FitRes of the i-th client
+                return results
         if self.conf["server_opt"]["weight_clients"] == "server_post_loss":
             losses = [res.metrics["loss"] for _, res in results]
             client_weights = losses
