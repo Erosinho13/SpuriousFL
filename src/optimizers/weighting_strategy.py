@@ -1,6 +1,6 @@
 import numpy as np
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
-
+from cvxopt import matrix, solvers
 
 def select_3_clients(M, all_selected_clients, tolerance=1e-6):
 
@@ -90,10 +90,19 @@ def apply_smoothing(client_weights, eps=0.0001):
 def client_weights_known_groups(metric_list, conf, shared_copt_params):
     """Calculate client weights if we know the N matrix of all clients"""
     client_weights = []
+    n_matrix_list = []
     for m in metric_list:
         group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
-        w = np.sum([shared_copt_params[k]/m[k] for k in group_keys if m[k]>0])
-        client_weights.append(w)
+        n_dict = {k:v for k,v in m.items() if k in group_keys}
+        max_index = max(int(key.split('_')[1]) for key in n_dict)
+        n_list = [0] * (max_index + 1)
+        for key, value in n_dict.items():
+            index = int(key.split('_')[1])  # Extract the index part from the key
+            n_list[index] = value
+        n_matrix = np.array(n_list)
+        n_matrix = np.resize(n_matrix, (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
+        n_matrix_list.append(n_matrix)
+    client_weights = weights_from_n_matrix_list(n_matrix_list)
     return client_weights
 
 
@@ -114,3 +123,55 @@ def temperature_weighted_values(list1, list2, temperature):
     cw2sum = sum(np.exp(client_weights2/temperature2))
     client_weights = [np.exp(cw1/temperature1)/cw1sum+np.exp(cw2/temperature2)/cw2sum for cw1, cw2 in zip(client_weights1, client_weights2)]
     return client_weights
+
+
+def upscale(client_weights, factor):
+    cw_sum = np.sum(client_weights)
+    client_weights = [cw/cw_sum*factor for cw in client_weights]
+    return client_weights
+
+
+def weights_from_n_matrix_list(matrix_list):
+
+    A = np.array(matrix_list)
+
+    n = len(A)
+    m, p = A[0].shape
+
+    # Compute means of each matrix
+    a_bar = [np.mean(A[i]) for i in range(n)]
+
+    # Compute deviations
+    deviations = [A[i] - a_bar[i] for i in range(n)]
+
+    # Flatten deviations and stack
+    flattened_devs = [deviations[i].flatten() for i in range(n)]
+    D = np.stack(flattened_devs, axis=1)  # Shape: (m*p, n)
+
+    # Quadratic term
+    P = (1.0 / (m * p)) * np.dot(D.T, D)
+    P = matrix(P)
+
+    # Linear term
+    q = np.zeros(n)
+    q = matrix(q)
+
+    # Inequality constraints: w_i >= 0
+    G = -np.eye(n)
+    h = np.zeros(n)
+    G = matrix(G)
+    h = matrix(h)
+
+    # Equality constraints: sum(w) = 1
+    A_eq = np.ones((1, n))
+    A_eq = matrix(A_eq)
+    b_eq = matrix(1.0)
+
+    # Solve QP
+    solution = solvers.qp(P, q, G, h, A_eq, b_eq)
+
+    # Extract weights
+    weights = np.array(solution['x']).flatten()
+    up_weights = weights/min(weights)
+    up_weights = [int(w) for w in up_weights]
+    return up_weights
