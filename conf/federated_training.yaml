@@ -4,6 +4,18 @@ defaults:
   - server_opt: all_defaults
   - model_options: resnet
   - dataset_options: waterbirds
+  - override hydra/launcher: kyiv
+  - _self_
+
+hydra:
+  mode: MULTIRUN
+  launcher:
+    cpus_per_task: 4
+    mem_gb: 24
+    additional_parameters:
+      gres: "shard:4"
+
+
 seed: 42
 client_opt:
   batch_size: 32

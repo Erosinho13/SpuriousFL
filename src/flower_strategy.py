@@ -24,7 +24,7 @@ from flwr.common import (
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from sklearn.cluster import kmeans_plusplus
 from src.optimizers import subpop_federated 
-from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, select_noreplacement, temperature_weighted_values
+from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, select_noreplacement, temperature_weighted_values, upscale
 from src.utils import log
 from src.models import model_utils
 
@@ -304,11 +304,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
         if self.conf["server_opt"]["weight_clients"] == "server_post_loss":
             losses = [res.metrics["loss"] for _, res in results]
             client_weights = losses
+            client_weights = upscale(client_weights, self.conf['len_total_data'])
         elif self.conf["server_opt"]["weight_clients"] == "server_post_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
             # https://arxiv.org/pdf/2008.07665
             client_weights = client_weights_IDA(results)
             if self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
                 client_weights = apply_softmax(client_weights)
+            client_weights = upscale(client_weights, self.conf['len_total_data'])
         elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights" or self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
             # Weighting with the known groups in mind
             client_weights = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
@@ -318,12 +320,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
             # Previous 2 combined
             client_weights1 = client_weights_IDA(results)
             client_weights2 = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
+            client_weights2 = apply_softmax(client_weights2)
 
             client_weights = [cw1*cw2 for cw1, cw2 in zip(client_weights1, client_weights2)]
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
                 temperature = (server_round)/self.conf["server_opt"]["rounds"]*2
                 client_weights = temperature_weighted_values(client_weights1, client_weights2, temperature)
-
+            client_weights = upscale(client_weights, self.conf['len_total_data'])
 
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
             # log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
@@ -371,13 +374,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     client_weights = apply_smoothing(client_weights, smoothing_value)
             else:
                 raise NotImplementedError("method not implemented:", self.conf["server_opt"]["weight_clients"])
-            for i in range(len(results)):
-                    results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
-            return results
         else:
             raise NotImplementedError("Client weights not set!", self.conf["server_opt"]["weight_clients"])
-        cw_sum = np.sum(client_weights)
-        client_weights = [cw/cw_sum*self.conf['len_total_data'] for cw in client_weights]
+        
         for i in range(len(results)):
             results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
         return results

@@ -1,11 +1,20 @@
 defaults:
   - job/centralized_training@_here_
-  - _self_
   - machine: env
   - client_opt: all_defaults
   - server_opt: all_defaults
   - model_options: resnet
   - dataset_options: cifar10
+  - override hydra/launcher: kyiv
+  - _self_
+
+hydra:
+  mode: MULTIRUN
+  launcher:
+    cpus_per_task: 4
+    mem_gb: 24
+    additional_parameters:
+      gres: "shard:4"
 
 seed: 42
 client_opt:

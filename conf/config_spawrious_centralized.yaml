@@ -4,6 +4,17 @@ defaults:
   - server_opt: all_defaults
   - model_options: resnet
   - dataset_options: spawrious
+  - override hydra/launcher: kyiv
+  - _self_
+
+hydra:
+  mode: MULTIRUN
+  launcher:
+    cpus_per_task: 4
+    mem_gb: 24
+    additional_parameters:
+      gres: "shard:4"
+
 seed: 42
 client_opt:
   epochs: 4
@@ -11,7 +22,7 @@ server_opt:
   rounds: 10
 wandb: true
 dataset_options:
-    input_size: 16
+  input_size: 16
 eval_interval: 1
 test_interval: 1
 checkpoint: null

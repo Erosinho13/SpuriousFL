@@ -11,9 +11,10 @@ def store_opt_params(opt, out_dict, conf, n_matrix=None, before_train=False):
                 out_dict["GroupDRO_q_"+str(i)] = q.item()
     else:
         if conf["server_opt"]["weight_clients"].startswith("server_post_groupweights"):
-            group_sizes = n_matrix.resize((1, n_matrix.shape[0]*n_matrix.shape[1]))
+            n_matrix = np.resize(n_matrix, (1, n_matrix.shape[0]*n_matrix.shape[1]))
+            group_sizes = list(n_matrix[0])
             for i, v in enumerate(group_sizes):
-                out_dict["groupsize_"+str(i)] = v
+                out_dict["groupsize_"+str(i)] = int(v)
         if conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
             N = n_matrix
             out_dict["SC"] = corr.SC(N)
