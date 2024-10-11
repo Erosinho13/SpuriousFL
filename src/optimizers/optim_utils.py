@@ -13,17 +13,29 @@ class History:
 
 
 def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
+
     model.train()  # switch to training mode
     history = History()
+
     if opt is None:
         opt = get_subpop_optimizer(model, data.dataset, conf)
+
+    num_steps = count_steps = -1
+    if 'num_steps' in conf["client_opt"]:
+        if conf["client_opt"]['num_steps'] != -1:
+            num_steps = conf["client_opt"]['num_steps']
+            count_steps = 0
+            conf["client_opt"]["epochs"] = 1e6
+
     for epoch in range(conf["client_opt"]["epochs"]):
+
         correct, total, epoch_loss = 0, 0, 0.0
-        for indeces, images, (labels, groups) in data:
+
+        for i, (indeces, images, (labels, groups)) in enumerate(data):
+
             indeces = indeces.to(get_device(conf))
             images, labels = images.to(get_device(conf)), labels.to(get_device(conf))
             groups = groups.to(get_device(conf))
-
 
             opt_out = opt.update((indeces, images, labels, groups), 1)
             loss = opt_out["loss"]
@@ -34,6 +46,12 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
             epoch_loss += loss * images.size(0)
             total += labels.size(0)
             del loss
+
+            if num_steps != -1:
+                count_steps += 1
+                if count_steps >= num_steps:
+                    break
+
         epoch_loss /= len(data.dataset)
         epoch_acc = correct / total
 
@@ -55,13 +73,19 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
                 val_loss /= len(validation_data.dataset)
                 val_acc = correct / total
             model.train()  # switch to training mode
+
         if verbose > 0:
             v_string = ''
             if validation_data is not None:
                 v_string = f" val_loss:{val_loss}, val_acc:{val_acc}"
             print(f"Epoch {epoch + 1}: loss:{epoch_loss:.4f}, acc:{epoch_acc:.4f}" + v_string)
+
         history.history["loss"].append(epoch_loss)
         history.history["accuracy"].append(epoch_acc)
+
+        if count_steps >= num_steps:
+            break
+
     return history
 
 #!TODO update with subpopbench optims
