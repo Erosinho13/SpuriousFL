@@ -3,27 +3,22 @@ from src.optimizers.subpopbench import GroupDRO
 import numpy as np
 from src import corr
 
-def store_opt_params(opt, out_dict, data, conf):
+def store_opt_params(opt, out_dict, conf, n_matrix=None, before_train=False):
     """Save important params of the opt into a dict"""
-    if isinstance(opt, GroupDRO):
-        for i, q in enumerate(opt.q):
-            out_dict["GroupDRO_q_"+str(i)] = q.item()
-    if conf["server_opt"]["weight_clients"].startswith("server_post_groupweights"):
-        metadata = count_groups(data, 
-                                num_attributes=conf["dataset_options"]["num_groups"],
-                                num_labels=conf["dataset_options"]["num_targets"])
-
-        for i, v in enumerate(metadata["group_sizes"]):
-            out_dict["groupsize_"+str(i)] = v
-    if conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
-        metadata = count_groups(data, 
-                                num_attributes=conf["dataset_options"]["num_groups"],
-                                num_labels=conf["dataset_options"]["num_targets"])
-        N = np.resize(np.array(metadata["group_sizes"]),
-                      (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
-        out_dict["SC"] = corr.SC(N)
-        out_dict["AI"] = corr.AI(N)
-        out_dict["CI"] = corr.CI(N)
+    if not before_train:
+        if isinstance(opt, GroupDRO):
+            for i, q in enumerate(opt.q):
+                out_dict["GroupDRO_q_"+str(i)] = q.item()
+    else:
+        if conf["server_opt"]["weight_clients"].startswith("server_post_groupweights"):
+            group_sizes = n_matrix.resize((1, n_matrix.shape[0]*n_matrix.shape[1]))
+            for i, v in enumerate(group_sizes):
+                out_dict["groupsize_"+str(i)] = v
+        if conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
+            N = n_matrix
+            out_dict["SC"] = corr.SC(N)
+            out_dict["AI"] = corr.AI(N)
+            out_dict["CI"] = corr.CI(N)
     return out_dict
 
 
