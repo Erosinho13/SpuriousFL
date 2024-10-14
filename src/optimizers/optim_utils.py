@@ -25,7 +25,7 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
         if conf["client_opt"]['num_steps'] != -1:
             num_steps = conf["client_opt"]['num_steps']
             count_steps = 0
-            conf["client_opt"]["epochs"] = 1e6
+            conf["client_opt"]["epochs"] = 1000000
 
     for epoch in range(conf["client_opt"]["epochs"]):
 
