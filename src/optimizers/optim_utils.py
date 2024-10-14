@@ -13,7 +13,6 @@ class History:
 
 
 def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
-
     model.train()  # switch to training mode
     history = History()
 
@@ -83,8 +82,9 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
         history.history["loss"].append(epoch_loss)
         history.history["accuracy"].append(epoch_acc)
 
-        if count_steps >= num_steps:
-            break
+        if num_steps != -1:
+            if count_steps >= num_steps:
+                break
 
     return history
 
