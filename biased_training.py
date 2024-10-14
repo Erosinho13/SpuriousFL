@@ -8,6 +8,13 @@ from src.datasets.dataset_utils import ModifiedDataset, SubsetDataset, concat_su
 import torch
 import wandb
 
+import hydra
+from hydra.core.config_store import ConfigStore
+from hydra.core.hydra_config import HydraConfig
+from hydra.utils import to_absolute_path
+from omegaconf import OmegaConf
+from src.config_params import Config
+
 from src import utils
 from src.models import model_utils
 from src.datasets import data_preparation
@@ -17,7 +24,7 @@ from src.optimizers import optim_utils
 from src.optimizers.subpopbench import ERM, get_subpop_optimizer, get_sample_weights, is_two_stage_optimizer
 
 
-def train(conf, conf_path=None):
+def train(conf, conf_name=None):
     conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
@@ -164,28 +171,20 @@ def train(conf, conf_path=None):
     print(f"Group prediction accuracy: {accuracy}%")
     print("Flipped (y,g):",group_accuracies)
 
-def main():
-    parser = argparse.ArgumentParser(
-        description=""
-    )
-    parser.add_argument(
-        "--config_path",
-        type=str,
-        help="Config path",
-        default="config.yaml",
-    )
-    parser.add_argument(
-        "--env_path",
-        type=str,
-        help="Environment path",
-        default="env.yaml",
-    )
-    args = parser.parse_args()
 
-    conf = utils.load_config(config_path=args.config_path, env_path=args.env_path)
+
+
+cs = ConfigStore.instance()
+cs.store(group="job", name="centralized_training", node=Config)
+
+@hydra.main(config_path="conf", config_name="centralized_training", version_base=None)
+def main(cfg: Config):
+    hydra_cfg = HydraConfig.get()
+    conf_name = hydra_cfg.job.config_name
+    conf = OmegaConf.to_container(cfg, resolve=True)
     print(conf)
-    train(conf, conf_path=args.config_path)
+    train(conf, conf_name=conf_name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
