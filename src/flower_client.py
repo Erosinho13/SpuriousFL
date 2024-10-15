@@ -192,25 +192,32 @@ class FlowerClient(fl.client.NumPyClient):
         print("Train spurious classifier")
         metadata = count_groups(train_ds)
         print(metadata["class_sizes"])
-        most_populus_class = np.argmax(metadata["class_sizes"])
+        order_by_size = sorted(range(len(metadata["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
+        for selected_class in order_by_size:
+            ids_selected = [i for i,_,(y,s) in train_ds if y==selected_class]
+            filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_selected}
+            value_counts = Counter(filtered_predictions.values())
+            print(selected_class, value_counts)
+            if len(value_counts)>1:
+                break
+        else:
+            print("Classifier predicted everything correctly, should return with low priority matrix")
+            return N
 
-        ids_most_pop = [i for i,_,(y,s) in train_ds if y==most_populus_class]
+
+        print("Train on data for class: ", selected_class)
+        # Display the result
+        print("with class imbalance: ", value_counts)
+
         # print(ids_most_pop)
-        spurious_ds = SubsetDataset(train_ds, ids_most_pop) # Filter for most populus class
+        spurious_ds = SubsetDataset(train_ds, ids_selected) # Filter for most populus class
         spurious_ds = ModifiedDataset(spurious_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
         spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
                                         batch_size=self.conf['client_opt']['batch_size'], shuffle=True)
-        print(len(ids_most_pop))
+        print(len(ids_selected))
 
         #print(metadata.keys())
 
-        print("Train on data for class: ", most_populus_class)
-        # Step 1: Filter the dictionary to include only keys that are in the ids_most_pop list
-        filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_most_pop}
-        # Step 2: Count the occurrences of each value in the filtered dictionary
-        value_counts = Counter(filtered_predictions.values())
-        # Display the result
-        print("with class imbalance: ", value_counts)
         metadata = count_groups(spurious_ds)
         print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
 

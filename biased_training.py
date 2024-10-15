@@ -117,27 +117,35 @@ def train(conf, conf_name=None):
     print("Train spurious classifier")
     metadata = count_groups(train_ds)
     print(metadata["class_sizes"])
-    most_populus_class = np.argmax(metadata["class_sizes"])
+    order_by_size = sorted(range(len(metadata["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
+    for selected_class in order_by_size:
+        ids_selected = [i for i,_,(y,s) in train_ds if y==selected_class]
+        filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_selected}
+        value_counts = Counter(filtered_predictions.values())
+        print(selected_class, value_counts)
+        if len(value_counts)>1:
+             break
+    else:
+         raise ValueError("Classifier predicted everything correctly")
 
-    ids_most_pop = [i for i,_,(y,s) in train_ds if y==most_populus_class]
-    # print(ids_most_pop)
-    spurious_ds = SubsetDataset(train_ds, ids_most_pop) # Filter for most populus class
-    spurious_ds = ModifiedDataset(spurious_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
-    spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
-                                      batch_size=conf['client_opt']['batch_size'], shuffle=True)
-    print(len(ids_most_pop))
-
-    #print(metadata.keys())
-
-    print("Train on data for class: ", most_populus_class)
+    print("Train on data for class: ", selected_class)
     # Step 1: Filter the dictionary to include only keys that are in the ids_most_pop list
-    filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_most_pop}
     # Step 2: Count the occurrences of each value in the filtered dictionary
     value_counts = Counter(filtered_predictions.values())
     # Display the result
     print("with class imbalance: ", value_counts)
-    metadata = count_groups(spurious_ds)
-    print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
+
+    # print(ids_most_pop)
+    spurious_ds = SubsetDataset(train_ds, ids_selected) # Filter for most populus class
+    spurious_ds = ModifiedDataset(spurious_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
+    spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
+                                      batch_size=conf['client_opt']['batch_size'], shuffle=True)
+    print(len(ids_selected))
+
+    #print(metadata.keys())
+
+    metadata2 = count_groups(spurious_ds)
+    print("Sanity check for new ds' group sizes:", metadata2['group_sizes'])
 
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
@@ -174,7 +182,11 @@ def train(conf, conf_name=None):
     # Create a list that fills in 0 for missing keys
     counts_list = [n_counter.get(i, 0) for i in id_range]
     N = np.resize(np.array(counts_list), (conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"]))
+    print("Predicted:")
     print(N)
+    print("Expected:")
+    N_true = np.resize(np.array(metadata["group_sizes"]), (conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"]))
+    print(N_true)
 
     # Evaluate predicted N matrix
     print(f"Group prediction accuracy: {accuracy}%")
