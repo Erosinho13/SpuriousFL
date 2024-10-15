@@ -70,7 +70,7 @@ def train(conf, conf_name=None):
 
     erm_conf = copy.deepcopy(conf)
     erm_conf["client_opt"]["subpop_optimizer"] = "ERM"
-    erm_conf["client_opt"]["epochs"] = 1
+    erm_conf["client_opt"]["epochs"] = conf["server_opt"]["pretrain_rounds"]
     erm_conf["client_opt"]["loss_function"] = "cross_entropy"
 
     history = optim_utils.fit(model, train_loader, erm_conf, verbose=1)
@@ -84,8 +84,8 @@ def train(conf, conf_name=None):
     biased_conf = copy.deepcopy(conf)
     biased_conf["client_opt"]["subpop_optimizer"] = "CRT"
     biased_conf["client_opt"]["loss_function"] = "generalized_cross_entropy"
-    biased_conf["client_opt"]["generalized_cross_entropy_q"] = 0.7
-    biased_conf["client_opt"]["epochs"] = 1
+    biased_conf["client_opt"]["generalized_cross_entropy_q"] = conf["client_opt"]["generalized_cross_entropy_q"]
+    biased_conf["client_opt"]["epochs"] = conf["client_opt"]["biased_trainer_epochs"]
 
     history = optim_utils.fit(biased_model, train_loader, biased_conf, verbose=1)
 
@@ -142,7 +142,7 @@ def train(conf, conf_name=None):
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
     spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
-    spurious_conf["client_opt"]["epochs"] = 1
+    spurious_conf["client_opt"]["epochs"] = conf["client_opt"]["left_right_trainer_epochs"]
     spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
     spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
     spurious_model = copy.deepcopy(model).to(device)
@@ -155,8 +155,8 @@ def train(conf, conf_name=None):
     def predict_all(indeces, images, labels, groups, predicted, outdict):
         if "predictions" not in outdict:
             outdict["predictions"] = {}
-        for i, v in zip(indeces.to('cpu').numpy(), predicted.to('cpu').numpy()):
-                outdict["predictions"][i] = int(v)
+        for i, g, v in zip(indeces.to('cpu').numpy(), groups.to('cpu').numpy(), predicted.to('cpu').numpy()):
+                outdict["predictions"][i] = int(g) * conf["dataset_options"]["num_targets"] + int(v)
 
     groups_ds = ModifiedDataset(train_ds, use_groups=True) # Swap label to pred
     group_loader_seq = WeightedDataLoader(dataset=groups_ds, weights=None,
@@ -166,6 +166,15 @@ def train(conf, conf_name=None):
                                                                         spurious_conf,
                                                                         extra_eval_fn=predict_all)
     predicted_groups = extra_dict["predictions"]
+    n_counter = Counter(predicted_groups.values())
+    print("N matrix:", n_counter)
+    # Get the range of IDs from the counter
+    id_range = range(min(n_counter), max(n_counter) + 1)
+
+    # Create a list that fills in 0 for missing keys
+    counts_list = [n_counter.get(i, 0) for i in id_range]
+    N = np.resize(np.array(counts_list), (conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"]))
+    print(N)
 
     # Evaluate predicted N matrix
     print(f"Group prediction accuracy: {accuracy}%")

@@ -1,6 +1,8 @@
+from collections import Counter
 import flwr as fl
-from src.datasets.dataset_utils import count_groups
+from src.datasets.dataset_utils import ModifiedDataset, SubsetDataset, count_groups
 from  src.optimizers import subpop_federated
+from src.optimizers.dataloaders import WeightedDataLoader
 from src.utils import log
 from logging import ERROR, INFO
 import numpy as np
@@ -9,6 +11,7 @@ from src.models import model_utils
 from src.datasets import data_preparation
 from src.optimizers import subpopbench
 from src.optimizers import optim_utils
+import copy
 
 class FlowerClient(fl.client.NumPyClient):
     """Client implementation using Flower federated learning framework"""
@@ -148,4 +151,107 @@ class FlowerClient(fl.client.NumPyClient):
     def predict_n_matrix(self):
         """Predict N matrix by training biased and spurious classifier"""
         N = np.ones((self.conf["dataset_options"]["num_targets"], self.conf["dataset_options"]["num_groups"]))
+
+        # Train the biased classifier
+        print("Train biased classifier")
+        biased_model = copy.deepcopy(self.model)
+
+        biased_conf = copy.deepcopy(self.conf)
+        biased_conf["client_opt"]["subpop_optimizer"] = "CRT"
+        biased_conf["client_opt"]["loss_function"] = "generalized_cross_entropy"
+        biased_conf["client_opt"]["generalized_cross_entropy_q"] = self.conf["client_opt"]["generalized_cross_entropy_q"]
+        biased_conf["client_opt"]["epochs"] = self.conf["client_opt"]["biased_trainer_epochs"]
+        train_ds = self.train_data.dataset
+        history = optim_utils.fit(biased_model, self.train_data, biased_conf, verbose=1)
+
+        # Get biased predictions
+        print("Get biased predictions")
+        train_loader_seq = WeightedDataLoader(dataset=train_ds, weights=None,
+                                            batch_size=self.conf['client_opt']['batch_size'], shuffle=False)
+        
+        def predict_biased(indeces, images, labels, groups, predicted, outdict):
+            if "biased_predictions" not in outdict:
+                outdict["biased_predictions"] = {}
+            for i, v in zip(indeces.to('cpu').numpy(), (predicted != labels).to('cpu').numpy()):
+                    outdict["biased_predictions"][i] = int(v)
+
+        loss, accuracy, group_accuracies, extra_dict = optim_utils.evaluate(biased_model,
+                                                                            train_loader_seq,
+                                                                            biased_conf,
+                                                                            extra_eval_fn=predict_biased)
+        print(f"Biased prediction accuracy: {accuracy:.4f}%")
+        print(group_accuracies)
+        biased_predictions = extra_dict["biased_predictions"]
+        biased_model.to('cpu')
+
+        # Classify majority-minority
+        
+        # print(predictions)
+
+        # Train spurious classifier
+        print("Train spurious classifier")
+        metadata = count_groups(train_ds)
+        print(metadata["class_sizes"])
+        most_populus_class = np.argmax(metadata["class_sizes"])
+
+        ids_most_pop = [i for i,_,(y,s) in train_ds if y==most_populus_class]
+        # print(ids_most_pop)
+        spurious_ds = SubsetDataset(train_ds, ids_most_pop) # Filter for most populus class
+        spurious_ds = ModifiedDataset(spurious_ds, predictions=biased_predictions, use_groups=True) # Swap label to pred
+        spurious_loader = WeightedDataLoader(dataset=spurious_ds, weights=None,
+                                        batch_size=self.conf['client_opt']['batch_size'], shuffle=True)
+        print(len(ids_most_pop))
+
+        #print(metadata.keys())
+
+        print("Train on data for class: ", most_populus_class)
+        # Step 1: Filter the dictionary to include only keys that are in the ids_most_pop list
+        filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_most_pop}
+        # Step 2: Count the occurrences of each value in the filtered dictionary
+        value_counts = Counter(filtered_predictions.values())
+        # Display the result
+        print("with class imbalance: ", value_counts)
+        metadata = count_groups(spurious_ds)
+        print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
+
+        spurious_conf = copy.deepcopy(self.conf)
+        spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
+        spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
+        spurious_conf["client_opt"]["epochs"] = self.conf["client_opt"]["left_right_trainer_epochs"]
+        spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
+        spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
+        spurious_model = copy.deepcopy(self.model)
+        
+
+        optim_utils.fit(spurious_model, spurious_loader, spurious_conf, verbose=1)
+
+        # Predict groups on orig train set
+
+        def predict_all(indeces, images, labels, groups, predicted, outdict):
+            if "predictions" not in outdict:
+                outdict["predictions"] = {}
+            for i, g, v in zip(indeces.to('cpu').numpy(), groups.to('cpu').numpy(), predicted.to('cpu').numpy()):
+                    outdict["predictions"][i] = int(g) * self.conf["dataset_options"]["num_targets"] + int(v)
+
+        groups_ds = ModifiedDataset(train_ds, use_groups=True) # Swap label to pred
+        group_loader_seq = WeightedDataLoader(dataset=groups_ds, weights=None,
+                                            batch_size=self.conf['client_opt']['batch_size'], shuffle=False)
+        loss, accuracy, group_accuracies, extra_dict = optim_utils.evaluate(spurious_model,
+                                                                            group_loader_seq,
+                                                                            spurious_conf,
+                                                                            extra_eval_fn=predict_all)
+        predicted_groups = extra_dict["predictions"]
+        n_counter = Counter(predicted_groups.values())
+        print("N matrix:", n_counter)
+        # Get the range of IDs from the counter
+        id_range = range(min(n_counter), max(n_counter) + 1)
+
+        # Create a list that fills in 0 for missing keys
+        counts_list = [n_counter.get(i, 0) for i in id_range]
+        N = np.resize(np.array(counts_list), (self.conf["dataset_options"]["num_targets"], self.conf["dataset_options"]["num_groups"]))
+        print("N matrix:", N)
+
+        # Evaluate predicted N matrix
+        print(f"Group prediction accuracy: {accuracy}%")
+        print("Flipped (y,g):",group_accuracies)
         return N

@@ -11,3 +11,6 @@ fex_shallow_model: CNN
 fex_epochs: 5
 fex_balance_classes: true
 epochs: 200
+biased_trainer_epochs: 1
+left_right_trainer_epochs: 10
+generalized_cross_entropy_q: 0.7
