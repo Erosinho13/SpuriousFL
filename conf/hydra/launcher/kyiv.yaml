@@ -8,6 +8,3 @@ timeout_min: 99999
 
 additional_parameters:
   gres: "gpu:1"
-
-hydra:
-  mode: MULTIRUN

@@ -17,6 +17,9 @@ class ClientOptConfig:
     momentum: float
     batch_size: int
     epochs: int
+    biased_trainer_epochs: int
+    left_right_trainer_epochs: int
+    generalized_cross_entropy_q: float
 
 
 @dataclass
