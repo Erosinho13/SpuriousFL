@@ -149,7 +149,7 @@ def train(conf, conf_name=None):
 
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
-    spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
+    spurious_conf["client_opt"]["subpop_optimizer"] = "CRT"
     spurious_conf["client_opt"]["epochs"] = conf["client_opt"]["left_right_trainer_epochs"]
     spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
     spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
@@ -187,6 +187,11 @@ def train(conf, conf_name=None):
     print("Expected:")
     N_true = np.resize(np.array(metadata["group_sizes"]), (conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"]))
     print(N_true)
+    print("purity:")
+    group_accuracies_matrix = np.array(utils.collect_values_to_2d_array(group_accuracies))
+    for i in range(conf["dataset_options"]["num_targets"]):
+         print(f"y{i}g0: correct: {int(N_true[i,0]*group_accuracies_matrix[i,0]*0.01)}, incorrect: {int(N_true[i,1]*(1-group_accuracies_matrix[i,1]*0.01))}")
+         print(f"y{i}g1: correct: {int(N_true[i,1]*group_accuracies_matrix[i,1]*0.01)}, incorrect: {int(N_true[i,0]*(1-group_accuracies_matrix[i,0]*0.01))}")
 
     # Evaluate predicted N matrix
     print(f"Group prediction accuracy: {accuracy}%")
