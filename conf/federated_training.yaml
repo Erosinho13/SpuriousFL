@@ -1,4 +1,5 @@
 defaults:
+  - job/federated_training@_here_
   - machine: env
   - client_opt: all_defaults
   - server_opt: all_defaults
@@ -18,12 +19,12 @@ hydra:
 
 seed: 42
 client_opt:
-  batch_size: 32
+  batch_size: 28
   epochs: 1
 server_opt:
-  rounds: 4
+  rounds: 200
 dataset_options:
-  input_size: 16
+  input_size: 224
   num_clients: 4
   split_mode: more_expected_clients
   num_samples_per_class: null
