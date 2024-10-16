@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import torch
 import random
-
+import re
 
 def load_config(env_path="env.json", config_path="config.json"):
     """Connect config and environment config files"""
@@ -106,3 +106,30 @@ def get_device(conf):
 
 def np_to_tensor(images):
     return torch.from_numpy(np.transpose(images, (0, 3, 1, 2)))
+
+
+def collect_values_to_2d_array(d):
+    """get the 'y<int>g<int>' values from dict and put it into a 2d array"""
+    # Create a regular expression to match keys of the form 'y<int>g<int>'
+    pattern = re.compile(r'y(\d+)g(\d+)')
+    
+    # To store the values in a 2D list, we first need to find the max values of y and g to know the size of the array
+    max_y = max_g = 0
+    coords = []
+    
+    for key in d.keys():
+        match = pattern.match(key)
+        if match:
+            y_val, g_val = int(match.group(1)), int(match.group(2))
+            coords.append((y_val, g_val))
+            max_y = max(max_y, y_val)
+            max_g = max(max_g, g_val)
+    
+    # Initialize the 2D list with None or 0 based on your preference
+    result = [[None for _ in range(max_g + 1)] for _ in range(max_y + 1)]
+    
+    # Populate the result array
+    for y_val, g_val in coords:
+        result[y_val][g_val] = d[f'y{y_val}g{g_val}']
+    
+    return result
