@@ -192,9 +192,9 @@ class FlowerClient(fl.client.NumPyClient):
 
         # Train spurious classifier
         print("Train spurious classifier")
-        metadata = count_groups(train_ds, update_ds=False, num_attributes=num_groups, num_labels=num_targets)
-        print(metadata["class_sizes"])
-        order_by_size = sorted(range(len(metadata["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
+        metadata1 = count_groups(train_ds, update_ds=False, num_attributes=num_groups, num_labels=num_targets)
+        print(metadata1["class_sizes"])
+        order_by_size = sorted(range(len(metadata1["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
         for selected_class in order_by_size:
             ids_selected = [i for i,_,(y,s) in train_ds if y==selected_class]
             filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_selected}
@@ -204,7 +204,7 @@ class FlowerClient(fl.client.NumPyClient):
                 break
         else:
             print("Classifier predicted everything correctly, should return with low priority matrix")
-            for i, class_size in enumerate(metadata["class_sizes"]):
+            for i, class_size in enumerate(metadata1["class_sizes"]):
                 # Divide the class size evenly among the groups
                 group_share = class_size // num_groups
                 remainder = class_size % num_groups
@@ -233,17 +233,18 @@ class FlowerClient(fl.client.NumPyClient):
 
 
         spurious_conf = copy.deepcopy(self.conf)
-        spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
+        assert num_groups == 2
+        spurious_conf["dataset_options"]["num_targets"] = num_groups         # We can predict between 2 groups
         spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
         spurious_conf["client_opt"]["epochs"] = self.conf["client_opt"]["left_right_trainer_epochs"]
         spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
-        spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
+        spurious_conf["dataset_options"]["num_groups"] = num_targets # Only for the most populus class
         spurious_model = copy.deepcopy(self.model)
         
-        metadata = count_groups(spurious_ds, update_ds=False,
+        metadata2 = count_groups(spurious_ds, update_ds=True,
                                 num_attributes=num_targets,
                                 num_labels=num_groups,)
-        print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
+        print("Sanity check for new ds' group sizes:", metadata2['group_sizes'])
 
         optim_utils.fit(spurious_model, spurious_loader, spurious_conf, verbose=1)
 
@@ -264,7 +265,6 @@ class FlowerClient(fl.client.NumPyClient):
                                                                             extra_eval_fn=predict_all)
         predicted_groups = extra_dict["predictions"]
         n_counter = Counter(predicted_groups.values())
-        print("N matrix:", n_counter)
         # Get the range of IDs from the counter
         id_range = range(min(n_counter), max(n_counter) + 1)
 
@@ -272,7 +272,9 @@ class FlowerClient(fl.client.NumPyClient):
         counts_list = [n_counter.get(i, 0) for i in id_range]
         N = np.resize(np.array(counts_list), (num_targets, num_groups))
         print("N matrix:", N)
-
+        
+        N_true = np.resize(np.array(metadata1["group_sizes"]), (num_targets, num_groups))
+        print("Expected:", N_true)
         # Evaluate predicted N matrix
         print(f"Group prediction accuracy: {accuracy}%")
         print("Flipped (y,g):",group_accuracies)
