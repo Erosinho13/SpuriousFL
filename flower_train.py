@@ -5,7 +5,8 @@ from datetime import datetime
 import flwr as fl
 from flwr.common import ndarrays_to_parameters
 import os
-
+import pandas as pd
+import json
 import hydra
 from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
@@ -110,7 +111,25 @@ def train(conf, conf_name):
         client_resources=conf["machine"]["client_resources"],
     )
     if conf["wandb"]:
-        wandb.finish()
+        save_path = os.path.join(
+                "checkpoints",
+                conf["exp_id"],
+                "client_weights.csv"
+            )
+        if os.path.exists(save_path):
+            df = pd.read_csv(save_path, header=None)
+            client_weights = wandb.Table(dataframe=df)
+            wandb.log({"client_weights": client_weights})
+
+        save_path = os.path.join(
+                "checkpoints",
+                conf["exp_id"],
+                "client_info.json"
+            )
+        if os.path.exists(save_path):
+            with open(save_path, 'r') as file:
+                client_info = json.load(file)
+                wandb.log({"client_info":client_info})
         wandb.finish()
 
     # TODO there is a new, better way of returning with latest model

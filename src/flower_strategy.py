@@ -27,6 +27,7 @@ from src.optimizers import subpop_federated
 from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, select_noreplacement, temperature_weighted_values, upscale
 from src.utils import log
 from src.models import model_utils
+import json
 
 
 def fit_metrics_aggregation_fn(fit_metrics):
@@ -140,7 +141,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
         # Calculate client weights with post-training methods
         if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
             results = self.post_calculate_weights(results, server_round=server_round)
+
+        self.log_client_weights(results)
         log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
+        
 
         # Aggregate weights
         fedavg_parameters_aggregated, metrics_aggregated = super().aggregate_fit(
@@ -406,3 +410,31 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 self.stored_client_data[client_metric["cid"]] = store_dict
         if len(self.client_update_requested)>0:
             log(DEBUG, "Updated client info %s", str(self.stored_client_data))
+            self.log_client_info()
+    
+    def log_client_weights(self, results=None):
+        """Log client weights into a csv file"""
+        save_path = os.path.join(
+                "checkpoints",
+                self.conf["exp_id"],
+                "client_weights.csv"
+            )
+        num_clients = self.conf["dataset_options"]["num_clients"]
+        client_num_examples = [None] * num_clients
+        for _, res in results:
+            cid = int(res.metrics["cid"])  # Get the client id and convert to integer
+            client_num_examples[cid] = res.num_examples
+        
+        with open(save_path,'a') as file:
+            file.write(",".join(map(str, client_num_examples)) + "\n")
+
+
+    def log_client_info(self):
+        """Log latest info of clients to file"""
+        save_path = os.path.join(
+                "checkpoints",
+                self.conf["exp_id"],
+                "client_info.json"
+            )
+        with open(save_path, 'w') as file:
+            json.dump(self.stored_client_data, file)
