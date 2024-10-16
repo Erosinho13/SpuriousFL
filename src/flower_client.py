@@ -241,8 +241,8 @@ class FlowerClient(fl.client.NumPyClient):
         spurious_model = copy.deepcopy(self.model)
         
         metadata = count_groups(spurious_ds, update_ds=False,
-                                num_attributes=spurious_conf["dataset_options"]["num_groups"],
-                                num_labels=spurious_conf["dataset_options"]["num_targets"],)
+                                num_attributes=num_targets,
+                                num_labels=num_groups,)
         print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
 
         optim_utils.fit(spurious_model, spurious_loader, spurious_conf, verbose=1)
