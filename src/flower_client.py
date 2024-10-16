@@ -150,7 +150,9 @@ class FlowerClient(fl.client.NumPyClient):
     
     def predict_n_matrix(self):
         """Predict N matrix by training biased and spurious classifier"""
-        N = np.ones((self.conf["dataset_options"]["num_targets"], self.conf["dataset_options"]["num_groups"]))
+        num_targets = self.conf["dataset_options"]["num_targets"]
+        num_groups = self.conf["dataset_options"]["num_groups"]
+        N = np.ones((num_targets, num_groups))
 
         # Train the biased classifier
         print("Train biased classifier")
@@ -190,7 +192,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         # Train spurious classifier
         print("Train spurious classifier")
-        metadata = count_groups(train_ds)
+        metadata = count_groups(train_ds, update_ds=False, num_attributes=num_groups, num_labels=num_targets)
         print(metadata["class_sizes"])
         order_by_size = sorted(range(len(metadata["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
         for selected_class in order_by_size:
@@ -218,8 +220,6 @@ class FlowerClient(fl.client.NumPyClient):
 
         #print(metadata.keys())
 
-        metadata = count_groups(spurious_ds)
-        print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
 
         spurious_conf = copy.deepcopy(self.conf)
         spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
@@ -229,6 +229,10 @@ class FlowerClient(fl.client.NumPyClient):
         spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
         spurious_model = copy.deepcopy(self.model)
         
+        metadata = count_groups(spurious_ds, update_ds=False,
+                                num_attributes=spurious_conf["dataset_options"]["num_groups"],
+                                num_labels=spurious_conf["dataset_options"]["num_targets"],)
+        print("Sanity check for new ds' group sizes:", metadata['group_sizes'])
 
         optim_utils.fit(spurious_model, spurious_loader, spurious_conf, verbose=1)
 
@@ -238,7 +242,7 @@ class FlowerClient(fl.client.NumPyClient):
             if "predictions" not in outdict:
                 outdict["predictions"] = {}
             for i, g, v in zip(indeces.to('cpu').numpy(), groups.to('cpu').numpy(), predicted.to('cpu').numpy()):
-                    outdict["predictions"][i] = int(g) * self.conf["dataset_options"]["num_targets"] + int(v)
+                    outdict["predictions"][i] = int(g) * num_targets + int(v)
 
         groups_ds = ModifiedDataset(train_ds, use_groups=True) # Swap label to pred
         group_loader_seq = WeightedDataLoader(dataset=groups_ds, weights=None,
@@ -255,7 +259,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         # Create a list that fills in 0 for missing keys
         counts_list = [n_counter.get(i, 0) for i in id_range]
-        N = np.resize(np.array(counts_list), (self.conf["dataset_options"]["num_targets"], self.conf["dataset_options"]["num_groups"]))
+        N = np.resize(np.array(counts_list), (num_targets, num_groups))
         print("N matrix:", N)
 
         # Evaluate predicted N matrix
