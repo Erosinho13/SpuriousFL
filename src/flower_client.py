@@ -204,6 +204,17 @@ class FlowerClient(fl.client.NumPyClient):
                 break
         else:
             print("Classifier predicted everything correctly, should return with low priority matrix")
+            for i, class_size in enumerate(metadata["class_sizes"]):
+                # Divide the class size evenly among the groups
+                group_share = class_size // num_groups
+                remainder = class_size % num_groups
+                
+                # Set the base share for all groups
+                N[i, :] = group_share
+                
+                # Distribute the remainder across the first few groups
+                for j in range(remainder):
+                    N[i, j] += 1
             return N
 
 
