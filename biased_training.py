@@ -110,12 +110,25 @@ def train(conf, conf_name=None):
     biased_model.to('cpu')
 
     # Classify majority-minority
-    
+    metadata = count_groups(train_ds)
+    print("purity:")
+    for y in range(conf["dataset_options"]["num_targets"]):
+        ids = np.where(np.array(metadata["y"])==y)[0]
+        majority_group = Counter(np.array(metadata["s"])[ids]).most_common()[0][0]
+        biased_pred = np.array([bool(biased_predictions[i]) for i in ids])
+        is_majority = np.array(metadata["s"])[ids]==majority_group
+        correct_majority = sum(is_majority[np.logical_not(biased_pred)])
+        incorrect_majority = sum(is_majority[biased_pred])
+        correct_minority = sum(np.logical_not(is_majority)[biased_pred])
+        incorrect_minority = sum(np.logical_not(is_majority)[np.logical_not(biased_pred)])
+        print(f"y{y} correct majority: {correct_majority}, incorrect: {incorrect_majority}")
+        print(f"y{y} correct minority: {correct_minority}, incorrect: {incorrect_minority}")
+
     # print(predictions)
 
     # Train spurious classifier
     print("Train spurious classifier")
-    metadata = count_groups(train_ds)
+
     print(metadata["class_sizes"])
     order_by_size = sorted(range(len(metadata["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
     for selected_class in order_by_size:
@@ -149,7 +162,7 @@ def train(conf, conf_name=None):
 
     spurious_conf = copy.deepcopy(conf)
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
-    spurious_conf["client_opt"]["subpop_optimizer"] = "CRT"
+    spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
     spurious_conf["client_opt"]["epochs"] = conf["client_opt"]["left_right_trainer_epochs"]
     spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
     spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
@@ -188,7 +201,7 @@ def train(conf, conf_name=None):
     N_true = np.resize(np.array(metadata["group_sizes"]), (conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"]))
     print(N_true)
     print("purity:")
-    group_accuracies_matrix = np.array(utils.collect_values_to_2d_array(group_accuracies))
+    group_accuracies_matrix = np.array(utils.collect_values_to_2d_array(group_accuracies)).T
     for i in range(conf["dataset_options"]["num_targets"]):
          print(f"y{i}g0: correct: {int(N_true[i,0]*group_accuracies_matrix[i,0]*0.01)}, incorrect: {int(N_true[i,1]*(1-group_accuracies_matrix[i,1]*0.01))}")
          print(f"y{i}g1: correct: {int(N_true[i,1]*group_accuracies_matrix[i,1]*0.01)}, incorrect: {int(N_true[i,0]*(1-group_accuracies_matrix[i,0]*0.01))}")

@@ -1,5 +1,6 @@
 from collections import Counter
 import flwr as fl
+from src import utils
 from src.datasets.dataset_utils import ModifiedDataset, SubsetDataset, count_groups
 from  src.optimizers import subpop_federated
 from src.optimizers.dataloaders import WeightedDataLoader
@@ -187,14 +188,24 @@ class FlowerClient(fl.client.NumPyClient):
         biased_model.to('cpu')
 
         # Classify majority-minority
-        
-        # print(predictions)
+        metadata1 = count_groups(train_ds, update_ds=False, num_attributes=num_groups, num_labels=num_targets)
+        print("purity:")
+        for y in range(num_targets):
+            ids = np.where(np.array(metadata1["y"])==y)[0]
+            majority_group = Counter(np.array(metadata1["s"])[ids]).most_common()[0][0]
+            biased_pred = np.array([bool(biased_predictions[i]) for i in ids])
+            is_majority = np.array(metadata1["s"])[ids]==majority_group
+            correct_majority = sum(is_majority[np.logical_not(biased_pred)])
+            incorrect_majority = sum(is_majority[biased_pred])
+            correct_minority = sum(np.logical_not(is_majority)[biased_pred])
+            incorrect_minority = sum(np.logical_not(is_majority)[np.logical_not(biased_pred)])
+            print(f"y{y} correct majority: {correct_majority}, incorrect: {incorrect_majority}")
+            print(f"y{y} correct minority: {correct_minority}, incorrect: {incorrect_minority}")
 
         # Train spurious classifier
         print("Train spurious classifier")
-        metadata1 = count_groups(train_ds, update_ds=False, num_attributes=num_groups, num_labels=num_targets)
         print(metadata1["class_sizes"])
-        order_by_size = sorted(range(len(metadata1["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
+        order_by_size = sorted(range(len(metadata1["class_sizes"])), key=lambda i: metadata1["class_sizes"][i], reverse=True)
         for selected_class in order_by_size:
             ids_selected = [i for i,_,(y,s) in train_ds if y==selected_class]
             filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_selected}
@@ -275,6 +286,12 @@ class FlowerClient(fl.client.NumPyClient):
         
         N_true = np.resize(np.array(metadata1["group_sizes"]), (num_targets, num_groups))
         print("Expected:", N_true)
+        print("purity:")
+        group_accuracies_matrix = np.array(utils.collect_values_to_2d_array(group_accuracies)).T
+        for i in range(num_targets):
+            print(f"y{i}g0: correct: {int(N_true[i,0]*group_accuracies_matrix[i,0]*0.01)}, incorrect: {int(N_true[i,1]*(1-group_accuracies_matrix[i,1]*0.01))}")
+            print(f"y{i}g1: correct: {int(N_true[i,1]*group_accuracies_matrix[i,1]*0.01)}, incorrect: {int(N_true[i,0]*(1-group_accuracies_matrix[i,0]*0.01))}")
+
         # Evaluate predicted N matrix
         print(f"Group prediction accuracy: {accuracy}%")
         print("Flipped (y,g):",group_accuracies)
