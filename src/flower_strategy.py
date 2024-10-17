@@ -297,7 +297,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
         """Override num_examples with weights defined based on training results
         to achieve weighted federated average using the prewritten code"""
         metric_list = [res.metrics for _, res in results]
-        
+        if "num_active_clients" in self.conf["server_opt"]:
+            active_clients = self.conf["server_opt"]["num_active_clients"]
+        else:
+            active_clients = 3
+        smoothing_value = 0.0001
+        if "weight_smoothing" in self.conf["server_opt"]:
+            smoothing_value = self.conf["server_opt"]["weight_smoothing"]
         #import pdb
         #pdb.set_trace()
         if "pretrain_rounds" in self.conf["server_opt"].keys():
@@ -315,22 +321,24 @@ class MyStrategy(fl.server.strategy.FedOpt):
             if self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
                 client_weights = apply_softmax(client_weights)
             client_weights = upscale(client_weights, self.conf['len_total_data'])
-        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights" or self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
+        elif self.conf["server_opt"]["weight_clients"].strartswith("server_post_groupweights"):
             # Weighting with the known groups in mind
             client_weights = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
+            if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights":
+                client_weights = client_weights/min(client_weights)
+                client_weights = [int(w) for w in client_weights]
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
-                client_weights = apply_softmax(client_weights)
-        elif self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
-            # Previous 2 combined
-            client_weights1 = client_weights_IDA(results)
-            client_weights2 = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
-            client_weights2 = apply_softmax(client_weights2)
+                pass
+            if self.conf["server_opt"]["weight_clients"].startswith("server_post_groupweights_choice"):
+                elements = list(range(len(results)))
+                if "noreplacement" in self.conf["server_opt"]["weight_clients"]:
+                    sampled_ids = np.random.choice(elements, size=active_clients, p=client_weights, replace=False)
+                else:
+                    sampled_ids = np.random.choice(elements, size=active_clients, p=client_weights, replace=True)
+                client_weights = [np.sum(sampled_ids == element) for element in elements]
+                if "smoothing" in self.conf["server_opt"]["weight_clients"]:
+                    client_weights = apply_smoothing(client_weights, smoothing_value)
 
-            client_weights = [cw1*cw2 for cw1, cw2 in zip(client_weights1, client_weights2)]
-            if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_IDA_softmax":
-                temperature = (server_round)/self.conf["server_opt"]["rounds"]*2
-                client_weights = temperature_weighted_values(client_weights1, client_weights2, temperature)
-            client_weights = upscale(client_weights, self.conf['len_total_data'])
 
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
             # log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
@@ -347,10 +355,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 client_weights = [1 if res.metrics["cid"] in weighted_clients else 0 for _, res in results]
                 
             if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix"):
-                if "num_active_clients" in self.conf["server_opt"]:
-                    active_clients = self.conf["server_opt"]["num_active_clients"]
-                else:
-                    active_clients = 3
+                
                 M = [res.metrics for _, res in results]
                 M = np.array([[a['SC'],a['AI'],a['CI']] for a in M])
                 column_sums = M.sum(axis=0)  # Sum of each column
@@ -372,9 +377,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
 
                 if "smoothing" in self.conf["server_opt"]["weight_clients"]:
-                    smoothing_value = 0.0001
-                    if "weight_smoothing" in self.conf["server_opt"]:
-                        smoothing_value = self.conf["server_opt"]["weight_smoothing"]
+                    
                     client_weights = apply_smoothing(client_weights, smoothing_value)
             else:
                 raise NotImplementedError("method not implemented:", self.conf["server_opt"]["weight_clients"])
