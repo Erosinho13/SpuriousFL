@@ -48,7 +48,6 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
 
 
 def train(conf, conf_name=None):
-    conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
 
@@ -226,6 +225,7 @@ def main(cfg: Config):
     hydra_cfg = HydraConfig.get()
     conf_name = hydra_cfg.job.config_name
     conf = OmegaConf.to_container(cfg, resolve=True)
+    conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     print(conf)
     train(conf, conf_name=conf_name)
 

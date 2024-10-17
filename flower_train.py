@@ -49,7 +49,7 @@ def train(conf, conf_name):
     global ds_split
     global val_ds
 
-    conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
+    
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
 
@@ -153,6 +153,7 @@ def main(cfg: Config):
     hydra_cfg = HydraConfig.get()
     conf_name = hydra_cfg.job.config_name
     conf = OmegaConf.to_container(cfg, resolve=True)
+    conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
     print(conf)
     train(conf, conf_name=conf_name)
 
