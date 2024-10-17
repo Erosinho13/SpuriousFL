@@ -147,4 +147,12 @@ def split_mode_to_matrix(split_mode:str)-> List:
                 [40,40]
             ]
         ]
+    if split_mode=="spawrious1":
+        client_samples = []
+        client_samples += [[[90, 90], [10, 10]]] * 3  # Mostly waterbirds, Type CI (0)
+        client_samples += [[[10, 10], [90, 90]]] * 3  # Mostly landbirds, Type CI (0)
+        client_samples += [[[90, 10], [90, 10]]] * 3  # Birds on land, Type AI (1)
+        client_samples += [[[10, 90], [10, 90]]] * 3  # Birds on water, Type AI (1)
+        client_samples += [[[90, 10], [10, 90]]] * 5  # Expected background, Type SC (2)
+        client_samples += [[[10, 90], [90, 10]]] * 1  # Unexpected background, Type SC (2)
     return client_samples
