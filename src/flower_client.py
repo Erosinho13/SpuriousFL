@@ -192,8 +192,9 @@ class FlowerClient(fl.client.NumPyClient):
         print("purity:")
         for y in range(num_targets):
             ids = np.where(np.array(metadata1["y"])==y)[0]
+            orig_ids = np.array(metadata1["orig_ids"])[ids]
             majority_group = Counter(np.array(metadata1["s"])[ids]).most_common()[0][0]
-            biased_pred = np.array([bool(biased_predictions[i]) for i in ids])
+            biased_pred = np.array([bool(biased_predictions[i]) for i in orig_ids])
             is_majority = np.array(metadata1["s"])[ids]==majority_group
             correct_majority = sum(is_majority[np.logical_not(biased_pred)])
             incorrect_majority = sum(is_majority[biased_pred])

@@ -29,7 +29,8 @@ def train(conf, conf_name=None):
     os.makedirs(os.path.join("checkpoints/", conf["exp_id"]), mode=0o777)
     utils.save_config(conf, os.path.join("checkpoints/", conf["exp_id"], "config.yaml"))
 
-
+    num_targets = conf["dataset_options"]["num_targets"]
+    num_groups = conf["dataset_options"]["num_groups"]
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     device = utils.get_device(conf)
 
@@ -110,13 +111,14 @@ def train(conf, conf_name=None):
     biased_model.to('cpu')
 
     # Classify majority-minority
-    metadata = count_groups(train_ds)
+    metadata1 = count_groups(train_ds)
     print("purity:")
-    for y in range(conf["dataset_options"]["num_targets"]):
-        ids = np.where(np.array(metadata["y"])==y)[0]
-        majority_group = Counter(np.array(metadata["s"])[ids]).most_common()[0][0]
-        biased_pred = np.array([bool(biased_predictions[i]) for i in ids])
-        is_majority = np.array(metadata["s"])[ids]==majority_group
+    for y in range(num_targets):
+        ids = np.where(np.array(metadata1["y"])==y)[0]
+        orig_ids = np.array(metadata1["orig_ids"])[ids]
+        majority_group = Counter(np.array(metadata1["s"])[ids]).most_common()[0][0]
+        biased_pred = np.array([bool(biased_predictions[i]) for i in orig_ids])
+        is_majority = np.array(metadata1["s"])[ids]==majority_group
         correct_majority = sum(is_majority[np.logical_not(biased_pred)])
         incorrect_majority = sum(is_majority[biased_pred])
         correct_minority = sum(np.logical_not(is_majority)[biased_pred])
@@ -129,8 +131,8 @@ def train(conf, conf_name=None):
     # Train spurious classifier
     print("Train spurious classifier")
 
-    print(metadata["class_sizes"])
-    order_by_size = sorted(range(len(metadata["class_sizes"])), key=lambda i: metadata["class_sizes"][i], reverse=True)
+    print(metadata1["class_sizes"])
+    order_by_size = sorted(range(len(metadata1["class_sizes"])), key=lambda i: metadata1["class_sizes"][i], reverse=True)
     for selected_class in order_by_size:
         ids_selected = [i for i,_,(y,s) in train_ds if y==selected_class]
         filtered_predictions = {k: v for k, v in biased_predictions.items() if k in ids_selected}
@@ -157,15 +159,18 @@ def train(conf, conf_name=None):
 
     #print(metadata.keys())
 
-    metadata2 = count_groups(spurious_ds)
+    metadata2 = count_groups(spurious_ds, update_ds=True,
+                                num_attributes=num_targets,
+                                num_labels=num_groups,)
     print("Sanity check for new ds' group sizes:", metadata2['group_sizes'])
 
     spurious_conf = copy.deepcopy(conf)
+    assert num_groups == 2
     spurious_conf["dataset_options"]["num_targets"] = 2         # We can predict between 2 groups
     spurious_conf["client_opt"]["subpop_optimizer"] = "ReWeightCRT"
     spurious_conf["client_opt"]["epochs"] = conf["client_opt"]["left_right_trainer_epochs"]
     spurious_conf["client_opt"]["loss_function"] = "cross_entropy"
-    spurious_conf["dataset_options"]["num_groups"] = 1 # Only for the most populus class
+    spurious_conf["dataset_options"]["num_groups"] = num_targets # Only for the most populus class
     spurious_model = copy.deepcopy(model).to(device)
     
 
@@ -177,7 +182,7 @@ def train(conf, conf_name=None):
         if "predictions" not in outdict:
             outdict["predictions"] = {}
         for i, g, v in zip(indeces.to('cpu').numpy(), groups.to('cpu').numpy(), predicted.to('cpu').numpy()):
-                outdict["predictions"][i] = int(g) * conf["dataset_options"]["num_targets"] + int(v)
+                outdict["predictions"][i] = int(g) * num_targets + int(v)
 
     groups_ds = ModifiedDataset(train_ds, use_groups=True) # Swap label to pred
     group_loader_seq = WeightedDataLoader(dataset=groups_ds, weights=None,
@@ -194,15 +199,15 @@ def train(conf, conf_name=None):
 
     # Create a list that fills in 0 for missing keys
     counts_list = [n_counter.get(i, 0) for i in id_range]
-    N = np.resize(np.array(counts_list), (conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"]))
+    N = np.resize(np.array(counts_list), (num_targets, num_groups))
     print("Predicted:")
     print(N)
     print("Expected:")
-    N_true = np.resize(np.array(metadata["group_sizes"]), (conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"]))
+    N_true = np.resize(np.array(metadata1["group_sizes"]), (num_targets, num_groups))
     print(N_true)
     print("purity:")
     group_accuracies_matrix = np.array(utils.collect_values_to_2d_array(group_accuracies)).T
-    for i in range(conf["dataset_options"]["num_targets"]):
+    for i in range(num_targets):
          print(f"y{i}g0: correct: {int(N_true[i,0]*group_accuracies_matrix[i,0]*0.01)}, incorrect: {int(N_true[i,1]*(1-group_accuracies_matrix[i,1]*0.01))}")
          print(f"y{i}g1: correct: {int(N_true[i,1]*group_accuracies_matrix[i,1]*0.01)}, incorrect: {int(N_true[i,0]*(1-group_accuracies_matrix[i,0]*0.01))}")
 

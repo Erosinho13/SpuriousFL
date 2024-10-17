@@ -123,10 +123,11 @@ def get_spurious_group_idx(ds):
 
 
 def count_groups(ds, update_ds=True, num_attributes=None, num_labels=None):
-    ds_y, ds_s= [], []
+    orig_ids, ds_y, ds_s= [], [], []
     for i in range(len(ds)):
-        _, _, (y, s) = ds[i]
+        idx, _, (y, s) = ds[i]
         y, s = int(y), int(s)
+        orig_ids.append(int(idx))
         ds_y.append(y)
         ds_s.append(s)
     ds_i = list(range(len(ds)))
@@ -147,6 +148,7 @@ def count_groups(ds, update_ds=True, num_attributes=None, num_labels=None):
         weights_g.append(len(ds_i) / group_sizes[num_attributes * ds_y[i] + ds_s[i]])
         weights_y.append(len(ds_i) / class_sizes[ds_y[i]])
     if update_ds:
+        ds.orig_ds = orig_ids
         ds.y = ds_y
         ds.s = ds_s
         ds.num_attributes = num_attributes
@@ -156,6 +158,7 @@ def count_groups(ds, update_ds=True, num_attributes=None, num_labels=None):
         ds.weights_g = weights_g
         ds.weights_y = weights_y
     return {
+        "orig_ids": orig_ids,
         "y": ds_y, 
         "s": ds_s, 
         "num_attributes": num_attributes, 
