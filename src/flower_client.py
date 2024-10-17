@@ -290,8 +290,8 @@ class FlowerClient(fl.client.NumPyClient):
         print("purity:")
         group_accuracies_matrix = np.array(utils.collect_values_to_2d_array(group_accuracies)).T
         for i in range(num_targets):
-            print(f"y{i}g0: correct: {int(N_true[i,0]*group_accuracies_matrix[i,0]*0.01)}, incorrect: {int(N_true[i,1]*(1-group_accuracies_matrix[i,1]*0.01))}")
-            print(f"y{i}g1: correct: {int(N_true[i,1]*group_accuracies_matrix[i,1]*0.01)}, incorrect: {int(N_true[i,0]*(1-group_accuracies_matrix[i,0]*0.01))}")
+            print(f"y{i}g0: Expected: {N_true[i,0]}, predicted {N[i,0]} as a sum of correct: {int(N_true[i,0]*group_accuracies_matrix[i,0]*0.01)} + incorrect: {int(N_true[i,1]*(1-group_accuracies_matrix[i,1]*0.01))}")
+            print(f"y{i}g1: Expected: {N_true[i,1]}, predicted {N[i,1]} as a sum of correct: {int(N_true[i,1]*group_accuracies_matrix[i,1]*0.01)} + incorrect: {int(N_true[i,0]*(1-group_accuracies_matrix[i,0]*0.01))}")
 
         # Evaluate predicted N matrix
         print(f"Group prediction accuracy: {accuracy}%")
