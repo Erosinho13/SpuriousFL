@@ -325,7 +325,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             # Weighting with the known groups in mind
             client_weights = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights":
-                client_weights = client_weights/min(client_weights)
+                client_weights = np.array(client_weights)/min(client_weights)
                 client_weights = [int(w) for w in client_weights]
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
                 pass
