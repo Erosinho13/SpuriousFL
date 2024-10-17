@@ -1,6 +1,6 @@
 # Installed modules
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import flwr as fl
 from flwr.common import ndarrays_to_parameters
@@ -156,7 +156,7 @@ def main(cfg: Config):
     base_start_date = datetime.now()
     # Get the current run number from Hydra and add it as seconds
     run_number = cfg.get("hydra", {}).get("job", {}).get("num", 0)  # Default to 0 if not found
-    start_date = base_start_date + datetime.timedelta(seconds=run_number)
+    start_date = base_start_date + timedelta(seconds=run_number)
     conf["exp_id"] = start_date.strftime("%Y%m%d-%H%M%S")
     print(conf)
     train(conf, conf_name=conf_name)
