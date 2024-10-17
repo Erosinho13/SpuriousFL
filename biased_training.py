@@ -227,7 +227,7 @@ def main(cfg: Config):
     conf = OmegaConf.to_container(cfg, resolve=True)
     base_start_date = datetime.now()
     # Get the current run number from Hydra and add it as seconds
-    run_number = cfg.get("hydra", {}).get("job", {}).get("num", 0)  # Default to 0 if not found
+    run_number = hydra_cfg.job.num
     start_date = base_start_date + timedelta(seconds=run_number)
     conf["exp_id"] = start_date.strftime("%Y%m%d-%H%M%S")
     print(conf)
