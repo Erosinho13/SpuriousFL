@@ -321,7 +321,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             if self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
                 client_weights = apply_softmax(client_weights)
             client_weights = upscale(client_weights, self.conf['len_total_data'])
-        elif self.conf["server_opt"]["weight_clients"].strartswith("server_post_groupweights"):
+        elif self.conf["server_opt"]["weight_clients"].startswith("server_post_groupweights"):
             # Weighting with the known groups in mind
             client_weights = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights":
