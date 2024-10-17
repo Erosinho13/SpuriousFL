@@ -225,7 +225,11 @@ def main(cfg: Config):
     hydra_cfg = HydraConfig.get()
     conf_name = hydra_cfg.job.config_name
     conf = OmegaConf.to_container(cfg, resolve=True)
-    conf["exp_id"] = datetime.now().strftime("%Y%m%d-%H%M%S")
+    base_start_date = datetime.now()
+    # Get the current run number from Hydra and add it as seconds
+    run_number = cfg.get("hydra", {}).get("job", {}).get("num", 0)  # Default to 0 if not found
+    start_date = base_start_date + datetime.timedelta(seconds=run_number)
+    conf["exp_id"] = start_date.strftime("%Y%m%d-%H%M%S")
     print(conf)
     train(conf, conf_name=conf_name)
 
