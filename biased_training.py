@@ -13,6 +13,8 @@ from hydra.core.config_store import ConfigStore
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import to_absolute_path
 from omegaconf import OmegaConf
+from omegaconf.errors import MissingMandatoryValue
+
 from src.config_params import Config
 
 from src import utils
@@ -227,8 +229,11 @@ def main(cfg: Config):
     conf = OmegaConf.to_container(cfg, resolve=True)
     base_start_date = datetime.now()
     # Get the current run number from Hydra and add it as seconds
-    run_number = hydra_cfg.job.num
-    start_date = base_start_date + timedelta(seconds=run_number)
+    try:
+        run_number = hydra_cfg.job.num
+        start_date = base_start_date + timedelta(seconds=run_number)
+    except MissingMandatoryValue:
+        start_date = base_start_date 
     conf["exp_id"] = start_date.strftime("%Y%m%d-%H%M%S")
     print(conf)
     train(conf, conf_name=conf_name)
