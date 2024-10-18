@@ -269,7 +269,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             client_config = copy.deepcopy(self.shared_copt_params)     # {}
             client_config["round"] = server_round
 
-            if "pretrain_rounds" in self.conf["server_opt"].keys() and server_round<=self.conf["server_opt"]["pretrain_rounds"]:
+            if "pretrain_rounds" in self.conf["server_opt"].keys() and server_round<self.conf["server_opt"]["pretrain_rounds"]:
                     client_config["update_info"] = False
             else:
                 if int(client.cid) not in self.stored_client_data.keys():
