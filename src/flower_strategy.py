@@ -330,6 +330,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights_softmax":
                 pass
             if self.conf["server_opt"]["weight_clients"].startswith("server_post_groupweights_choice"):
+                client_weights = np.array(client_weights)/sum(client_weights)
                 elements = list(range(len(results)))
                 if "noreplacement" in self.conf["server_opt"]["weight_clients"]:
                     sampled_ids = np.random.choice(elements, size=active_clients, p=client_weights, replace=False)

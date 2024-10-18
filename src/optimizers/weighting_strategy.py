@@ -172,6 +172,6 @@ def weights_from_n_matrix_list(matrix_list):
 
     # Extract weights
     weights = np.array(solution['x']).flatten()
-    up_weights = weights/min(weights)
-    up_weights = [int(w) for w in up_weights]
-    return up_weights
+    #up_weights = weights/min(weights)
+    #up_weights = [int(w) for w in up_weights]
+    return weights
