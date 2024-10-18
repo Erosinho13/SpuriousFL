@@ -36,6 +36,7 @@ class ServerOptConfig:
     selection_method: str
     weight_list: Optional[List]
     pretrain_rounds: Optional[int]
+    num_active_clients: Optional[int]
 
 
 @dataclass
