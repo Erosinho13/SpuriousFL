@@ -311,6 +311,11 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 for i in range(len(results)):
                     results[i][1].num_examples = 1  # FitRes of the i-th client
                 return results
+        if self.conf["server_opt"]["weight_clients"] == "server_post_random":
+            client_weights = [1]*len(results)
+            elements = list(range(len(results)))
+            sampled_ids = np.random.choice(elements, size=active_clients, p=client_weights, replace=False)
+            client_weights = [np.sum(sampled_ids == element) for element in elements]
         if self.conf["server_opt"]["weight_clients"] == "server_post_loss":
             losses = [res.metrics["loss"] for _, res in results]
             client_weights = losses
