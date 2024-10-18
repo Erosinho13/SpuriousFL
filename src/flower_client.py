@@ -137,8 +137,8 @@ class FlowerClient(fl.client.NumPyClient):
         """Pass client opt params to FL server within the shared metrics dict"""
         N = None
         if before_train:
-            if self.conf["server_opt"]["weight_clients"].startswith("server_post_groupweights") or self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
-                if "Npredicted" in self.conf["server_opt"]["weight_clients"]:
+            if "groupweights" in self.conf["server_opt"]["client_info"] or "triplets" in self.conf["server_opt"]["client_info"]:
+                if "Npredicted" in self.conf["server_opt"]["client_info"]:
                     N = self.predict_n_matrix()
                 else:
                     metadata = count_groups(self.train_data.dataset,

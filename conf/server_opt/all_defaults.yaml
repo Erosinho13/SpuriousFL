@@ -7,3 +7,6 @@ weight_clients: same
 weight_list: []
 rounds: 200
 pretrain_rounds: 0
+participation: weighting
+client_info: groupweights_triplets
+selection_method: random

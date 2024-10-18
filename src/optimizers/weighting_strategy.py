@@ -87,7 +87,7 @@ def apply_smoothing(client_weights, eps=0.0001):
     return smoothed_labels
 
 
-def client_weights_known_groups(metric_list, conf, shared_copt_params):
+def client_weights_known_groups(metric_list, conf):
     """Calculate client weights if we know the N matrix of all clients"""
     client_weights = []
     n_matrix_list = []

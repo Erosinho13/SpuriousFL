@@ -257,8 +257,15 @@ class MyStrategy(fl.server.strategy.FedOpt):
         sample_size, min_num_clients = self.num_fit_clients(
             client_manager.num_available()
         )
+        if "pretrain_rounds" in self.conf["server_opt"].keys() and server_round>self.conf["server_opt"]["pretrain_rounds"]:
+            if self.conf["server_opt"]["participation"] == "selection":
+                if "num_active_clients" in self.conf["server_opt"]:
+                    active_clients = self.conf["server_opt"]["num_active_clients"]
+                else:
+                    active_clients = 3
+                sample_size = active_clients
         clients = client_manager.sample(
-            num_clients=sample_size, min_num_clients=min_num_clients
+            num_clients=sample_size, min_num_clients=min_num_clients, client_info=self.stored_client_data
         )
 
         # Create custom configs
@@ -287,6 +294,32 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 
         return fit_configurations
     
+    def configure_evaluate(
+        self, server_round: int, parameters: Parameters, client_manager: ClientManager
+    ) -> list[tuple[ClientProxy, EvaluateIns]]:
+        """Configure the next round of evaluation."""
+        # Do not configure federated evaluation if fraction eval is 0.
+        if self.fraction_evaluate == 0.0:
+            return []
+
+        # Parameters and config
+        config = {}
+        if self.on_evaluate_config_fn is not None:
+            # Custom evaluation config function provided
+            config = self.on_evaluate_config_fn(server_round)
+        evaluate_ins = EvaluateIns(parameters, config)
+
+        # Sample clients
+        sample_size, min_num_clients = self.num_evaluation_clients(
+            client_manager.num_available()
+        )
+        clients = client_manager.sample(
+            num_clients=sample_size, min_num_clients=min_num_clients, eval=True
+        )
+
+        # Return client/config pairs
+        return [(client, evaluate_ins) for client in clients]
+
     def pre_calculate_weights(self, client):
         """Override num_examples with weights defined before training round
         to achieve weighted federated average using the prewritten code"""
@@ -328,7 +361,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             client_weights = upscale(client_weights, self.conf['len_total_data'])
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_groupweights"):
             # Weighting with the known groups in mind
-            client_weights = client_weights_known_groups(metric_list, self.conf, self.shared_copt_params)
+            client_weights = client_weights_known_groups(metric_list, self.conf)
             if self.conf["server_opt"]["weight_clients"] == "server_post_groupweights":
                 client_weights = np.array(client_weights)/min(client_weights)
                 client_weights = [int(w) for w in client_weights]
@@ -429,7 +462,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 "client_weights.csv"
             )
         num_clients = self.conf["dataset_options"]["num_clients"]
-        client_num_examples = [None] * num_clients
+        client_num_examples = [0] * num_clients
         for _, res in results:
             cid = int(res.metrics["cid"])  # Get the client id and convert to integer
             client_num_examples[cid] = res.num_examples

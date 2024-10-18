@@ -31,6 +31,9 @@ class ServerOptConfig:
     beta_2: float
     tau: float
     weight_clients: str
+    participation: str
+    client_info: str
+    selection_method: str
     weight_list: Optional[List]
     pretrain_rounds: Optional[int]
 

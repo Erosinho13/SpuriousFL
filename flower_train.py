@@ -21,6 +21,7 @@ from src.config_params import Config
 # Own modules
 from src import utils
 from src.datasets import data_preparation
+from src.flower_manager import MyManager
 from src.models import model_utils
 from src.flower_strategy import MyStrategy
 from src.flower_client import FlowerClient
@@ -103,12 +104,14 @@ def train(conf, conf_name):
         # min_available_clients=1, # Wait until at least 75 clients are available
     )
 
+    client_manager = MyManager(conf=conf)
 
     fl.simulation.start_simulation(
         client_fn=client_fn,
         num_clients=conf["dataset_options"]["num_clients"],
         config=fl.server.ServerConfig(num_rounds=conf["server_opt"]["rounds"]),
         strategy=strategy,
+        client_manager=client_manager,
         ray_init_args=conf["machine"]["ray_init_args"],
         client_resources=conf["machine"]["client_resources"],
     )
