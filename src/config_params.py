@@ -20,6 +20,7 @@ class ClientOptConfig:
     biased_trainer_epochs: int
     left_right_trainer_epochs: int
     generalized_cross_entropy_q: float
+    num_steps: int
 
 
 @dataclass
