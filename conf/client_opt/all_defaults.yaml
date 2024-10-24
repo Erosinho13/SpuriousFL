@@ -12,5 +12,8 @@ fex_epochs: 5
 fex_balance_classes: true
 epochs: 200
 biased_trainer_epochs: 1
+biased_trainer_steps: 100
 left_right_trainer_epochs: 10
+left_right_trainer_steps: 100
 generalized_cross_entropy_q: 0.7
+num_workers: 4

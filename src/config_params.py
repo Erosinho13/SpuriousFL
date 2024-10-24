@@ -18,8 +18,11 @@ class ClientOptConfig:
     batch_size: int
     epochs: int
     biased_trainer_epochs: int
+    biased_trainer_steps: int
     left_right_trainer_epochs: int
+    left_right_trainer_steps: int
     generalized_cross_entropy_q: float
+    num_workers: int
     num_steps: Optional[int]
 
 
