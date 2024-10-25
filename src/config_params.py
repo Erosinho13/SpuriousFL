@@ -22,7 +22,7 @@ class ClientOptConfig:
     left_right_trainer_epochs: int
     left_right_trainer_steps: int
     generalized_cross_entropy_q: float
-    num_workers: int
+    num_workers: Optional[int]
     num_steps: Optional[int]
 
 
