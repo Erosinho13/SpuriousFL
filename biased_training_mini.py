@@ -16,18 +16,8 @@ from src.datasets import data_preparation
 from src.models import model_utils
 from src.optimizers.dataloaders import InfiniteDataLoader
 from src.optimizers.subpopbench import get_base_optimizer
+from src.optimizers.subpopbench import GeneralizedCrossEntropyLoss as GCELoss
 
-
-class GCELoss(nn.Module):
-    def __init__(self, q: float):
-        super().__init__()
-        self.q = q
-
-    def forward(self, inputs, targets):
-        p = F.softmax(inputs, dim=1)
-        Yg = torch.gather(p, 1, torch.unsqueeze(targets, 1))
-        loss = ((1 - Yg.squeeze() ** self.q) / self.q).mean()
-        return loss.mean()
 
 
 def ground_truth_matrix(dataset, n_targets, n_groups, batch_size, num_workers):
@@ -229,6 +219,8 @@ def main(cfg: Config):
         },
         device,
     )
+
+    logging.info(est_int_matrix)
 
 
 if __name__ == "__main__":
