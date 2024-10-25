@@ -7,10 +7,13 @@ import torch.nn.functional as F
 import itertools
 
 
-def ground_truth_matrix(dataset, n_targets, n_groups, batch_size, num_workers=0):
+def ground_truth_matrix(dataset, n_targets, n_groups, batch_size, num_workers=0, verbose=1):
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
     y_array, s_array = [], []
-    for _, _, (y, s) in tqdm(loader, desc="Ground Truth Matrix"):
+    iterator = loader
+    if verbose>0:
+        iterator = tqdm(iterator, desc="Ground Truth Matrix")
+    for _, _, (y, s) in iterator:
         y_array.append(y)
         s_array.append(s)
 
