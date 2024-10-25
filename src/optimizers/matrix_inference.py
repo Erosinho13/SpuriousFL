@@ -24,9 +24,12 @@ def ground_truth_matrix(dataset, n_targets, n_groups, batch_size, num_workers=0)
     return m
 
 
-def training(model, loader, optimizer, steps, loss_fn, device):
+def training(model, loader, optimizer, steps, loss_fn, device, verbose=1):
     model.train()
-    for step in tqdm(range(steps + 1), desc="Training Biased Classifier"):
+    iterator = range(steps + 1)
+    if verbose>0:
+        iterator = tqdm(iterator, desc="Training Biased Classifier")
+    for step in iterator:
         _, x, (targets, _) = next(loader)
         x = x.to(device)
         targets = targets.to(device)
@@ -38,13 +41,16 @@ def training(model, loader, optimizer, steps, loss_fn, device):
         optimizer.step()
 
 
-def biased_prediction(model, loader, device):
+def biased_prediction(model, loader, device, verbose=1):
     model.eval()
     featurizer = model.featurizer
     clf = model.classifier
 
     misclassified, targets, groups, features = [], [], [], []
-    for _, x, (y, s) in tqdm(loader, desc="Biased Prediction"):
+    iterator = loader
+    if verbose>0:
+        iterator = tqdm(loader, desc="Biased Prediction")
+    for _, x, (y, s) in iterator:
         x = x.to(device)
         with torch.no_grad():
             feature = featurizer(x)
@@ -81,10 +87,13 @@ def split_by_class(misclf_dataset):
     return splits
 
 
-def train_left_right(loader, clf, optimizer, steps, device):
+def train_left_right(loader, clf, optimizer, steps, device, verbose=1):
     loss_fn = nn.CrossEntropyLoss()
     clf.train()
-    for step in tqdm(range(steps + 1), desc="Training Left-Right classifier"):
+    iterator = range(steps + 1)
+    if verbose>0:
+        iterator = tqdm(iterator, desc="Training Left-Right classifier")
+    for step in iterator:
         x, targets, *_ = next(loader)
         x = x.to(device)
         targets = targets.to(device)
@@ -96,7 +105,7 @@ def train_left_right(loader, clf, optimizer, steps, device):
         optimizer.step()
 
 
-def estimate_interaction_matrix(n_targets, n_groups, data_splits: dict, train_idx, lr_clf, loader_cfg, device):
+def estimate_interaction_matrix(n_targets, n_groups, data_splits: dict, train_idx, lr_clf, loader_cfg, device, verbose=1):
     m = torch.zeros((n_targets, n_groups), dtype=torch.int64)
 
     for key, value in data_splits.items():
@@ -109,7 +118,10 @@ def estimate_interaction_matrix(n_targets, n_groups, data_splits: dict, train_id
         else:
             loader = torch.utils.data.DataLoader(split, **loader_cfg, shuffle=False)
             pred_labels = []
-            for x, *_ in tqdm(loader, desc="Evaluating left/right"):
+            iterator = loader
+            if verbose>0:
+                iterator = tqdm(iterator, desc="Evaluating left/right")
+            for x, *_ in iterator:
                 x = x.to(device)
                 with torch.no_grad():
                     output = lr_clf(x).cpu()
