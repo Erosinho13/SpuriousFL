@@ -107,7 +107,7 @@ def main(cfg: Config):
         device,
     )
 
-    logging.info(est_int_matrix)
+    logging.info(est_int_matrix.cpu().numpy())
 
 
 if __name__ == "__main__":
