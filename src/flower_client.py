@@ -168,11 +168,14 @@ class FlowerClient(fl.client.NumPyClient):
 
         # ==============================================
         #log(INFO, "Training biased model")
-
+        if self.conf["client_opt"]["biased_optimizer"] == 'ReSample':
+            weights = y_weights
+        else:
+            weights = None
         train_loader = iter(
             InfiniteDataLoader(
                 dataset=train_ds,
-                weights=y_weights,
+                weights=weights,
                 batch_size=self.conf["client_opt"]["batch_size"]
             )
         )

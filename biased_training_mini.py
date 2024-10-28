@@ -45,10 +45,14 @@ def main(cfg: Config):
 
     # ==============================================
     logging.info("Pre-train with Class ReSample")
+    if cfg.client_opt.biased_optimizer == 'ReSample':
+        weights = y_weights
+    else:
+        weights = None
     train_loader = iter(
         InfiniteDataLoader(
             dataset=train_ds,
-            weights=y_weights,
+            weights=weights,
             batch_size=cfg.client_opt.batch_size,
             num_workers=cfg.client_opt.num_workers,
         )

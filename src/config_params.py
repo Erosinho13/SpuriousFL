@@ -24,6 +24,7 @@ class ClientOptConfig:
     generalized_cross_entropy_q: float
     num_workers: Optional[int]
     num_steps: Optional[int]
+    biased_optimizer: Optional[str]
 
 
 @dataclass
