@@ -155,7 +155,7 @@ class FlowerClient(fl.client.NumPyClient):
     def predict_n_matrix(self):
         """Predict N matrix by training biased and spurious classifier"""
         train_ds = self.train_data.dataset
-        gt_int_matrix = ground_truth_matrix(
+        gt_int_matrix, y_weights, _ = ground_truth_matrix(
             train_ds,
             self.conf["dataset_options"]["num_targets"],
             self.conf["dataset_options"]["num_groups"],
@@ -172,7 +172,7 @@ class FlowerClient(fl.client.NumPyClient):
         train_loader = iter(
             InfiniteDataLoader(
                 dataset=train_ds,
-                weights=None,
+                weights=y_weights,
                 batch_size=self.conf["client_opt"]["batch_size"]
             )
         )

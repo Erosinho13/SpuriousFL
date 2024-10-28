@@ -24,7 +24,13 @@ def ground_truth_matrix(dataset, n_targets, n_groups, batch_size, num_workers=0,
     for y, s in itertools.product(range(n_targets), range(n_groups)):
         m[y, s] = torch.sum((y_array == y) & (s_array == s))
 
-    return m
+    y_weights, s_weights = torch.zeros(len(y_array)), torch.zeros(len(s_array))
+    for label, count in zip(*torch.unique(y_array, return_counts=True)):
+            y_weights[y_array == label] = len(y_array) / count
+    for label, count in zip(*torch.unique(s_array, return_counts=True)):
+            s_weights[s_array == label] = len(s_array) / count
+
+    return m, y_array, s_array
 
 
 def training(model, loader, optimizer, steps, loss_fn, device, verbose=1):

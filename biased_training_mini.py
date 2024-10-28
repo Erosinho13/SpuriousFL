@@ -31,7 +31,7 @@ def main(cfg: Config):
     conf = OmegaConf.to_container(cfg, resolve=True)
 
     train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
-    gt_int_matrix = ground_truth_matrix(
+    gt_int_matrix, y_weights, _ = ground_truth_matrix(
         train_ds,
         cfg.dataset_options.num_targets,
         cfg.dataset_options.num_groups,
@@ -44,11 +44,11 @@ def main(cfg: Config):
     model_utils.print_summary(model)
 
     # ==============================================
-    logging.info("Pre-train with ERM")
+    logging.info("Pre-train with Class ReSample")
     train_loader = iter(
         InfiniteDataLoader(
             dataset=train_ds,
-            weights=None,
+            weights=y_weights,
             batch_size=cfg.client_opt.batch_size,
             num_workers=cfg.client_opt.num_workers,
         )
