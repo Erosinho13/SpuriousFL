@@ -29,6 +29,8 @@ def ground_truth_matrix(dataset, n_targets, n_groups, batch_size, num_workers=0,
             y_weights[y_array == label] = len(y_array) / count
     for label, count in zip(*torch.unique(s_array, return_counts=True)):
             s_weights[s_array == label] = len(s_array) / count
+    y_weights = y_weights / torch.max(y_weights)
+    s_weights = s_weights / torch.max(s_weights)
     return m, y_weights, s_weights
 
 
@@ -89,7 +91,7 @@ def split_by_class(misclf_dataset):
         weights = torch.zeros(len(split))
         for label, count in zip(*torch.unique(misclassified[idx], return_counts=True)):
             weights[misclassified[idx] == label] = len(split) / count
-
+        weights = weights / torch.max(weights)
         splits[y] = (split, weights, torch.max(weights))
 
     return splits
