@@ -46,7 +46,8 @@ def test_model(test_loader, model, device, conf, epoch, train_set=False):
     if not train_set:
         _, _, group_acc = src.optimizers.optim_utils.evaluate(model, test_loader, conf)
         print(group_acc)
-        wandb.log(group_acc, step=epoch)
+        if conf["wandb"]:
+            wandb.log(group_acc, step=epoch)
 
 
 def train(conf, conf_name=None):
@@ -203,10 +204,10 @@ def train(conf, conf_name=None):
         if conf["wandb"]:
             wandb.log({"train_loss": running_loss / len(train_loader)}, step=epoch)
 
-        if (epoch + 1) % conf["eval_interval"] == 0:
+        if (epoch + 1) % 1 == 0:
             test_model(eval_loader, model, device, conf, epoch, train_set=True)
 
-        if (epoch + 1) % conf["test_interval"] == 0:
+        if (epoch + 1) % 1 == 0:
             test_model(test_loader, model, device, conf, epoch)
 
     test_model(test_loader, model, device, conf, conf["client_opt"]["epochs"])
