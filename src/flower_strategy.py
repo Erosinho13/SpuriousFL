@@ -24,7 +24,7 @@ from flwr.common import (
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from sklearn.cluster import kmeans_plusplus
 from src.optimizers import subpop_federated 
-from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, select_noreplacement, temperature_weighted_values, upscale
+from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, client_weights_nova, select_noreplacement, temperature_weighted_values, upscale
 from src.utils import log
 from src.models import model_utils
 import json
@@ -88,16 +88,16 @@ class MyStrategy(fl.server.strategy.FedOpt):
         Controls the algorithm's degree of adaptability. Defaults to 1e-9.
     """
 
-    def __init__(self, conf, *args, **kwargs):
+    def __init__(self, conf, initial_parameters=None, *args, **kwargs):
         self.conf = conf
         eta = self.conf["server_opt"]["learning_rate"]
         eta_l = self.conf["client_opt"]["learning_rate"]
         beta_1 = self.conf["server_opt"]["beta_1"]
         beta_2 = self.conf["server_opt"]["beta_2"]
         tau = self.conf["server_opt"]["tau"]
-        if self.initial_parameters is not None:
+        if initial_parameters is not None:
             self.current_weights: NDArrays = parameters_to_ndarrays(
-                self.initial_parameters
+                initial_parameters
             )
             if self.conf["server_opt"]["optimizer"] in ["FedAvgM", "FedAdam", "FedNova"]:
                 self.m_t = [np.zeros_like(x) for x in self.current_weights]  # Momentum vector
@@ -109,6 +109,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         super().__init__(evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
                          fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
+                         initial_parameters=initial_parameters,
                          eta=eta,
                          eta_l=eta_l,
                          beta_1=beta_1,
@@ -365,6 +366,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
             losses = [res.metrics["loss"] for _, res in results]
             client_weights = losses
             client_weights = upscale(client_weights, self.conf['len_total_data'])
+        elif self.conf["server_opt"]["weight_clients"] == "server_post_nova":
+            # https://flower.ai/docs/baselines/fednova.html
+            client_weights = client_weights_nova(results)
         elif self.conf["server_opt"]["weight_clients"] == "server_post_IDA" or self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
             # https://arxiv.org/pdf/2008.07665
             client_weights = client_weights_IDA(results)

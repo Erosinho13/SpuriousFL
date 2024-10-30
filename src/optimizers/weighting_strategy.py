@@ -63,6 +63,17 @@ def select_noreplacement(original_M, p):
 
     return _selected_clients
 
+def client_weights_nova(results):
+    """FedNova client weights (use together with FedAvgM optimizer): 
+    https://github.com/adap/flower/blob/main/baselines/fednova/fednova/strategy.py"""
+    local_tau = np.array([float(res.metrics["tau"]) for _, res in results])
+    tau_eff = np.sum(local_tau)
+    local_norm = np.array([float(res.metrics["local_norm"]) for _, res in results])
+    datasize = np.array([float(res.metrics["weights"]) for _, res in results])
+    client_weights = tau_eff / local_norm * datasize
+    return client_weights
+    
+
 
 def client_weights_IDA(results):
     """IDA weights from paper: https://arxiv.org/pdf/2008.07665"""

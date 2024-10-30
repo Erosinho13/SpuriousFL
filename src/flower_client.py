@@ -150,6 +150,31 @@ class FlowerClient(fl.client.NumPyClient):
                     group_sizes = metadata["group_sizes"]
                     N = np.resize(group_sizes, (self.conf["dataset_options"]["num_targets"],self.conf["dataset_options"]["num_groups"]))
         shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics, self.conf, n_matrix=N, before_train=before_train)
+
+        if "nova" in self.conf["server_opt"]["client_info"]:
+            shared_metrics["weights"] = self.train_len
+            if "num_steps" in self.conf["client_opt"] and isinstance(self.conf["client_opt"]["num_steps"], int):
+                local_steps = self.conf["client_opt"]["num_steps"]
+            else:
+                local_steps = len(self.train_data) * self.conf["client_opt"]["epochs"]
+            local_normalizing_vec = 0
+            if self.conf["client_opt"]["momentum"]!=0:
+                local_counter = 0
+                for _ in range(local_steps):
+                    local_counter = local_counter*self.conf["client_opt"]["momentum"] +1
+                    local_normalizing_vec += local_counter
+                    etamu = self.conf["client_opt"]["learning_rate"] * self.conf["client_opt"]["proximal_mu"]
+                    if etamu != 0:
+                        local_normalizing_vec *= 1 - etamu
+                        local_normalizing_vec += 1
+            else:
+                local_normalizing_vec = local_steps
+            if self.conf["client_opt"]["proximal_mu"] != 0:
+                local_tau = local_steps * (self.train_len / self.conf["len_total_data"])
+            else:
+                local_tau = local_normalizing_vec * (self.train_len / self.conf["len_total_data"])
+            shared_metrics["tau"] = local_tau
+            shared_metrics["local_norm"] = local_normalizing_vec
         return shared_metrics
     
     def predict_n_matrix(self):
