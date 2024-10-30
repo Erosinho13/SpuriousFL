@@ -25,6 +25,7 @@ class ClientOptConfig:
     num_workers: Optional[int]
     num_steps: Optional[int]
     biased_optimizer: Optional[str]
+    proximal_mu: float
 
 
 @dataclass

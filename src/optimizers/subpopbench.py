@@ -112,6 +112,8 @@ def get_subpop_optimizer(model, data, conf={}):
                 return FExCRT(model, conf)
             elif copt["subpop_optimizer"] == "LfF":
                 return LfF(model, conf)
+            elif copt["subpop_optimizer"] == "Prox":
+                return Prox(model, conf)
             else:
                 raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)
@@ -438,8 +440,8 @@ class LfF(Algorithm):
         self.pred_model._init_model()
         
         self.optimizer_b = get_base_optimizer(self.network.parameters(), self.conf)
-        if "generalized_cross_entropy_q" in self.conf["client_opt"]:
-            gce_q = self.conf["client_opt"]["generalized_cross_entropy_q"]
+        if "generalized_cross_entropy_q" in self.hparams:
+            gce_q = self.hparams["generalized_cross_entropy_q"]
         else:
             gce_q = 0.7
         self.gce_loss = get_loss(conf={"client_opt":{"loss_function":"generalized_cross_entropy",
@@ -479,3 +481,32 @@ class LfF(Algorithm):
 
     def predict(self, x):
         return self.pred_model.predict(x)
+
+
+class Prox(ERM):
+    """ERM with Proximal loss (from fedprox: https://flower.ai/docs/baselines/fedprox.html)"""
+    def __init__(self, model, conf):
+        super(ERM, self).__init__(
+            model, conf)
+
+        self.featurizer = self.network.featurizer
+        self.classifier = self.network.classifier
+        self._init_model()
+
+    def _init_model(self):
+        self.orig_model_params = copy.deepcopy(self.network).parameters()
+        self.proximal_mu = self.hparams["proximal_mu"]
+        self.optimizer = get_base_optimizer(self.network.parameters(), self.conf)
+        self.loss = get_loss(conf=self.conf)
+        self.lr_scheduler = None
+
+
+    def _compute_loss(self, i, pred, y, a, step):
+        orig_loss =  self.loss(pred, y).mean()
+        if self.proximal_mu == 0.0:
+            return orig_loss
+        proximal_term = 0.0
+        for local_weights, global_weights in zip(self.network.parameters(), self.orig_model_params):
+            proximal_term += torch.square((local_weights - global_weights).norm(2))
+        loss = orig_loss + (self.proximal_mu / 2) * proximal_term
+        return loss

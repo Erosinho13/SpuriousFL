@@ -18,3 +18,4 @@ left_right_trainer_steps: 100
 generalized_cross_entropy_q: 0.7
 num_workers: 4
 biased_optimizer: ERM
+proximal_mu: 0.0
