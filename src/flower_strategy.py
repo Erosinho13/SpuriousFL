@@ -95,6 +95,14 @@ class MyStrategy(fl.server.strategy.FedOpt):
         beta_1 = self.conf["server_opt"]["beta_1"]
         beta_2 = self.conf["server_opt"]["beta_2"]
         tau = self.conf["server_opt"]["tau"]
+        if self.initial_parameters is not None:
+            self.current_weights: NDArrays = parameters_to_ndarrays(
+                self.initial_parameters
+            )
+            if self.conf["server_opt"]["optimizer"] in ["FedAvgM", "FedAdam"]:
+                self.m_t = [np.zeros_like(x) for x in self.current_weights]  # Momentum vector
+            if self.conf["server_opt"]["optimizer"] in ["FedAdam"]:
+                self.v_t = [np.zeros_like(x) for x in self.current_weights]
         self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
         self.stored_client_data = {}
         self.client_update_requested = []
