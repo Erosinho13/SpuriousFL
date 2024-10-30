@@ -99,7 +99,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             self.current_weights: NDArrays = parameters_to_ndarrays(
                 self.initial_parameters
             )
-            if self.conf["server_opt"]["optimizer"] in ["FedAvgM", "FedAdam"]:
+            if self.conf["server_opt"]["optimizer"] in ["FedAvgM", "FedAdam", "FedNova"]:
                 self.m_t = [np.zeros_like(x) for x in self.current_weights]  # Momentum vector
             if self.conf["server_opt"]["optimizer"] in ["FedAdam"]:
                 self.v_t = [np.zeros_like(x) for x in self.current_weights]
@@ -167,19 +167,22 @@ class MyStrategy(fl.server.strategy.FedOpt):
             self.current_weights = fedavg_weights_aggregate
             return ndarrays_to_parameters(self.current_weights), metrics_aggregated
         
-        if self.conf["server_opt"]["optimizer"]=="FedAvgM":
+        if self.conf["server_opt"]["optimizer"] in ["FedAvgM", "FedNova"]:
             # Following https://flower.ai/docs/framework/_modules/flwr/server/strategy/fedavgm.html#FedAvgM
+            # Following: https://github.com/adap/flower/blob/main/baselines/fednova/fednova/strategy.py
+            # Pseudo gradients
             delta_t: NDArrays = [
                 x - y for x, y in zip(fedavg_weights_aggregate, self.current_weights)
             ]
             # m_t
             if not self.m_t:
                 self.m_t = [np.zeros_like(x) for x in delta_t]
+            # Applying Nesterov
             self.m_t = [
                 np.multiply(self.beta_1, x) + y
                 for x, y in zip(self.m_t, delta_t)
             ]
-
+            # Federated Averaging with Server Momentum
             new_weights = [
                 x + self.eta * y
                 for x, y in zip(self.current_weights, self.m_t)
@@ -216,6 +219,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
             self.current_weights = new_weights
             return ndarrays_to_parameters(self.current_weights), metrics_aggregated
+        
         raise NotImplementedError(f'Server optimizer not recognized: {self.conf["server_opt"]["optimizer"]}')
 
     def aggregate_evaluate(
