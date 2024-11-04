@@ -177,4 +177,16 @@ def split_mode_to_matrix(split_mode:str)-> List:
         client_samples += [[[50,130],[15,5]]] * 2
         client_samples += [[[70,110],[13,7]]] * 2
         client_samples += [[[80,100],[11,9]]] * 2
+    if split_mode=="testdist2":
+        client_samples = []
+        client_samples += [[[170,10],[60,20]]] * 2
+        client_samples += [[[150,30],[56,24]]] * 2
+        client_samples += [[[130,50],[52,28]]] * 2
+        client_samples += [[[110,70],[48,32]]] * 2
+        client_samples += [[[100,80],[44,36]]] * 2
+        client_samples += [[[10,170],[60,20]]] * 2
+        client_samples += [[[30,150],[56,24]]] * 2
+        client_samples += [[[50,130],[52,28]]] * 2
+        client_samples += [[[70,110],[48,32]]] * 2
+        client_samples += [[[80,100],[44,36]]] * 2
     return client_samples
