@@ -9,3 +9,5 @@ aug_horizontal_flip: true
 local_training_id: null
 split_mode: homogen
 num_clients: 4
+locations: ['desert', 'jungle', 'mountain', 'snow', 'dirt', 'beach']
+breeds: ['labrador', 'dachshund', 'bulldog', 'corgi']

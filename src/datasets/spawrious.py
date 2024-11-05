@@ -19,11 +19,14 @@ class Spawrious(VisionDataset, SubpopDataset):
         transforms=None,
         num_targets = 4,
         num_groups = 6,
-        num_samples_per_class = None
+        num_samples_per_class = None,
+        locations=None,
+        breeds=None
     ) -> None:
         dataset, locations, breeds = get_dataset(root_dir=root, train=train,
                                                  num_targets=num_targets, num_groups=num_groups,
-                                                 num_samples_per_class=num_samples_per_class)
+                                                 num_samples_per_class=num_samples_per_class,
+                                                 locations=locations,breeds=breeds)
         self.metadata = {"locations":locations, "breeds":breeds}
         self.subset = dataset[["path","breed","location"]].to_numpy()
         self.root = root
@@ -63,16 +66,21 @@ def get_image_info(root):
     return image_info_list
 
 
-def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0, num_targets=4, num_groups=6, num_samples_per_class=None):
+def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0, num_targets=4, num_groups=6, num_samples_per_class=None, locations=None, breeds=None):
     _download_dataset_if_not_available("entire_dataset", root_dir)
     metadata1 = get_image_info(os.path.join(root_dir,"spawrious224","1"))
     metadata0 = get_image_info(os.path.join(root_dir,"spawrious224","0"))
     metadata = metadata0 + metadata1
     df = pd.DataFrame(metadata, columns=["path","location","breed"])
-    df["location"], locations = pd.factorize(df["location"])
-    df["breed"], breeds = pd.factorize(df["breed"])
+    # Convert location and breed columns to categorical with predefined order
+    df["location"] = pd.Categorical(df["location"], categories=locations, ordered=True)
+    df["breed"] = pd.Categorical(df["breed"], categories=breeds, ordered=True)
+    # Factorize based on the predefined categories
+    df["location"], location_categories = pd.factorize(df["location"], sort=True)
+    df["breed"], breed_categories = pd.factorize(df["breed"], sort=True)
     df = df[df["location"]<num_groups]
     df = df[df["breed"]<num_targets]
+    print(location_categories, breed_categories)
     test_set = df.groupby(['location','breed']).apply(lambda x: x.sample(frac=test_ratio, random_state=seed)).droplevel([0,1])
     train_set = df.drop(test_set.index)
     if num_samples_per_class is not None:

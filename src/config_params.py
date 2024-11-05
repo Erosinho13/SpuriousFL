@@ -60,6 +60,8 @@ class DatasetConfig:
     dirichlet_alpha: Optional[float]
     local_training_id: Optional[str]
     num_samples_per_class: Optional[int]
+    locations: Optional[List]
+    breeds: Optional[List]
 
 
 @dataclass

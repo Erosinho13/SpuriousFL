@@ -57,16 +57,28 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
     if dataset_mode == "Spawrious":
         ds_opt = conf["dataset_options"]
         train_tr_list, test_tr_list = data_transforms_spawrious(conf)
+        if "locations" in conf["dataset_options"].keys() and isinstance(conf["dataset_options"]["locations"], list):
+            locations = conf["dataset_options"]["locations"]
+        else:
+            locations = None
+        if "breeds" in conf["dataset_options"].keys() and isinstance(conf["dataset_options"]["breeds"], list):
+            breeds = conf["dataset_options"]["breeds"]
+        else:
+            breeds = None
         trainset = Spawrious(
             "./datasets", train=True, transforms=train_tr_list,
             num_groups=ds_opt['num_groups'],
             num_targets=ds_opt['num_targets'],
-            num_samples_per_class=ds_opt['num_samples_per_class']
+            num_samples_per_class=ds_opt['num_samples_per_class'],
+            locations=locations,
+            breeds=breeds
         )
         testset = Spawrious(
             "./datasets", train=False, transforms=test_tr_list,
             num_groups=ds_opt['num_groups'],
             num_targets=ds_opt['num_targets'],
+            locations=locations,
+            breeds=breeds
         )
         valset = copy.deepcopy(testset)
         return trainset, valset, testset
