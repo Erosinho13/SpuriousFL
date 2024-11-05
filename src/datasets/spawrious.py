@@ -162,5 +162,5 @@ def split_data_spawrious(ds, conf):
     idx_split = get_envs(ids_by_groups, split_mode=conf["dataset_options"]["split_mode"], seed=conf["seed"], num_clients=conf["dataset_options"]["num_clients"])
     ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
     for ds in ds_split:
-        print(count_groups(ds, False, 2, 2)["group_sizes"])
+        print(count_groups(ds, False, conf["dataset_options"]["num_groups"], conf["dataset_options"]["num_targets"])["group_sizes"])
     return ds_split
