@@ -192,5 +192,5 @@ def split_mode_to_matrix(split_mode:str)-> List:
     
     if split_mode=="class4":
         client_samples = []
-        client_samples += [[[100,10],[100,10],[10,100],[10,100]]] * 2
+        client_samples += [[[500,50],[500,50],[50,500],[50,500]]] * 2
     return client_samples

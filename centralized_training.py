@@ -69,7 +69,7 @@ def train(conf, conf_name=None):
                     train_ds = concat_subsets(ds_split, conf["dataset_options"]["num_clients"])
             else:
                 # Feature to do local training for one client's data only
-                train_ds = ds_split[conf["dataset_options"]["local_training_id"]]
+                train_ds = ds_split[int(conf["dataset_options"]["local_training_id"])]
     conf["len_total_data"] = len(train_ds)
     print("Dataset size: ", len(train_ds))
 

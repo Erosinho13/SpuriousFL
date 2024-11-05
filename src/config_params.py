@@ -58,7 +58,7 @@ class DatasetConfig:
     input_size: Optional[int]
     data_shuffle_seed: Optional[int]
     dirichlet_alpha: Optional[float]
-    local_training_id: Optional[int]
+    local_training_id: Optional[str]
     num_samples_per_class: Optional[int]
 
 
