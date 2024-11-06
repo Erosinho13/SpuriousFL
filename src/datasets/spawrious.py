@@ -75,6 +75,7 @@ def get_dataset(root_dir, train=True, test_ratio=0.1, seed=0, num_targets=4, num
     # Convert location and breed columns to categorical with predefined order
     df["location"] = pd.Categorical(df["location"], categories=locations, ordered=True)
     df["breed"] = pd.Categorical(df["breed"], categories=breeds, ordered=True)
+    df = df.dropna()
     # Factorize based on the predefined categories
     df["location"], location_categories = pd.factorize(df["location"], sort=True)
     df["breed"], breed_categories = pd.factorize(df["breed"], sort=True)
