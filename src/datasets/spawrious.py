@@ -30,15 +30,15 @@ class Spawrious(VisionDataset, SubpopDataset):
         self.metadata = {"locations":locations, "breeds":breeds}
         self.subset = dataset[["path","breed","location"]].to_numpy()
         self.root = root
+        self.transforms = transforms
 
     def __len__(self) -> int:
         return len(self.subset)
 
     def __getitem__(self, index: int):
         x, y, s = self.subset[index]
-        x = np.asarray(Image.open(x))
-        x = np.transpose(x, (2, 0, 1))
-        x = (x/255).astype(np.float32)
+        x = Image.open(x)
+        x = self.transforms(x)
         return index, x, (y, s)
 
     def __getattr__(self, name):
@@ -102,6 +102,8 @@ def data_transforms_spawrious(conf={}):
     ]
     if "input_size" in conf["dataset_options"].keys():
         input_size = conf["dataset_options"]["input_size"]
+    else:
+        input_size = 224
     train_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
     test_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
     if conf["dataset_options"]["aug_crop"] > 0:
@@ -112,7 +114,9 @@ def data_transforms_spawrious(conf={}):
     test_tr_list.append(torchvision.transforms.ToTensor())
 
     if conf["dataset_options"]["norm"]:
-        raise NotImplementedError("Get norms")
+        # ImageNet norms
+        train_tr_list.append(torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
+        test_tr_list.append(torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]))
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 
 
