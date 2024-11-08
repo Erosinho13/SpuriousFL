@@ -102,9 +102,8 @@ def data_transforms_spawrious(conf={}):
     ]
     if "input_size" in conf["dataset_options"].keys():
         input_size = conf["dataset_options"]["input_size"]
-    if input_size != 224:
-        train_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
-        test_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
+    train_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
+    test_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
     if conf["dataset_options"]["aug_crop"] > 0:
         train_tr_list.append(torchvision.transforms.RandomCrop(input_size, padding=conf["dataset_options"]['aug_crop']))
     if conf["dataset_options"]["aug_horizontal_flip"]:
