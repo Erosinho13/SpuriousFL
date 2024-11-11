@@ -1,6 +1,6 @@
 from collections import Counter
 import flwr as fl
-from src import utils
+from src import corr, utils
 from src.datasets.dataset_utils import ModifiedDataset, SubsetDataset, count_groups
 from src.optimizers.subpopbench import GeneralizedCrossEntropyLoss as GCELoss
 from  src.optimizers import subpop_federated
@@ -58,7 +58,8 @@ class FlowerClient(fl.client.NumPyClient):
             opt = subpopbench.get_subpop_optimizer(self.model, train_ds.dataset, self.conf)
             # Update client info, eg N matrix with model params from server
             if config["update_info"]:
-                shared_metrics = self.share_client_opt_params(opt, shared_metrics, before_train=True)
+                shared_metrics = self.share_client_params_once(opt, shared_metrics, before_train=True)
+            shared_metrics = self.share_client_params_always(opt, shared_metrics, before_train=True)
             # Update client optimizer data from server
             self.align_client_opt(opt, config)
 
@@ -73,7 +74,9 @@ class FlowerClient(fl.client.NumPyClient):
             # Share client training metadata
             shared_metrics["loss"] = history.history["loss"][-1]
             if config["update_info"]:
-                shared_metrics = self.share_client_opt_params(opt, shared_metrics, before_train=False)
+                shared_metrics = self.share_client_params_once(opt, shared_metrics, before_train=False)
+            shared_metrics = self.share_client_params_always(opt, shared_metrics, before_train=False)
+
 
             if "weight_clients" in self.conf["server_opt"].keys():
                 weight_mode = self.conf["server_opt"]["weight_clients"]
@@ -136,7 +139,7 @@ class FlowerClient(fl.client.NumPyClient):
         """Update client subpopbench optimizer with FL server config params"""
         subpop_federated.update_opt_with_shared_params(opt, config)
 
-    def share_client_opt_params(self, opt, shared_metrics, before_train=False):
+    def share_client_params_once(self, opt, shared_metrics, before_train=False):
         """Pass client opt params to FL server within the shared metrics dict"""
         N = None
         if before_train:
@@ -149,32 +152,50 @@ class FlowerClient(fl.client.NumPyClient):
                                             num_labels=self.conf["dataset_options"]["num_targets"])
                     group_sizes = metadata["group_sizes"]
                     N = np.resize(group_sizes, (self.conf["dataset_options"]["num_targets"],self.conf["dataset_options"]["num_groups"]))
-        shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics, self.conf, n_matrix=N, before_train=before_train)
+                        
+                if "groupweights" in self.conf["server_opt"]["client_info"]:
+                    group_sizes = np.resize(N, (1, N.shape[0]*N.shape[1]))
+                    group_sizes = list(group_sizes[0])
+                    for i, v in enumerate(group_sizes):
+                        shared_metrics["groupsize_"+str(i)] = int(v)
+                if "triplets" in self.conf["server_opt"]["client_info"]:
+                    shared_metrics["SC"] = corr.SC(N)
+                    shared_metrics["AI"] = corr.AI(N)
+                    shared_metrics["CI"] = corr.CI(N)
+        return shared_metrics
+    
+    def share_client_params_always(self, opt, shared_metrics, before_train=False):
+        shared_metrics = subpop_federated.store_opt_params(opt, shared_metrics, self.conf, before_train=before_train)
 
-        if "nova" in self.conf["server_opt"]["client_info"]:
-            shared_metrics["weights"] = self.train_len
-            if "num_steps" in self.conf["client_opt"] and isinstance(self.conf["client_opt"]["num_steps"], int):
-                local_steps = self.conf["client_opt"]["num_steps"]
-            else:
-                local_steps = len(self.train_data) * self.conf["client_opt"]["epochs"]
-            local_normalizing_vec = 0
-            if self.conf["client_opt"]["momentum"]!=0:
-                local_counter = 0
-                for _ in range(local_steps):
-                    local_counter = local_counter*self.conf["client_opt"]["momentum"] +1
-                    local_normalizing_vec += local_counter
-                    etamu = self.conf["client_opt"]["learning_rate"] * self.conf["client_opt"]["proximal_mu"]
-                    if etamu != 0:
-                        local_normalizing_vec *= 1 - etamu
-                        local_normalizing_vec += 1
-            else:
-                local_normalizing_vec = local_steps
-            if self.conf["client_opt"]["proximal_mu"] != 0:
-                local_tau = local_steps * (self.train_len / self.conf["len_total_data"])
-            else:
-                local_tau = local_normalizing_vec * (self.train_len / self.conf["len_total_data"])
-            shared_metrics["tau"] = local_tau
-            shared_metrics["local_norm"] = local_normalizing_vec
+        if before_train:
+            if "gloss" in self.conf["server_opt"]["client_info"]:
+                loss, accuracy, group_acc = optim_utils.evaluate(self.model, self.train_data, self.conf, verbose=0)
+                shared_metrics["gloss"] = loss
+        else:
+            if "nova" in self.conf["server_opt"]["client_info"]:
+                shared_metrics["weights"] = self.train_len
+                if "num_steps" in self.conf["client_opt"] and isinstance(self.conf["client_opt"]["num_steps"], int):
+                    local_steps = self.conf["client_opt"]["num_steps"]
+                else:
+                    local_steps = len(self.train_data) * self.conf["client_opt"]["epochs"]
+                local_normalizing_vec = 0
+                if self.conf["client_opt"]["momentum"]!=0:
+                    local_counter = 0
+                    for _ in range(local_steps):
+                        local_counter = local_counter*self.conf["client_opt"]["momentum"] +1
+                        local_normalizing_vec += local_counter
+                        etamu = self.conf["client_opt"]["learning_rate"] * self.conf["client_opt"]["proximal_mu"]
+                        if etamu != 0:
+                            local_normalizing_vec *= 1 - etamu
+                            local_normalizing_vec += 1
+                else:
+                    local_normalizing_vec = local_steps
+                if self.conf["client_opt"]["proximal_mu"] != 0:
+                    local_tau = local_steps * (self.train_len / self.conf["len_total_data"])
+                else:
+                    local_tau = local_normalizing_vec * (self.train_len / self.conf["len_total_data"])
+                shared_metrics["tau"] = local_tau
+                shared_metrics["local_norm"] = local_normalizing_vec
         return shared_metrics
     
     def predict_n_matrix(self):

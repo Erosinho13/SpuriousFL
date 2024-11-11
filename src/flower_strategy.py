@@ -24,7 +24,7 @@ from flwr.common import (
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from sklearn.cluster import kmeans_plusplus
 from src.optimizers import subpop_federated 
-from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, client_weights_nova, select_noreplacement, temperature_weighted_values, upscale
+from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, client_weights_nova, select_noreplacement, temperature_weighted_values, top_k_binary_list, upscale
 from src.utils import log
 from src.models import model_utils
 import json
@@ -344,7 +344,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         """Override num_examples with weights defined based on training results
         to achieve weighted federated average using the prewritten code"""
         metric_list = [res.metrics for _, res in results]
-        if "num_active_clients" in self.conf["server_opt"]:
+        if "num_active_clients" in self.conf["server_opt"] and isinstance(self.conf["server_opt"]["num_active_clients"], int):
             active_clients = self.conf["server_opt"]["num_active_clients"]
         else:
             active_clients = 3
@@ -395,6 +395,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 if "smoothing" in self.conf["server_opt"]["weight_clients"]:
                     client_weights = apply_smoothing(client_weights, smoothing_value)
 
+        elif self.conf["server_opt"]["weight_clients"].startswith("server_post_powd"):
+            # https://proceedings.mlr.press/v151/jee-cho22a/jee-cho22a.pdf
+            glosses = [res.metrics["gloss"] for _, res in results]
+            client_weights = top_k_binary_list(glosses, active_clients)
 
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
             # log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
@@ -409,7 +413,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 weighted_clients = {key: random.sample(value, 1) if value else [] for key, value in clusters.items()}
                 weighted_clients = [elem for sublist in weighted_clients.values() for elem in sublist]
                 client_weights = [1 if res.metrics["cid"] in weighted_clients else 0 for _, res in results]
-                
+
             if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix"):
                 
                 M = [res.metrics for _, res in results]
@@ -462,11 +466,19 @@ class MyStrategy(fl.server.strategy.FedOpt):
         """Save data from clients so they don't have to compute again"""
         metrics = [res.metrics for _, res in results]
         for client_metric in metrics:
+            if client_metric["cid"] not in self.stored_client_data.keys():
+                self.stored_client_data[client_metric["cid"]] = {}
+            always_update_list = ["gloss", "weights", "tau", "local_norm"]
+            for k in always_update_list:
+                self.stored_client_data[client_metric["cid"]][k] = client_metric[k]
             if client_metric["cid"] in self.client_update_requested:
                 store_dict = copy.deepcopy(client_metric)
                 del store_dict['cid']
                 del store_dict['loss']
-                self.stored_client_data[client_metric["cid"]] = store_dict
+                for k in always_update_list:
+                    del store_dict[k]
+                for k,v in store_dict.items():
+                    self.stored_client_data[client_metric["cid"]][k] = v
         if len(self.client_update_requested)>0:
             log(DEBUG, "Updated client info %s", str(self.stored_client_data))
             self.log_client_info()

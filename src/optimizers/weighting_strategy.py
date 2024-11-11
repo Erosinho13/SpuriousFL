@@ -186,3 +186,16 @@ def weights_from_n_matrix_list(matrix_list):
     #up_weights = weights/min(weights)
     #up_weights = [int(w) for w in up_weights]
     return weights
+
+def top_k_binary_list(float_list, k):
+    # Get the indices of the sorted list in descending order
+    sorted_indices = sorted(range(len(float_list)), key=lambda i: float_list[i], reverse=True)
+    
+    # Initialize a list of zeros
+    binary_list = [0] * len(float_list)
+    
+    # Set the top k indices to 1
+    for i in sorted_indices[:k]:
+        binary_list[i] = 1
+    
+    return binary_list
