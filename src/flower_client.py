@@ -53,7 +53,7 @@ class FlowerClient(fl.client.NumPyClient):
         try:
             #print(config)
             self.set_parameters(weights, config)
-            shared_metrics = {"cid": self.cid}
+            shared_metrics = {"cid": self.cid, "datasize":self.train_len}
             train_ds = self.train_data
             opt = subpopbench.get_subpop_optimizer(self.model, train_ds.dataset, self.conf)
             # Update client info, eg N matrix with model params from server
