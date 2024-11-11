@@ -25,7 +25,8 @@ class MyManager(fl.server.SimpleClientManager):
         client_info:Optional[dict] = None, 
         min_num_clients: Optional[int] = None,
         criterion: Optional[Criterion] = None,
-        eval: Optional[bool] = False
+        eval: Optional[bool] = False,
+        past_sampled_ids: Optional[np.array] = None
     ) -> list[ClientProxy]:
         """Sample a number of Flower ClientProxy instances."""
         # Block until at least num_clients are connected.
@@ -51,7 +52,6 @@ class MyManager(fl.server.SimpleClientManager):
         if num_clients == len(available_cids) or eval:
             sampled_cids = random.sample(available_cids, num_clients)
             return [self.clients[cid] for cid in sampled_cids]
-        
 
         if self.conf["server_opt"]["selection_method"] == "random":
             sampled_cids = random.sample(available_cids, num_clients)
@@ -67,4 +67,16 @@ class MyManager(fl.server.SimpleClientManager):
             M = np.array([[a['SC'],a['AI'],a['CI']] for a in metric_list])
             selected_clients = select_noreplacement(M.T, num_clients)
             sampled_cids = [str(cid) for cid in selected_clients]
+        elif self.conf["server_opt"]["selection_method"] == "roundrobin":
+            sampled_ids = []
+            for _ in range(num_clients):
+                zero_indices = np.where(past_sampled_ids == 0)[0]
+                if len(zero_indices) == 0:
+                    past_sampled_ids[:] = 0
+                    zero_indices = np.where(past_sampled_ids == 0)[0]
+                sampled_id = np.random.choice(zero_indices)
+                past_sampled_ids[sampled_id] = 1
+                sampled_ids.append(sampled_id)
+            sampled_cids = [str(cid) for cid in sampled_ids]
+
         return [self.clients[cid] for cid in sampled_cids]
