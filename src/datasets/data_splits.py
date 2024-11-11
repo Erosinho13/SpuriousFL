@@ -282,7 +282,15 @@ def split_mode_to_matrix(split_mode:str)-> List:
             [[127,1],[1,31]],
             [[127,1],[1,31]],
          ]
-
+    if split_mode=="spawrious4":
+        client_samples = []
+        client_samples += [[[20, 20], [20, 20], [5, 5], [5, 5]]] * 2  # CI
+        client_samples += [[[5, 5], [5, 5], [20, 20], [20, 20]]] * 2  # CI
+        client_samples += [[[20, 5], [20, 5], [20, 5], [20, 5]]] * 2  # AI
+        client_samples += [[[5, 20], [5, 20], [5, 20], [5, 20]]] * 2  # AI
+        client_samples += [[[5, 20], [5, 20], [20, 5], [20, 5]]] *1 # SC
+        client_samples += [[[119, 5], [119, 5], [5, 119], [5, 119]]] * 7  # SC
+        client_samples += [[[118, 5], [118, 5], [5, 118], [5, 118]]] * 9  # SC
 
     return client_samples
 
