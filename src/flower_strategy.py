@@ -470,7 +470,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 self.stored_client_data[client_metric["cid"]] = {}
             always_update_list = ["gloss", "weights", "tau", "local_norm"]
             for k in always_update_list:
-                self.stored_client_data[client_metric["cid"]][k] = client_metric[k]
+                if k in client_metric.keys():
+                    self.stored_client_data[client_metric["cid"]][k] = client_metric[k]
             if client_metric["cid"] in self.client_update_requested:
                 store_dict = copy.deepcopy(client_metric)
                 del store_dict['cid']
