@@ -477,7 +477,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 del store_dict['cid']
                 del store_dict['loss']
                 for k in always_update_list:
-                    del store_dict[k]
+                    if k in store_dict.keys():
+                        del store_dict[k]
                 for k,v in store_dict.items():
                     self.stored_client_data[client_metric["cid"]][k] = v
         if len(self.client_update_requested)>0:
