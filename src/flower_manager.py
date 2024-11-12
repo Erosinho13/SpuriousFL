@@ -18,6 +18,7 @@ class MyManager(fl.server.SimpleClientManager):
         self.clients: dict[str, ClientProxy] = {}
         self._cv = threading.Condition()
         self.conf = conf
+        self.past_sampled_ids = np.zeros(self.conf['dataset_options']['num_clients'])  # needed for roundrobin sampling strategy
 
     def sample(
         self,
@@ -25,8 +26,7 @@ class MyManager(fl.server.SimpleClientManager):
         client_info:Optional[dict] = None, 
         min_num_clients: Optional[int] = None,
         criterion: Optional[Criterion] = None,
-        eval: Optional[bool] = False,
-        past_sampled_ids: Optional[np.array] = None
+        evaluate: Optional[bool] = False,
     ) -> list[ClientProxy]:
         """Sample a number of Flower ClientProxy instances."""
         # Block until at least num_clients are connected.
@@ -49,7 +49,7 @@ class MyManager(fl.server.SimpleClientManager):
                 num_clients,
             )
             return []
-        if num_clients == len(available_cids) or eval:
+        if num_clients == len(available_cids) or evaluate:
             sampled_cids = random.sample(available_cids, num_clients)
             return [self.clients[cid] for cid in sampled_cids]
 
@@ -69,14 +69,17 @@ class MyManager(fl.server.SimpleClientManager):
             sampled_cids = [str(cid) for cid in selected_clients]
         elif self.conf["server_opt"]["selection_method"] == "roundrobin":
             sampled_ids = []
-            for _ in range(num_clients):
-                zero_indices = np.where(past_sampled_ids == 0)[0]
-                if len(zero_indices) == 0:
-                    past_sampled_ids[:] = 0
-                    zero_indices = np.where(past_sampled_ids == 0)[0]
-                sampled_id = np.random.choice(zero_indices)
-                past_sampled_ids[sampled_id] = 1
-                sampled_ids.append(sampled_id)
+            zero_indices = np.where(self.past_sampled_ids == 0)[0]
+            if len(zero_indices)>num_clients:
+                sampled_ids = np.random.choice(zero_indices,num_clients, replace=False)
+                self.past_sampled_ids[zero_indices] = 1
+            else:
+                sampled_ids = zero_indices
+                remaining = num_clients - len(sampled_ids)
+                one_indices = np.where(self.past_sampled_ids != 0)[0]
+                sampled_ids_more = np.random.choice(one_indices,remaining, replace=False)
+                sampled_ids = np.concatenate((sampled_ids, sampled_ids_more))
+                self.past_sampled_ids[:] = 0
+                self.past_sampled_ids[sampled_ids_more] = 1
             sampled_cids = [str(cid) for cid in sampled_ids]
-
         return [self.clients[cid] for cid in sampled_cids]

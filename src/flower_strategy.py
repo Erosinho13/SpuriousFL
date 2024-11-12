@@ -106,7 +106,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
         self.stored_client_data = {}
         self.client_update_requested = []
-        self.sampled_ids = np.zeros(self.conf['dataset_options']['num_clients'])  # needed for roundrobin sampling strategy
+        
 
         super().__init__(evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
                          fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
@@ -279,7 +279,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     active_clients = 3
                 sample_size = active_clients
         clients = client_manager.sample(
-            num_clients=sample_size, min_num_clients=min_num_clients, client_info=self.stored_client_data, past_sampled_ids=self.sampled_ids
+            num_clients=sample_size, min_num_clients=min_num_clients, client_info=self.stored_client_data
         )
 
         # Create custom configs
@@ -328,7 +328,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             client_manager.num_available()
         )
         clients = client_manager.sample(
-            num_clients=sample_size, min_num_clients=min_num_clients, eval=True
+            num_clients=sample_size, min_num_clients=min_num_clients, evaluate=True
         )
 
         # Return client/config pairs
