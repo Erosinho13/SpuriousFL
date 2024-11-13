@@ -81,6 +81,8 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
             input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
         else:
             input_shape = (3, 224, 224)
+    elif dataset_mode == "CMNIST":
+            input_shape = (3, 28, 28)
     else:
         raise NotImplementedError('Dataset split for dataset ' + dataset_mode + ' not recognized')
 

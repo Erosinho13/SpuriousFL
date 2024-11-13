@@ -141,7 +141,7 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         )
         testset = CMNIST(
             root="./datasets",
-            train=True,
+            train=False,
             confounding_factor=0.5,
             transforms=cmnist_transform,
         )
@@ -187,7 +187,7 @@ def split_data(ds, conf):
                 ds, conf['dataset_options']['split_mode'], conf['dataset_options']['num_clients'],
                 uniform_proportion=conf['dataset_options']['uniform_proportion'] if 'uniform_proportion' in conf['dataset_options'].keys() else 0
             )
-    elif dataset_mode == "Spawrious":
+    elif dataset_mode == "Spawrious" or dataset_mode=="CMNIST":
         ds_split = split_data_spawrious(
             ds,
             conf
