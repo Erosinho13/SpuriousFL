@@ -39,7 +39,7 @@ class MyManager(fl.server.SimpleClientManager):
             available_cids = [
                 cid for cid in available_cids if criterion.select(self.clients[cid])
             ]
-
+        
         if num_clients > len(available_cids):
             log(
                 INFO,
@@ -52,6 +52,8 @@ class MyManager(fl.server.SimpleClientManager):
         if num_clients == len(available_cids) or evaluate:
             sampled_cids = random.sample(available_cids, num_clients)
             return [self.clients[cid] for cid in sampled_cids]
+
+        print(client_info)
 
         if self.conf["server_opt"]["selection_method"] == "random":
             sampled_cids = random.sample(available_cids, num_clients)

@@ -273,7 +273,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         )
         if "pretrain_rounds" in self.conf["server_opt"].keys() and server_round>self.conf["server_opt"]["pretrain_rounds"]:
             if self.conf["server_opt"]["participation"] == "selection":
-                if "num_active_clients" in self.conf["server_opt"]:
+                if "num_active_clients" in self.conf["server_opt"] and isinstance(self.conf["server_opt"]["num_active_clients"],int):
                     active_clients = self.conf["server_opt"]["num_active_clients"]
                 else:
                     active_clients = 3
@@ -297,7 +297,11 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     client_config["update_info"] = True
                     self.client_update_requested.append(int(client.cid))
                 else:
-                    client_config["update_info"] = False
+                    if self.stored_client_data[int(client.cid)]["update_needed"]:
+                        client_config["update_info"] = True
+                        self.client_update_requested.append(int(client.cid))
+                    else:
+                        client_config["update_info"] = False
 
             if self.conf["server_opt"]["weight_clients"].startswith("server_pre_"):
                 c_w = self.pre_calculate_weights(client)
@@ -467,12 +471,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
         metrics = [res.metrics for _, res in results]
         for client_metric in metrics:
             if client_metric["cid"] not in self.stored_client_data.keys():
-                self.stored_client_data[client_metric["cid"]] = {}
+                self.stored_client_data[client_metric["cid"]] = {"update_needed":True}
             always_update_list = ["gloss", "weights", "tau", "local_norm"]
             for k in always_update_list:
                 if k in client_metric.keys():
                     self.stored_client_data[client_metric["cid"]][k] = client_metric[k]
             if client_metric["cid"] in self.client_update_requested:
+                self.stored_client_data[client_metric["cid"]]["update_needed"] = False
                 store_dict = copy.deepcopy(client_metric)
                 del store_dict['cid']
                 del store_dict['loss']
