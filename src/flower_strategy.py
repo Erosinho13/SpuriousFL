@@ -357,6 +357,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
             smoothing_value = self.conf["server_opt"]["weight_smoothing"]
         #import pdb
         #pdb.set_trace()
+        if "fedpns" in self.conf["server_opt"]["weight_clients"] or "fedpns" in self.conf["server_opt"]["selection_method"]:
+            self.calculate_pns_scores(results)
+
         if "pretrain_rounds" in self.conf["server_opt"].keys():
             if server_round<=self.conf["server_opt"]["pretrain_rounds"]:
                 for i in range(len(results)):
@@ -403,7 +406,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
             # https://proceedings.mlr.press/v151/jee-cho22a/jee-cho22a.pdf
             glosses = [res.metrics["gloss"] for _, res in results]
             client_weights = top_k_binary_list(glosses, active_clients)
-
+        elif self.conf["server_opt"]["weight_clients"].startswith("server_post_fedpns"):
+            cids = [res.metrics["cid"] for _,res in results]
+            client_weights = [self.stored_client_data[cid]["fedpns_p"] for cid in cids]
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
             # log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
             if self.conf["server_opt"]["weight_clients"] == "server_post_triplets_importanceclusters":
@@ -516,3 +521,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
             )
         with open(save_path, 'w') as file:
             json.dump(self.stored_client_data, file)
+    
+    def calculate_pns_scores(results):
+        """Based on self.current_weights and weights in results, calculates pi probabilities for FedPNS
+        following https://arxiv.org/pdf/2105.07066
+        Updates self.[cid]['fedpns_p'] for each client"""

@@ -84,4 +84,7 @@ class MyManager(fl.server.SimpleClientManager):
                 self.past_sampled_ids[:] = 0
                 self.past_sampled_ids[sampled_ids_more] = 1
             sampled_cids = [str(cid) for cid in sampled_ids]
+        elif self.conf["server_opt"]["selection_method"] == "fedpns":
+            pns_probs = [client_info[int(cid)]["fedpns_p"] for cid in available_cids]
+            sampled_cids = np.random.choice(available_cids,num_clients,replace=False,p=pns_probs)
         return [self.clients[cid] for cid in sampled_cids]
