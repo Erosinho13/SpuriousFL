@@ -5,6 +5,7 @@ import os
 import numpy as np
 import copy
 import random
+import operator
 from typing import Callable, Dict, List, Optional, Tuple, Union
 from flwr.server.strategy.aggregate import aggregate
 from flwr.server.client_proxy import ClientProxy
@@ -24,7 +25,7 @@ from flwr.common import (
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from sklearn.cluster import kmeans_plusplus
 from src.optimizers import subpop_federated 
-from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, client_weights_nova, select_noreplacement, temperature_weighted_values, top_k_binary_list, upscale
+from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, client_weights_nova, flatten_weights, get_relation, node_deleting, probabilistic_selection, select_noreplacement, temperature_weighted_values, top_k_binary_list, upscale
 from src.utils import log
 from src.models import model_utils
 import json
@@ -103,8 +104,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 self.m_t = [np.zeros_like(x) for x in self.current_weights]  # Momentum vector
             if self.conf["server_opt"]["optimizer"] in ["FedAdam"]:
                 self.v_t = [np.zeros_like(x) for x in self.current_weights]
-        self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
         self.stored_client_data = {}
+        if "fedpns" in self.conf["server_opt"]["weight_clients"] or "fedpns" in self.conf["server_opt"]["selection_method"]:
+            self.fedpnslog={i:[0,0] for i in range(self.conf["dataset_options"]["num_clients"])}
+            for i in range(self.conf["dataset_options"]["num_clients"]):
+                self.stored_client_data[i] = {"update_needed":True}
+                self.stored_client_data[i]["fedpns_p"] = 1/self.conf["dataset_options"]["num_clients"]
+        self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
         self.client_update_requested = []
         
 
@@ -527,10 +533,51 @@ class MyStrategy(fl.server.strategy.FedOpt):
     def calculate_pns_scores(self, results):
         """Based on self.current_weights and weights in results, calculates pi probabilities for FedPNS
         following https://arxiv.org/pdf/2105.07066
-        Updates self.[cid]['fedpns_p'] for each client"""
+        Updates self.stored_client_data[cid]['fedpns_p'] for each client"""
         client_weights = [parameters_to_ndarrays(res.parameters) for _,res in results]
+        idxs_users = [res.metrics["cid"] for _,res in results]
+        for idx in idxs_users:
+            self.fedpnslog[idx][0]+=1
         client_grads = [[a - b for a, b in zip(w, self.current_weights)] for w in client_weights]
-        avg_grad = [np.mean([w[layer] for w in client_grads],axis=0) for layer in range(len(self.current_weights))]
+        client_grads_flatten = [flatten_weights(w) for w in client_grads]
+        grads_dict = {k:v for k,v in zip(idxs_users, client_grads_flatten)}
+        avg_grad = np.mean(list(grads_dict.values()), axis=0)
 
-        import pdb
-        pdb.set_trace()
+        max_now = get_relation(grads_dict, avg_grad, idxs_users)
+        expect_list = {}
+
+        if isinstance(self.conf["server_opt"]["num_active_clients"], int):
+            active_clients = self.conf["server_opt"]["num_active_clients"]
+        else:
+            active_clients = 0
+        if active_clients == 0:
+            active_clients = len(grads_dict)
+
+        removed_ids = []
+        while len(grads_dict)>0:
+            expect_list = node_deleting(expect_list, max_now, idxs_users, grads_dict)
+            print(expect_list)
+            key = max(expect_list.items(), key=operator.itemgetter(1))[0]
+            print("Key:", key)
+            if expect_list[key]<=expect_list["all"]:
+                break # Every client pulls towards the right direction
+            else:
+                self.fedpnslog[key][1] += 1
+                expect_list.pop("all")
+                loss_all, loss_pop = 1.0, 0.0 # Our server has no validation data
+                if loss_all<loss_pop:
+                    break
+                else:
+                    grads_dict.pop(key)
+                    max_now=expect_list[key]
+                    expect_list.pop(key)
+                    idxs_users.remove(key)
+                    removed_ids.append(key)
+        node_prob = {k:v["fedpns_p"] for k,v in self.stored_client_data.items()}
+        node_prob = probabilistic_selection(node_prob, self.fedpnslog, removed_ids,
+                                            alpha=self.conf["server_opt"]["fedpns_alpha"],
+                                            beta=self.conf["server_opt"]["fedpns_beta"])
+        for k,v in node_prob.items():
+            self.stored_client_data[k]["fedpns_p"] = v
+            
+        print("FedPNS_P:",node_prob)

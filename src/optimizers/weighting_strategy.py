@@ -199,3 +199,59 @@ def top_k_binary_list(float_list, k):
         binary_list[i] = 1
     
     return binary_list
+
+
+def get_relation(grad_list, avg_grad, idxs_users):
+    """Given list of gradients and an avg_grad, calculates the avg_grad's relation to the others
+    Adapted from FedPNS code"""
+    innnr_value = {}
+    for i in range(len(idxs_users)):
+        innnr_value[idxs_users[i]] = dot_sum(grad_list[idxs_users[i]], avg_grad)
+    print(innnr_value)
+    return sum(list(innnr_value.values()))
+
+def dot_sum(K, L):
+    return sum(a * b for a,b in zip(K, L))
+
+def flatten_weights(weights):
+    """Get one long list of weights from layer weight list"""
+    ini = []
+    for w in weights:
+        ini += list(w.flatten())
+    return ini
+
+
+def node_deleting(expect_list, expect_value, worker_ind, grads):
+    """Calculates expectation for each client based on the rest of the grads
+    Adapted from FedPNS code"""
+    # expect_list.pop("all")
+    for i in range(len(worker_ind)):
+        worker_ind_del  = [n for n in worker_ind if n != worker_ind[i]]
+        grad_del = grads.copy()
+        grad_del.pop(worker_ind[i])
+        avg_grad_del = np.mean(list(grad_del.values()), axis=0)
+        expect_value_del = get_relation(grad_del, avg_grad_del, worker_ind_del)
+        expect_list[worker_ind[i]] = expect_value_del
+    expect_list["all"] = expect_value
+    return expect_list
+
+def probabilistic_selection(node_prob, node_count, labeled, alpha, beta):
+    """update FedPNS p for each client (does not select). Name kept for compatibility with orig code"""
+    all_ids = list(node_prob.keys())
+    rest_nodes = [i for i in all_ids if i not in labeled]
+    weight = 0
+ 
+        
+    ratio = {}
+    for i in labeled:
+        ratio[i] = node_count[i][1]/ node_count[i][0]
+        
+    for i in labeled:
+        prob_change =  node_prob[i] * min( (ratio[i] + beta)**alpha, 0.99)
+        weight += prob_change
+        node_prob[i] =  node_prob[i] - prob_change
+ 
+    for i in rest_nodes:
+            node_prob[i] = node_prob[i] + weight / (len(rest_nodes))
+
+    return node_prob

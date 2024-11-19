@@ -43,6 +43,8 @@ class ServerOptConfig:
     weight_list: Optional[List]
     pretrain_rounds: Optional[int]
     num_active_clients: Optional[int]
+    fedpns_alpha: float
+    fedpns_beta: float
 
 
 @dataclass

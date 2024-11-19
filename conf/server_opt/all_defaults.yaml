@@ -10,3 +10,5 @@ pretrain_rounds: 0
 participation: weighting
 client_info: groupweights_triplets
 selection_method: random
+fedpns_alpha: 2
+fedpns_beta: 0.7
