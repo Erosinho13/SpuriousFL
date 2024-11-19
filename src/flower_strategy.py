@@ -357,8 +357,6 @@ class MyStrategy(fl.server.strategy.FedOpt):
             smoothing_value = self.conf["server_opt"]["weight_smoothing"]
         #import pdb
         #pdb.set_trace()
-        if "fedpns" in self.conf["server_opt"]["weight_clients"] or "fedpns" in self.conf["server_opt"]["selection_method"]:
-            self.calculate_pns_scores(results)
 
         if "pretrain_rounds" in self.conf["server_opt"].keys():
             if server_round<=self.conf["server_opt"]["pretrain_rounds"]:
@@ -473,6 +471,10 @@ class MyStrategy(fl.server.strategy.FedOpt):
     
     def update_stored_client_info(self, results):
         """Save data from clients so they don't have to compute again"""
+        # Calculate FedPNS scores
+        if "fedpns" in self.conf["server_opt"]["weight_clients"] or "fedpns" in self.conf["server_opt"]["selection_method"]:
+            self.calculate_pns_scores(results)
+
         metrics = [res.metrics for _, res in results]
         for client_metric in metrics:
             if client_metric["cid"] not in self.stored_client_data.keys():
@@ -522,7 +524,13 @@ class MyStrategy(fl.server.strategy.FedOpt):
         with open(save_path, 'w') as file:
             json.dump(self.stored_client_data, file)
     
-    def calculate_pns_scores(results):
+    def calculate_pns_scores(self, results):
         """Based on self.current_weights and weights in results, calculates pi probabilities for FedPNS
         following https://arxiv.org/pdf/2105.07066
         Updates self.[cid]['fedpns_p'] for each client"""
+        client_weights = [parameters_to_ndarrays(res.parameters) for _,res in results]
+        client_grads = [[a - b for a, b in zip(w, self.current_weights)] for w in client_weights]
+        avg_grad = [np.mean([w[layer] for w in client_grads],axis=0) for layer in range(len(self.current_weights))]
+
+        import pdb
+        pdb.set_trace()
