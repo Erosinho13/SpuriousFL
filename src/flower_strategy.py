@@ -543,7 +543,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         grads_dict = {k:v for k,v in zip(idxs_users, client_grads_flatten)}
         avg_grad = np.mean(list(grads_dict.values()), axis=0)
 
-        max_now = get_relation(grads_dict, avg_grad, idxs_users)
+        max_now = get_relation(grads_dict, avg_grad, idxs_users, conf=self.conf)
         expect_list = {}
 
         if isinstance(self.conf["server_opt"]["num_active_clients"], int):
@@ -555,7 +555,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         removed_ids = []
         while len(grads_dict)>0:
-            expect_list = node_deleting(expect_list, max_now, idxs_users, grads_dict)
+            expect_list = node_deleting(expect_list, max_now, idxs_users, grads_dict, conf=self.conf)
             print(expect_list)
             key = max(expect_list.items(), key=operator.itemgetter(1))[0]
             print("Key:", key)

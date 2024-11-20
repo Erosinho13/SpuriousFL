@@ -1,4 +1,6 @@
 import numpy as np
+from src.utils import get_device
+import torch
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from cvxopt import matrix, solvers
 
@@ -201,17 +203,23 @@ def top_k_binary_list(float_list, k):
     return binary_list
 
 
-def get_relation(grad_list, avg_grad, idxs_users):
+def get_relation(grad_list, avg_grad, idxs_users, conf={}):
     """Given list of gradients and an avg_grad, calculates the avg_grad's relation to the others
     Adapted from FedPNS code"""
     innnr_value = {}
+
+    avg_grad_tensor = torch.tensor(avg_grad, dtype=torch.float32).to(get_device(conf))
     for i in range(len(idxs_users)):
-        innnr_value[idxs_users[i]] = dot_sum(grad_list[idxs_users[i]], avg_grad)
+        user_grad_tensor = torch.tensor(grad_list[idxs_users[i]], dtype=torch.float32).to(get_device(conf))
+        innnr_value[idxs_users[i]] = dot_sum_torch(user_grad_tensor, avg_grad_tensor)
     print(innnr_value)
     return sum(list(innnr_value.values()))
 
 def dot_sum(K, L):
     return sum(a * b for a,b in zip(K, L))
+
+def dot_sum_torch(K_tensor, L_tensor):
+    return torch.dot(K_tensor, L_tensor).cpu().item()
 
 def flatten_weights(weights):
     """Get one long list of weights from layer weight list"""
@@ -221,7 +229,7 @@ def flatten_weights(weights):
     return ini
 
 
-def node_deleting(expect_list, expect_value, worker_ind, grads):
+def node_deleting(expect_list, expect_value, worker_ind, grads, conf={}):
     """Calculates expectation for each client based on the rest of the grads
     Adapted from FedPNS code"""
     # expect_list.pop("all")
@@ -230,7 +238,7 @@ def node_deleting(expect_list, expect_value, worker_ind, grads):
         grad_del = grads.copy()
         grad_del.pop(worker_ind[i])
         avg_grad_del = np.mean(list(grad_del.values()), axis=0)
-        expect_value_del = get_relation(grad_del, avg_grad_del, worker_ind_del)
+        expect_value_del = get_relation(grad_del, avg_grad_del, worker_ind_del, conf=conf)
         expect_list[worker_ind[i]] = expect_value_del
     expect_list["all"] = expect_value
     return expect_list
