@@ -74,13 +74,7 @@ def train(conf, conf_name):
             if conf["store_id"]:
                 conf["run_id"] = conf_name.split('.')[0]
         wandb.init(
-            project="spurious_FL",
-            entity="predictive-analytics-lab",
-            tags=["federated"],
-            config=conf,
-            id=conf["exp_id"],
-            job_type="train",
-            reinit=True
+            # removed for anonym submission
         )
 
     initial_model = model_utils.init_model(

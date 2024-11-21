@@ -469,7 +469,7 @@ def split_stackedmnist_data(ds, split_mode, num_clients, **kwargs):
 
 def main():
     seed = 0
-    root = '/home/efani/DATASETS'
+    root = ''
     sample_id = 25
     num_train_images = 60000
     num_test_images = 10000

@@ -80,13 +80,7 @@ def train(conf, conf_name=None):
         else:
             conf["run_id"] = conf_name.split(".")[0]
         wandb.init(
-            project="spurious_FL",
-            entity="predictive-analytics-lab",
-            tags=["centralized"],
-            config=conf,
-            id=conf["exp_id"],
-            job_type="train",
-            reinit=True,
+            # removed for anonym submission
         )
 
     train_sample_weights = get_sample_weights(train_ds, conf)

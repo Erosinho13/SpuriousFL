@@ -1,1 +1,1 @@
-DATASETS_ROOT = '/home/efani/DATASETS'
+DATASETS_ROOT = ''

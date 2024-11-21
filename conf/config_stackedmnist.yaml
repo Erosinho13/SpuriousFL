@@ -17,7 +17,7 @@ hydra:
 
 seed: 42
 dataset_options:
-  root: "/home/efani/DATASETS"
+  root: ""
   split_mode: mode3
   num_clients: 20
 #uniform_proportion: 0.2

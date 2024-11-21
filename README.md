@@ -56,3 +56,5 @@ project
 
 ## Run
 Example run: `python flower_train.py`
+
+To run the code, one has to add a wandb project to `flower_train.py` and `centralized_training.py` or set `wandb=false`. 
