@@ -5,7 +5,6 @@ import numpy as np
 
 from src.datasets.cifar import CIFAR10, data_transforms_cifar10, cifar_split_data
 from src.datasets.waterbrids import WaterBirds, data_transforms_waterbirds, split_data_waterbirds
-from src.datasets.stacked_mnist import StackedMNIST, _data_transforms_mnist, split_stackedmnist_data
 from src.datasets.dataset_utils import SubsetDataset, compute_forgetting, count_groups, select_forgettables
 from src.optimizers.dataloaders import WeightedDataLoader
 from src.datasets.cmnist import CMNIST, data_transforms_cmnist
@@ -84,51 +83,7 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         valset = copy.deepcopy(testset)
         return trainset, valset, testset
 
-    if dataset_mode == "StackedMNIST":
-        ds_opt = conf['dataset_options']
-        mean = (0.1307, 0.1307, 0.1307)
-        std = (0.3081, 0.3081, 0.3081)
-        train_transform, test_transform = _data_transforms_mnist(mean=mean, std=std, norm=True)
-        trainset = \
-            StackedMNIST(
-                root=ds_opt['root'],
-                train=True,
-                transform=train_transform,
-                download=True,
-                num_images=ds_opt['num_train_images'],
-                num_targets=ds_opt['num_targets'],
-                num_groups=ds_opt['num_groups'],
-                prevent_targets_shuffling=ds_opt['prevent_class_shuffling'],
-                prevent_groups_shuffling=ds_opt['prevent_group_shuffling'],
-                dirichlet_targets_alpha=ds_opt['dirichlet_targets_alpha'],
-                dirichlet_groups_alpha=ds_opt['dirichlet_groups_alpha'],
-                uniform_targets=ds_opt['uniform_targets'],
-                uniform_groups=ds_opt['uniform_groups'],
-                force_targets=ds_opt['force_targets'],
-                force_groups=ds_opt['force_groups'],
-                force_targets_proportions=ds_opt['force_targets_proportions'],
-                force_groups_proportions=ds_opt['force_groups_proportions'],
-                force_proportions=ds_opt['force_proportions']
-            )
-        testset = \
-            StackedMNIST(
-                root=ds_opt['root'],
-                train=False,
-                transform=test_transform,
-                download=True,
-                num_images=ds_opt['num_test_images'],
-                num_targets=ds_opt['num_targets'],
-                num_groups=ds_opt['num_groups'],
-                prevent_targets_shuffling=ds_opt['prevent_class_shuffling'],
-                prevent_groups_shuffling=ds_opt['prevent_group_shuffling'],
-                force_targets=trainset.targets,
-                force_groups=trainset.groups
-            )
 
-        valset = copy.deepcopy(trainset)
-        valset.transform = test_transform
-
-        return trainset, valset, testset
 
     if dataset_mode == "CMNIST":
         cmnist_transform = data_transforms_cmnist(conf)
@@ -181,12 +136,6 @@ def split_data(ds, conf):
             ds,
             conf
         )
-    elif dataset_mode == "StackedMNIST":
-        ds_split = \
-            split_stackedmnist_data(
-                ds, conf['dataset_options']['split_mode'], conf['dataset_options']['num_clients'],
-                uniform_proportion=conf['dataset_options']['uniform_proportion'] if 'uniform_proportion' in conf['dataset_options'].keys() else 0
-            )
     elif dataset_mode == "Spawrious" or dataset_mode=="CMNIST":
         ds_split = split_data_spawrious(
             ds,
