@@ -128,7 +128,7 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                 subsets[id1].extend(subset1)
                 subsets[id2].extend(subset2)
         return subsets
-    client_samples = split_mode_to_matrix(split_mode)
+    client_samples = split_mode_to_matrix(split_mode, seed)
     if client_samples is not None:
         subsets = create_subsets_from_list(group_ids, client_samples, rng)
         return subsets

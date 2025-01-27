@@ -28,7 +28,7 @@ def create_subsets_from_list(group_ids:dict, client_samples:List, rng=np.random.
                 cumulated_idx += c[y][s]
     return subsets
 
-def split_mode_to_matrix(split_mode:str)-> List:
+def split_mode_to_matrix(split_mode:str, seed=None)-> List:
     """Named split modes to N matrix list"""
     client_samples = None
     if split_mode=="zeroCI_LSC":
@@ -327,5 +327,32 @@ def split_mode_to_matrix(split_mode:str)-> List:
 
         ]
 
+    if split_mode=="spawrious_GSC_6":
+        global_dist_target = np.array([
+            [5500,5500,5500,500,500,500],
+            [5500,5500,5500,500,500,500],
+            [500,500,500,5500,5500,5500],
+            [500,500,500,5500,5500,5500]
+        ])
+        num_clients = 100
+        num_attributes = 6
+        num_classes = 4
+        alpha = 0.1
+        min_samples = 2
+        client_samples = generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed)
     return client_samples
 
+def generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed):
+    assert global_dist_target.min()>=min_samples*num_clients, "Global target not possible with min_samples guarantee"
+    global_dist = global_dist_target-(num_clients*min_samples)
+    client_samples = []
+    for i in range(num_clients):
+        seed_i = seed * i if seed is not None else None
+        alphas = np.random.default_rng(seed_i).dirichlet([alpha]*(num_attributes*num_classes),1)[0]
+        client_dist = np.resize(alphas, (num_classes,num_attributes))
+        client_dist = client_dist *(num_attributes*num_classes)
+        client_samples.append(list(client_dist))
+    client_samples = np.array(client_samples)
+    client_samples = client_samples/sum(client_samples) * global_dist
+    client_samples = (np.round(client_samples)+min_samples).astype(int)
+    return client_samples
