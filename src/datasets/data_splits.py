@@ -340,6 +340,19 @@ def split_mode_to_matrix(split_mode:str, seed=None)-> List:
         alpha = 0.1
         min_samples = 2
         client_samples = generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed)
+    if split_mode=="spawrious_GSC_6_2":
+        global_dist_target = np.array([
+            [5500,5500,5500,5500,5500,300],
+            [5500,3000,3000,3000,3000,300],
+            [5500,3000,3000,3000,3000,300],
+            [300,300,300,300,300,4000]
+        ])
+        num_clients = 100
+        num_attributes = 6
+        num_classes = 4
+        alpha = 0.1
+        min_samples = 2
+        client_samples = generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed)
     return client_samples
 
 def generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed):
