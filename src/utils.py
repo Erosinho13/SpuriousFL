@@ -6,6 +6,10 @@ import torch
 import random
 import re
 
+import hashlib
+import json
+import copy
+
 def load_config(env_path="env.json", config_path="config.json"):
     """Connect config and environment config files"""
     with open(config_path, "r") as f:
@@ -133,3 +137,13 @@ def collect_values_to_2d_array(d):
         result[y_val][g_val] = d[f'y{y_val}g{g_val}']
     
     return result
+
+
+def hash_config(conf: dict, dropkeys=["seed", "exp_id"]) -> str:
+    """Generate a unique hash for a given nested config dictionary."""
+    config = copy.deepcopy(conf)
+    for k in dropkeys:
+        if k in config.keys():
+            del config[k]
+    config_str = json.dumps(config, sort_keys=True)  # Ensure order consistency
+    return hashlib.sha256(config_str.encode()).hexdigest()

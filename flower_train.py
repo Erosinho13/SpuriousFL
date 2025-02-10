@@ -70,6 +70,10 @@ def train(conf, conf_name):
 
     if conf["wandb"]:
         import wandb
+
+        setup_hash = utils.hash_config(conf, ["seed","exp_id"])
+        conf["config_id"] = setup_hash
+
         if "store_id" in conf.keys():
             if conf["store_id"]:
                 conf["run_id"] = conf_name.split('.')[0]
