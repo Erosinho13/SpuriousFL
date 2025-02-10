@@ -353,6 +353,81 @@ def split_mode_to_matrix(split_mode:str, seed=None)-> List:
         alpha = 0.1
         min_samples = 2
         client_samples = generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed)
+    
+    if split_mode=="spawrious_GCI_100":
+        client_samples=[
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[68, 68], [10, 10]],
+            [[10, 10], [68, 68]],
+            [[68, 10], [68, 10]],
+            [[68, 10], [68, 10]],
+            [[10, 68], [10, 68]],
+            [[10, 68], [10, 68]],
+            [[68, 10], [10, 68]],
+            [[68, 10], [10, 68]],
+            [[10, 68], [68, 10]],
+            [[10, 68], [68, 10]]
+        ]
+        client_samples += client_samples + client_samples + client_samples
+    if split_mode=="spawrious_GSC_100":
+        client_samples = []
+        client_samples += [[[68, 68], [10, 10]]] * 2  # Mostly waterbirds, Type CI (0)
+        client_samples += [[[10, 10], [68, 68]]] * 2  # Mostly landbirds, Type CI (0)
+        client_samples += [[[68, 10], [68, 10]]] * 2  # Birds on land, Type AI (1)
+        client_samples += [[[10, 68], [10, 68]]] * 2  # Birds on water, Type AI (1)
+        client_samples += [[[68, 10], [10, 68]]] * 16  # Expected background, Type SC (2)
+        client_samples += [[[10, 68], [68, 10]]] * 1  # Unexpected background, Type SC (2)
+        client_samples += client_samples + client_samples + client_samples
+    if split_mode == "spawrious_GAI_100":
+        client_samples=[
+            [[60, 5], [20, 10]],
+            [[60, 35], [5, 10]],
+
+            
+            [[80, 5], [5, 5]],
+            [[80, 5], [5, 5]],
+            [[5, 5], [80, 5]],
+            [[5, 5], [80, 5]],
+
+            [[10, 30], [60, 10]],
+            [[10, 30], [60, 10]],
+
+            [[60, 60], [20, 2]],
+            [[60, 60], [20, 2]],
+
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60, 12], [70, 2]],
+            [[60,5],[60,8]]
+
+        ]
+        client_samples += client_samples + client_samples + client_samples
+
     return client_samples
 
 def generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed):
