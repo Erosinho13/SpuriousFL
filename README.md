@@ -29,7 +29,7 @@ project
  - FedProx is a client optimizer method: the `client_opt.subpop_optimizer` can be changed from `ERM` to `Prox` to enable
  - `FedAvgM` or `FedAvg` changes the server aggregation in `server_opt.optimizer`
  - Client participation can be controlled with weights or selection: `server_opt.participation` can be `weighting` or `selection`
-   - If `weighting` is used, `server_opt.client_weights` sets the specific weighting method. Weighting takes into account even if `selection` is set (for FedPNS), should be `server_opt.client_weights=same` to disable.
+   - If `weighting` is used, `server_opt.weight_clients` sets the specific weighting method. Weighting takes into account even if `selection` is set (for FedPNS), should be `server_opt.weight_clients=same` to disable.
    - If `selection` is used, `server_opt.selection_method` sets the specific selection method. It can be `random`, `groupweights` (original matrix with Oracle ReWeight), or `triplets_stochasticmatrix` for triplets.
  - Some methods use information from the client. The `server_opt.client_info` tells what data is shared.
    - If `groupweights`, `triplets` or `nova` is in the string, these infos will be passed to the server.
@@ -41,11 +41,11 @@ project
  - FedProx: `client_opt.subpop_optimizer=Prox`
  - FedAvgM: `server_opt.optimizer=FedAvgM`
  - FedDiverse: `server_opt.participation=selection`, `server_opt.selection_method=triplets_stochasticmatrix`, `Npredicted` in `server_opt.client_info`
- - FedNova: `nova` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.client_weights=server_post_nova`, `server_opt.optimizer=FedAvgM`
- - pow-d: `gloss` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.client_weights=server_post_powd`
+ - FedNova: `nova` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_nova`, `server_opt.optimizer=FedAvgM`
+ - pow-d: `gloss` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_powd`
  - round robin: `server_opt.participation=selection`, `server_opt.selection_method=roundrobin`
- - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.client_weights=fedpns`
- - FedPNS w/o weights: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.client_weights=same`
+ - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=fedpns`
+ - FedPNS w/o weights: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=same`
 
 ## Datasets distributions
  - Spawrious_GSC: `dataset_options.split_mode=spawrious2`, `dataset_options.num_clients=24`
