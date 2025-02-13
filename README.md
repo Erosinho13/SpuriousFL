@@ -46,6 +46,7 @@ project
  - round robin: `server_opt.participation=selection`, `server_opt.selection_method=roundrobin`
  - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=server_post_fedpns`
  - FedPNS w/o weights: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=same`
+ - Oort: `oort` in `server_opt.client_info`, `server_opt.selection_method=oort`, `server_opt.participation=selection`
 
 ## Datasets distributions
  - Spawrious_GSC: `dataset_options.split_mode=spawrious2`, `dataset_options.num_clients=24`

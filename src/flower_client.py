@@ -76,6 +76,7 @@ class FlowerClient(fl.client.NumPyClient):
             if config["update_info"]:
                 shared_metrics = self.share_client_params_once(opt, shared_metrics, before_train=False)
             shared_metrics = self.share_client_params_always(opt, shared_metrics, before_train=False)
+            
 
 
             if "weight_clients" in self.conf["server_opt"].keys():
@@ -172,6 +173,9 @@ class FlowerClient(fl.client.NumPyClient):
                 loss, accuracy, group_acc = optim_utils.evaluate(self.model, self.train_data, self.conf, verbose=0)
                 shared_metrics["gloss"] = loss
         else:
+            if "oort" in self.conf["server_opt"]["client_info"]:
+                oort_stats = optim_utils.oort_stat(self.model, self.train_data, self.conf)
+                shared_metrics["oort"] = oort_stats["oort_util"]
             if "nova" in self.conf["server_opt"]["client_info"]:
                 shared_metrics["weights"] = self.train_len
                 if "num_steps" in self.conf["client_opt"] and isinstance(self.conf["client_opt"]["num_steps"], int):

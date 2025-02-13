@@ -150,7 +150,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         # Calculate global client opt params from shared metrics
         self.aggregate_client_opt_params([res.metrics for _, res in results])
         # Update stored client info with new data
-        self.update_stored_client_info(results)
+        self.update_stored_client_info(results, server_round)
         # Get stored client info to look like client sent it
         results = self.update_results_from_cache(results)
 
@@ -285,7 +285,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     active_clients = 3
                 sample_size = active_clients
         clients = client_manager.sample(
-            num_clients=sample_size, min_num_clients=min_num_clients, client_info=self.stored_client_data
+            num_clients=sample_size, min_num_clients=min_num_clients, client_info=self.stored_client_data, server_round=server_round
         )
 
         # Create custom configs
@@ -475,7 +475,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     res.metrics[k] = v
         return results
     
-    def update_stored_client_info(self, results):
+    def update_stored_client_info(self, results, server_round):
         """Save data from clients so they don't have to compute again"""
         # Calculate FedPNS scores
         if "fedpns" in self.conf["server_opt"]["weight_clients"] or "fedpns" in self.conf["server_opt"]["selection_method"]:
@@ -485,7 +485,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
         for client_metric in metrics:
             if client_metric["cid"] not in self.stored_client_data.keys():
                 self.stored_client_data[client_metric["cid"]] = {"update_needed":True}
-            always_update_list = ["gloss", "weights", "tau", "local_norm"]
+            self.stored_client_data[client_metric["cid"]]["last_round"] = server_round
+            always_update_list = ["gloss", "weights", "tau", "local_norm", "oort"]
             for k in always_update_list:
                 if k in client_metric.keys():
                     self.stored_client_data[client_metric["cid"]][k] = client_metric[k]

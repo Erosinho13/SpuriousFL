@@ -172,3 +172,24 @@ def predict_dataloader(model, dataloader, conf, apply_softmax=True):
         outputs = outputs.to('cpu').detach().numpy()
         total_outputs.extend(outputs)
     return np.array(total_outputs), np.array(labels_all)
+
+
+#!TODO update with subpopbench optims
+def oort_stat(model, data, conf): # outdict
+    stat = {}
+    model.eval()
+    loss_fn = get_loss(conf=conf)
+    util = 0.0
+    with torch.no_grad():
+        for indeces, images, (labels, groups) in data:
+            indeces, images, labels, groups = indeces.to(get_device(conf)), images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(
+                get_device(conf))
+            outputs = model(images)
+            loss = loss_fn(outputs, labels)
+            util += (loss**2).sum().item()
+
+    util /= len(data.dataset)
+    util = np.sqrt(util) * len(data.dataset)
+
+    stat["oort_util"] = util
+    return stat

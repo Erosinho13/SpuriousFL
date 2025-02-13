@@ -27,6 +27,7 @@ class MyManager(fl.server.SimpleClientManager):
         min_num_clients: Optional[int] = None,
         criterion: Optional[Criterion] = None,
         evaluate: Optional[bool] = False,
+        server_round: Optional[int] = None
     ) -> list[ClientProxy]:
         """Sample a number of Flower ClientProxy instances."""
         # Block until at least num_clients are connected.
@@ -87,4 +88,8 @@ class MyManager(fl.server.SimpleClientManager):
         elif self.conf["server_opt"]["selection_method"] == "fedpns":
             pns_probs = [client_info[int(cid)]["fedpns_p"] for cid in available_cids]
             sampled_cids = np.random.choice(available_cids,num_clients,replace=False,p=pns_probs)
+        elif self.conf["server_opt"]["selection_method"] == "oort":
+            utils = [client_info[int(cid)]["oort"]+np.sqrt(0.1*np.log(server_round)/client_info[int(cid)]["last_round"]) for cid in available_cids]
+            sampled_utils = np.argpartition(utils, num_clients)[:num_clients]
+            sampled_cids = np.array(available_cids)[sampled_utils]
         return [self.clients[cid] for cid in sampled_cids]
