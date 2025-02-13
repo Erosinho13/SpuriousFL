@@ -44,7 +44,7 @@ project
  - FedNova: `nova` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_nova`, `server_opt.optimizer=FedAvgM`
  - pow-d: `gloss` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_powd`
  - round robin: `server_opt.participation=selection`, `server_opt.selection_method=roundrobin`
- - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=fedpns`
+ - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=server_post_fedpns`
  - FedPNS w/o weights: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=same`
 
 ## Datasets distributions
