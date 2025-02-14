@@ -176,6 +176,10 @@ class FlowerClient(fl.client.NumPyClient):
             if "oort" in self.conf["server_opt"]["client_info"]:
                 oort_stats = optim_utils.oort_stat(self.model, self.train_data, self.conf)
                 shared_metrics["oort"] = oort_stats["oort_util"]
+            if "netemb" in self.conf["server_opt"]["client_info"]:
+                net_emb = optim_utils.get_network_embeddings(self.model, self.conf)
+                for k,v in net_emb.items():
+                    shared_metrics[k] = v
             if "nova" in self.conf["server_opt"]["client_info"]:
                 shared_metrics["weights"] = self.train_len
                 if "num_steps" in self.conf["client_opt"] and isinstance(self.conf["client_opt"]["num_steps"], int):

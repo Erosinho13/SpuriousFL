@@ -1,7 +1,7 @@
 from typing import Callable
 import numpy as np
 from src.optimizers.subpopbench import get_base_optimizer, get_loss, get_subpop_optimizer
-from src.utils import get_cpu, get_device, np_to_tensor
+from src.utils import get_cpu, get_device, get_input_shape, np_to_tensor
 import torch
 
 class History:
@@ -192,4 +192,23 @@ def oort_stat(model, data, conf): # outdict
     util = np.sqrt(util) * len(data.dataset)
 
     stat["oort_util"] = util
+    return stat
+
+
+def get_network_embeddings(model, conf, mean=0.0, std=1.0):
+    """Network embeddings by noise.
+    Inspired by: https://doi.org/10.1145/3638052"""
+    input_shape = (conf["client_opt"]["batch_size"], *get_input_shape(conf))
+    images = np.random.default_rng(conf["seed"]).normal(mean, std, input_shape)
+    images = torch.from_numpy(images)
+    images = images.to(get_device(conf), dtype=torch.float)
+    stat = {}
+    model.eval()
+    final_embeddings = [0.0] * conf["dataset_options"]["num_targets"]
+    with torch.no_grad():
+        outputs = model(images)
+        final_embeddings = outputs.mean(dim=0).detach().cpu().numpy()
+
+    for i,v in enumerate(final_embeddings):
+        stat["netemb_"+str(i)] = float(v)
     return stat

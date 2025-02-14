@@ -147,3 +147,34 @@ def hash_config(conf: dict, dropkeys=["seed", "exp_id"]) -> str:
             del config[k]
     config_str = json.dumps(config, sort_keys=True)  # Ensure order consistency
     return hashlib.sha256(config_str.encode()).hexdigest()
+
+
+def get_input_shape(conf, dataset_mode=None):
+    """Get data shape from config"""
+    if "dataset_options" in conf.keys():
+        dataset_mode = conf["dataset_options"]["name"]
+        num_classes = conf["dataset_options"]["num_targets"]
+    else:
+        raise KeyError("Missing dataset options")    
+    if dataset_mode is None:
+        dataset_mode = conf["dataset_options"]["name"]
+
+    if dataset_mode == "CIFAR10":
+        input_shape = (3, 32, 32)
+    elif dataset_mode == "WaterBirds":
+        if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
+            input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
+        else:
+            input_shape = (3, 32, 32)
+    elif dataset_mode == "StackedMNIST":
+        input_shape = (3, 32, 32)
+    elif dataset_mode == "Spawrious":
+        if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
+            input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
+        else:
+            input_shape = (3, 224, 224)
+    elif dataset_mode == "CMNIST":
+            input_shape = (3, 28, 28)
+    else:
+        raise NotImplementedError('Dataset split for dataset ' + dataset_mode + ' not recognized')
+    return input_shape

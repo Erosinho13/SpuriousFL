@@ -1,4 +1,4 @@
-from src.utils import get_device
+from src.utils import get_device, get_input_shape
 import torch
 from typing import List
 from collections import OrderedDict
@@ -67,24 +67,7 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
         num_classes = conf["dataset_options"]["num_targets"]
     else:
         raise KeyError("Missing dataset options")    
-    if dataset_mode == "CIFAR10":
-        input_shape = (3, 32, 32)
-    elif dataset_mode == "WaterBirds":
-        if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
-            input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
-        else:
-            input_shape = (3, 32, 32)
-    elif dataset_mode == "StackedMNIST":
-        input_shape = (3, 32, 32)
-    elif dataset_mode == "Spawrious":
-        if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
-            input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
-        else:
-            input_shape = (3, 224, 224)
-    elif dataset_mode == "CMNIST":
-            input_shape = (3, 28, 28)
-    else:
-        raise NotImplementedError('Dataset split for dataset ' + dataset_mode + ' not recognized')
+    input_shape = get_input_shape(conf, dataset_mode)
 
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes

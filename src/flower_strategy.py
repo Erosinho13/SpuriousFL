@@ -477,6 +477,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
     
     def update_stored_client_info(self, results, server_round):
         """Save data from clients so they don't have to compute again"""
+        update_something = False
         # Calculate FedPNS scores
         if "fedpns" in self.conf["server_opt"]["weight_clients"] or "fedpns" in self.conf["server_opt"]["selection_method"]:
             self.calculate_pns_scores(results)
@@ -486,11 +487,18 @@ class MyStrategy(fl.server.strategy.FedOpt):
             if client_metric["cid"] not in self.stored_client_data.keys():
                 self.stored_client_data[client_metric["cid"]] = {"update_needed":True}
             self.stored_client_data[client_metric["cid"]]["last_round"] = server_round
-            always_update_list = ["gloss", "weights", "tau", "local_norm", "oort"]
+            always_update_list = ["gloss", "weights", "tau", "local_norm", "oort", "netemb"]
             for k in always_update_list:
                 if k in client_metric.keys():
+                    update_something = True
                     self.stored_client_data[client_metric["cid"]][k] = client_metric[k]
+                else:
+                    for kk in client_metric.keys():
+                        if kk.startswith(k):
+                            update_something = True
+                            self.stored_client_data[client_metric["cid"]][kk] = client_metric[kk]
             if client_metric["cid"] in self.client_update_requested:
+                update_something = True
                 self.stored_client_data[client_metric["cid"]]["update_needed"] = False
                 store_dict = copy.deepcopy(client_metric)
                 del store_dict['cid']
@@ -500,7 +508,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                         del store_dict[k]
                 for k,v in store_dict.items():
                     self.stored_client_data[client_metric["cid"]][k] = v
-        if len(self.client_update_requested)>0:
+        if update_something:
             log(DEBUG, "Updated client info %s", str(self.stored_client_data))
             self.log_client_info()
     
