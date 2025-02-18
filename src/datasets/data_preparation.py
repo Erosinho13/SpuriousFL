@@ -1,3 +1,4 @@
+from src.datasets.fmow import FMOW, data_transforms_fmow
 from src.datasets.spawrious import Spawrious, data_transforms_spawrious, split_data_spawrious
 import torch
 import copy
@@ -148,6 +149,21 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         valset = copy.deepcopy(testset)
         return trainset, valset, testset
 
+    if dataset_mode=="FMOW":
+        ds_opt = conf["dataset_options"]
+        train_tr_list, test_tr_list = data_transforms_fmow(conf)
+        trainset = FMOW(
+            "./datasets", train=True, transforms=train_tr_list,
+            num_groups=ds_opt['num_groups'],
+            num_targets=ds_opt['num_targets']
+        )
+        testset = FMOW(
+            "./datasets", train=False, transforms=test_tr_list,
+            num_groups=ds_opt['num_groups'],
+            num_targets=ds_opt['num_targets'],
+        )
+        valset = copy.deepcopy(testset)
+        return trainset, valset, testset
     raise NotImplementedError(dataset_mode)
 
 
