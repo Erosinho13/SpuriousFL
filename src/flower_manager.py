@@ -124,7 +124,7 @@ def get_furthest_points(data, K, mode="embbalance"):
     coords_max = coords.max(axis=0)
     coords = 2 * (coords - coords_min) / (coords_max - coords_min) - 1
     if mode=="embbalance2":
-        coords = coords * (1 / (1 + np.exp(-1 * delta)))
+        coords = coords * (1 / (1 + np.exp(-1 * delta))).reshape(-1, 1)
 
     points = {idx: tuple(coord) for idx, coord in zip(points.keys(), coords)}
 
