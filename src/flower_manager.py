@@ -93,9 +93,11 @@ class MyManager(fl.server.SimpleClientManager):
             sampled_utils = np.argpartition(utils, num_clients)[:num_clients]
             sampled_cids = np.array(available_cids)[sampled_utils]
 
-        elif self.conf["server_opt"]["selection_method"] == "embbalance":
+        elif self.conf["server_opt"]["selection_method"] == "embbalance" or self.conf["server_opt"]["selection_method"] == "embbalance2":
             available_client_info = {int(k): client_info[int(k)] for k in available_cids if int(k) in client_info}
-            sampled_ids = get_furthest_points(available_client_info, num_clients)
+            for k in available_cids:
+                available_client_info[int(k)]["delta_round"] = server_round - available_client_info[int(k)]["last_round"]
+            sampled_ids = get_furthest_points(available_client_info, num_clients, mode=self.conf["server_opt"]["selection_method"])
             sampled_cids = [str(k) for k in sampled_ids.keys()]
         return [self.clients[cid] for cid in sampled_cids]
     
@@ -106,7 +108,7 @@ def euclidean_distance(p1, p2):
     """Calculate Euclidean distance between two d-dimensional points."""
     return np.linalg.norm(np.array(p1) - np.array(p2))
 
-def get_furthest_points(data, K):
+def get_furthest_points(data, K, mode="embbalance"):
     """Return K furthest points from the center, then iteratively from the last chosen point."""
     # Extract all dimension keys dynamically
     sample_entry = next(iter(data.values()))
@@ -114,16 +116,19 @@ def get_furthest_points(data, K):
 
     # Extract points in the form {id: (netemb_0, netemb_1, ..., netemb_d)}
     points = {idx: tuple(entry[key] for key in dimension_keys) for idx, entry in data.items()}
+    delta = np.array(list({idx: entry['delta_round'] for idx, entry in data.items()}))
 
     # Compute the center (mean of all points in d-dimensional space)
     coords = np.array(list(points.values()))
     coords_min = coords.min(axis=0)
     coords_max = coords.max(axis=0)
     coords = 2 * (coords - coords_min) / (coords_max - coords_min) - 1
+    if mode=="embbalance2":
+        coords = coords * (1 / (1 + np.exp(-1 * delta)))
 
     points = {idx: tuple(coord) for idx, coord in zip(points.keys(), coords)}
 
-    center = np.mean(coords, axis=0)
+    center = np.mean(coords, axis=0) 
 
     # Start with the point furthest from the center
     first_id = max(points, key=lambda idx: euclidean_distance(points[idx], center))
