@@ -197,7 +197,8 @@ def oort_stat(model, data, conf): # outdict
 
 def get_network_embeddings(model, conf, mean=0.0, std=1.0):
     """Network embeddings by noise.
-    Inspired by: https://doi.org/10.1145/3638052"""
+    Inspired by: https://doi.org/10.1145/3638052
+    more like: https://arxiv.org/pdf/2211.13975"""
     input_shape = (conf["client_opt"]["batch_size"], *get_input_shape(conf))
     images = np.random.default_rng(conf["seed"]).normal(mean, std, input_shape)
     images = torch.from_numpy(images)
