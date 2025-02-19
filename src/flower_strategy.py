@@ -112,7 +112,6 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 self.stored_client_data[i]["fedpns_p"] = 1/self.conf["dataset_options"]["num_clients"]
         self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
         self.client_update_requested = []
-        
 
         super().__init__(evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
                          fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
@@ -160,7 +159,6 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         self.log_client_weights(results)
         log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
-        
 
         # Aggregate weights
         fedavg_parameters_aggregated, metrics_aggregated = super().aggregate_fit(
@@ -174,7 +172,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         if self.conf["server_opt"]["optimizer"]=="FedAvg":
             self.current_weights = fedavg_weights_aggregate
             return ndarrays_to_parameters(self.current_weights), metrics_aggregated
-        
+
         if self.conf["server_opt"]["optimizer"] in ["FedAvgM", "FedNova"]:
             # Following https://flower.ai/docs/framework/_modules/flwr/server/strategy/fedavgm.html#FedAvgM
             # Following: https://github.com/adap/flower/blob/main/baselines/fednova/fednova/strategy.py
@@ -227,7 +225,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
             self.current_weights = new_weights
             return ndarrays_to_parameters(self.current_weights), metrics_aggregated
-        
+
         raise NotImplementedError(f'Server optimizer not recognized: {self.conf["server_opt"]["optimizer"]}')
 
     def aggregate_evaluate(
@@ -297,7 +295,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             client_config["round"] = server_round
 
             if "pretrain_rounds" in self.conf["server_opt"].keys() and server_round<self.conf["server_opt"]["pretrain_rounds"]:
-                    client_config["update_info"] = False
+                client_config["update_info"] = False
             else:
                 if int(client.cid) not in self.stored_client_data.keys():
                     client_config["update_info"] = True
@@ -307,7 +305,17 @@ class MyStrategy(fl.server.strategy.FedOpt):
                         client_config["update_info"] = True
                         self.client_update_requested.append(int(client.cid))
                     else:
-                        client_config["update_info"] = False
+                        if (
+                            self.conf["server_opt"]["update_static_info_rounds"] != 0
+                        ) and (
+                            server_round
+                            % self.conf["server_opt"]["update_static_info_rounds"]
+                            == 1
+                        ):
+                            client_config["update_info"] = True
+                            self.client_update_requested.append(int(client.cid))
+                        else:
+                            client_config["update_info"] = False
 
             if self.conf["server_opt"]["weight_clients"].startswith("server_pre_"):
                 c_w = self.pre_calculate_weights(client)
@@ -315,9 +323,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
             fit_configurations.append((client, FitIns(parameters, client_config)))
             del client_config
-                
+
         return fit_configurations
-    
+
     def configure_evaluate(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
     ) -> list[tuple[ClientProxy, EvaluateIns]]:
@@ -349,7 +357,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         to achieve weighted federated average using the prewritten code"""
         #!TODO: I think because of the ClientProxy something is not good here
         raise NotImplementedError("Unrecognized weighting")
-    
+
     def post_calculate_weights(self, results, server_round):
         """Override num_examples with weights defined based on training results
         to achieve weighted federated average using the prewritten code"""
@@ -361,8 +369,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
         smoothing_value = 0.0001
         if "weight_smoothing" in self.conf["server_opt"]:
             smoothing_value = self.conf["server_opt"]["weight_smoothing"]
-        #import pdb
-        #pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
 
         if "pretrain_rounds" in self.conf["server_opt"].keys():
             if server_round<=self.conf["server_opt"]["pretrain_rounds"]:
@@ -416,7 +424,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets"):
             # log(DEBUG, "client metrics %s", str([res.metrics for _, res in results]))
             if self.conf["server_opt"]["weight_clients"] == "server_post_triplets_importanceclusters":
-                
+
                 clusters = {"SC":[],"CI":[],"AI":[]}
                 for _, res in results:
                     keys_to_check = ["SC", "CI", "AI"]
@@ -428,12 +436,12 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 client_weights = [1 if res.metrics["cid"] in weighted_clients else 0 for _, res in results]
 
             if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix"):
-                
+
                 M = [res.metrics for _, res in results]
                 M = np.array([[a['SC'],a['AI'],a['CI']] for a in M])
                 column_sums = M.sum(axis=0)  # Sum of each column
                 M_norm = M / column_sums 
-                
+
                 if self.conf["server_opt"]["weight_clients"].startswith("server_post_triplets_stochasticmatrix_replacement"):
                     sampled_row_ids = np.apply_along_axis(lambda col: np.random.choice(len(col), p=col), axis=0, arr=M_norm)
                     client_weights = np.bincount(sampled_row_ids, minlength=len(results))
@@ -448,23 +456,21 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     num_clients = len(results)
                     client_weights = np.bincount(selected_clients, minlength=num_clients)
 
-
                 if "smoothing" in self.conf["server_opt"]["weight_clients"]:
-                    
+
                     client_weights = apply_smoothing(client_weights, smoothing_value)
             else:
                 raise NotImplementedError("method not implemented:", self.conf["server_opt"]["weight_clients"])
         else:
             raise NotImplementedError("Client weights not set!", self.conf["server_opt"]["weight_clients"])
-        
+
         for i in range(len(results)):
             results[i][1].num_examples = client_weights[i]  # FitRes of the i-th client
         return results
-    
+
     def aggregate_client_opt_params(self, metric_list):
         """Update shared client optimizer parameters for subpopbench optimizers"""
         self.shared_copt_params = subpop_federated.aggregate_metrics(self.shared_copt_params, metric_list)
-
 
     def update_results_from_cache(self, results):
         """Add stored data for client from server cache if available"""
@@ -474,7 +480,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                 for k,v in self.stored_client_data[cid].items():
                     res.metrics[k] = v
         return results
-    
+
     def update_stored_client_info(self, results, server_round):
         """Save data from clients so they don't have to compute again"""
         update_something = False
@@ -511,7 +517,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         if update_something:
             log(DEBUG, "Updated client info %s", str(self.stored_client_data))
             self.log_client_info()
-    
+
     def log_client_weights(self, results=None):
         """Log client weights into a csv file"""
         save_path = os.path.join(
@@ -524,10 +530,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
         for _, res in results:
             cid = int(res.metrics["cid"])  # Get the client id and convert to integer
             client_num_examples[cid] = res.num_examples
-        
+
         with open(save_path,'a') as file:
             file.write(",".join(map(str, client_num_examples)) + "\n")
-
 
     def log_client_info(self):
         """Log latest info of clients to file"""
@@ -538,7 +543,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             )
         with open(save_path, 'w') as file:
             json.dump(self.stored_client_data, file)
-    
+
     def calculate_pns_scores(self, results):
         """Based on self.current_weights and weights in results, calculates pi probabilities for FedPNS
         following https://arxiv.org/pdf/2105.07066
@@ -588,5 +593,5 @@ class MyStrategy(fl.server.strategy.FedOpt):
                                             beta=self.conf["server_opt"]["fedpns_beta"])
         for k,v in node_prob.items():
             self.stored_client_data[k]["fedpns_p"] = v
-            
+
         print("FedPNS_P:",node_prob)

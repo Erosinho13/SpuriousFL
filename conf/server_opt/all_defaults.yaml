@@ -12,3 +12,4 @@ client_info: groupweights_triplets
 selection_method: random
 fedpns_alpha: 2
 fedpns_beta: 0.7
+update_static_info_rounds: 0

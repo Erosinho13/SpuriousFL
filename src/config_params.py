@@ -45,6 +45,7 @@ class ServerOptConfig:
     num_active_clients: Optional[int]
     fedpns_alpha: float
     fedpns_beta: float
+    update_static_info_rounds: int
 
 
 @dataclass
