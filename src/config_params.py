@@ -65,6 +65,8 @@ class DatasetConfig:
     num_samples_per_class: Optional[int]
     locations: Optional[List]
     breeds: Optional[List]
+    categories: Optional[List]
+    regions: Optional[List]
     confounding_factor: Optional[float]
 
 @dataclass
