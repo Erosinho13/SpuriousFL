@@ -152,15 +152,27 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
     if dataset_mode=="FMOW":
         ds_opt = conf["dataset_options"]
         train_tr_list, test_tr_list = data_transforms_fmow(conf)
+        if "categories" in conf["dataset_options"].keys() and isinstance(conf["dataset_options"]["categories"], list):
+            categories = conf["dataset_options"]["categories"]
+        else:
+            categories = None
+        if "regions" in conf["dataset_options"].keys() and isinstance(conf["dataset_options"]["regions"], list):
+            regions = conf["dataset_options"]["regions"]
+        else:
+            regions = None
         trainset = FMOW(
             "./datasets", train=True, transforms=train_tr_list,
             num_groups=ds_opt['num_groups'],
-            num_targets=ds_opt['num_targets']
+            num_targets=ds_opt['num_targets'],
+            regions=regions,
+            categories=categories
         )
         testset = FMOW(
             "./datasets", train=False, transforms=test_tr_list,
             num_groups=ds_opt['num_groups'],
             num_targets=ds_opt['num_targets'],
+            regions=regions,
+            categories=categories
         )
         valset = copy.deepcopy(testset)
         return trainset, valset, testset
