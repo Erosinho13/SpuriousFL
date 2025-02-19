@@ -41,6 +41,7 @@ project
  - FedProx: `client_opt.subpop_optimizer=Prox`
  - FedAvgM: `server_opt.optimizer=FedAvgM`
  - FedDiverse: `server_opt.participation=selection`, `server_opt.selection_method=triplets_stochasticmatrix`, `Npredicted` in `server_opt.client_info`
+   - as weighting: `server_opt.weight_clients=server_post_triplets_stochasticmatrix_noreplacement`, `server_opt.participation=weighting`
  - FedNova: `nova` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_nova`, `server_opt.optimizer=FedAvgM`
  - pow-d: `gloss` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_powd`
  - round robin: `server_opt.participation=selection`, `server_opt.selection_method=roundrobin`
