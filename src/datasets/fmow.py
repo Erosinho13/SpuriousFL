@@ -67,7 +67,7 @@ def get_dataset(root_dir, train=True, num_targets=32, num_groups=2, categories=N
     df = df.sample(frac=1, random_state=1)
     df = df.drop(columns=["split"]).reset_index().rename(columns={"index":"path"})
     df["path"] = df["path"].astype(str)
-    df["path"] = "images/rgb_img_"+df["path"]+".png"
+    df["path"] = root_dir+"/fmow_v1.1/images/rgb_img_"+df["path"]+".png"
     return df, regions, categories
 
 
