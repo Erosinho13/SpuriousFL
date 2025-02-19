@@ -203,7 +203,7 @@ def split_data(ds, conf):
                 ds, conf['dataset_options']['split_mode'], conf['dataset_options']['num_clients'],
                 uniform_proportion=conf['dataset_options']['uniform_proportion'] if 'uniform_proportion' in conf['dataset_options'].keys() else 0
             )
-    elif dataset_mode == "Spawrious" or dataset_mode=="CMNIST":
+    elif dataset_mode == "Spawrious" or dataset_mode=="CMNIST" or dataset_mode=="FMOW":
         ds_split = split_data_spawrious(
             ds,
             conf

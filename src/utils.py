@@ -168,7 +168,7 @@ def get_input_shape(conf, dataset_mode=None):
             input_shape = (3, 32, 32)
     elif dataset_mode == "StackedMNIST":
         input_shape = (3, 32, 32)
-    elif dataset_mode == "Spawrious":
+    elif dataset_mode == "Spawrious" or dataset_mode=="FMOW":
         if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
             input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
         else:

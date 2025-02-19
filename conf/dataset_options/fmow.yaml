@@ -1,0 +1,13 @@
+name: FMOW
+input_size: 224
+num_samples_per_class: null
+num_targets: 36
+num_groups: 2
+norm: true
+aug_crop: 0
+aug_horizontal_flip: false
+local_training_id: null
+split_mode: homogen
+num_clients: 100
+regions: ['Americas', 'Europe']
+categories: ['airport_hangar','airport_terminal','amusement_park','barn','burial_site','car_dealership','crop_field','educational_institution','electric_substation','factory_or_powerplant','fire_station','fountain','gas_station','ground_transportation_station','hospital','lighthouse','office_building','oil_or_gas_facility','park','parking_lot_or_garage','place_of_worship','police_station','prison','race_track','railway_bridge','recreational_facility','road_bridge','shopping_mall','single-unit_residential','solar_farm','stadium','storage_tank','surface_mine','swimming_pool','tower','water_treatment_facility']

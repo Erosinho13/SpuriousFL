@@ -427,7 +427,51 @@ def split_mode_to_matrix(split_mode:str, seed=None)-> List:
 
         ]
         client_samples += client_samples + client_samples + client_samples
-
+    if split_mode=="fmow_1":
+        global_dist_target = np.array([
+            [ 2749,  1076],
+            [ 2062,  1019],
+            [ 1911,  2329],
+            [ 1507,  4247],
+            [ 1337,  2202],
+            [ 2877,  2095],
+            [ 2775, 17494],
+            [ 5798,  2468],
+            [ 2266,  1885],
+            [ 1215,  1683],
+            [ 2241,  2562],
+            [ 2246,  2708],
+            [ 2740,  1704],
+            [ 3474,  3116],
+            [ 1630,  2276],
+            [ 1517,  1325],
+            [ 2490,  2340],
+            [ 1258,  1311],
+            [ 2116,  1409],
+            [ 5724,  4567],
+            [ 7354,  3257],
+            [ 1654,  2374],
+            [ 2015,  1644],
+            [ 2257,  2099],
+            [ 1504,  1955],
+            [16209,  7695],
+            [ 2030,  1376],
+            [ 2275,  2132],
+            [ 1022,  1842],
+            [ 1361,  3554],
+            [ 3057,  1050],
+            [ 1709,  2876],
+            [ 1445,  2491],
+            [ 5575,  1044],
+            [ 2334,  2061],
+            [ 1342,  3243]])
+        num_clients = 100
+        num_attributes = 2
+        num_classes = 36
+        alpha = 0.7
+        min_samples = 2
+        client_samples = generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed)
+    
     return client_samples
 
 def generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed):
