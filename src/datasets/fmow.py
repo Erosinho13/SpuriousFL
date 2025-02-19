@@ -56,9 +56,18 @@ def get_dataset(root_dir, train=True, num_targets=32, num_groups=2, categories=N
     df = pd.merge(left=rgb_data, right=ccmap, left_on="country_code", right_on="alpha-3")[["split","country_code","category","region"]]
     assert len(categories)>=num_targets
     assert len(regions)>=num_groups
-    categories = categories[:num_targets]
-    regions = regions[:num_groups]
     df = df[df.region.isin(regions)&df.category.isin(categories)]
+    # Convert location and category columns to categorical with predefined order
+    df["region"] = pd.Categorical(df["region"], categories=regions, ordered=True)
+    df["category"] = pd.Categorical(df["category"], categories=categories, ordered=True)
+    df = df.dropna()
+    # Factorize based on the predefined categories
+    df["region"], region_categories = pd.factorize(df["region"], sort=True)
+    df["category"], category_categories = pd.factorize(df["category"], sort=True)
+    df = df[df["region"]<num_groups]
+    df = df[df["category"]<num_targets]
+    print(region_categories, category_categories)
+    
     if not train:
         # Balanced sampling for testing
         df = df.groupby(["category","region"]).sample(100, random_state=1)
