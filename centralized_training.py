@@ -205,10 +205,10 @@ def train(conf, conf_name=None):
             wandb.log({"train_loss": running_loss / len(train_loader)}, step=epoch)
 
         if (epoch + 1) % 1 == 0:
-            test_model(eval_loader, model, device, conf, epoch, train_set=True)
+            test_model(train_loader, model, device, conf, epoch, train_set=True)
 
         if (epoch + 1) % 1 == 0:
-            test_model(test_loader, model, device, conf, epoch)
+            test_model(eval_loader, model, device, conf, epoch)
 
     test_model(test_loader, model, device, conf, conf["client_opt"]["epochs"])
 
