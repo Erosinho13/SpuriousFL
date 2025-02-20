@@ -3,9 +3,9 @@ input_size: 224
 num_samples_per_class: null
 num_targets: 36
 num_groups: 2
-norm: true
+norm: false
 aug_crop: 0
-aug_horizontal_flip: false
+aug_horizontal_flip: true
 local_training_id: null
 split_mode: homogen
 num_clients: 100
