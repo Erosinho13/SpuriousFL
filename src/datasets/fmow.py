@@ -48,12 +48,15 @@ def get_dataset(root_dir, train=True, num_targets=32, num_groups=2, categories=N
         download_dataset(root_dir)
     
     rgb_data = pd.read_csv(os.path.join(root_dir,"fmow_v1.1","rgb_metadata.csv"))
+    if 'index' in rgb_data.columns:
+        rgb_data = rgb_data.set_index('index')
     ccmap = pd.read_csv(os.path.join(root_dir,"fmow_v1.1","country_code_mapping.csv"))
     if train:
         rgb_data = rgb_data[rgb_data.split=="train"][["split","country_code","category"]]
     else:
         rgb_data = rgb_data[rgb_data.split=="test"][["split","country_code","category"]]
-    df = pd.merge(left=rgb_data, right=ccmap, left_on="country_code", right_on="alpha-3")[["split","country_code","category","region"]]
+    rgb_data = rgb_data.drop(columns=["split"]).reset_index().rename(columns={"index":"path"})
+    df = pd.merge(left=rgb_data, right=ccmap, left_on="country_code", right_on="alpha-3")[["path","country_code","category","region"]]
     assert len(categories)>=num_targets
     assert len(regions)>=num_groups
     df = df[df.region.isin(regions)&df.category.isin(categories)]
@@ -66,15 +69,15 @@ def get_dataset(root_dir, train=True, num_targets=32, num_groups=2, categories=N
     df["category"], category_categories = pd.factorize(df["category"], sort=True)
     df = df[df["region"]<num_groups]
     df = df[df["category"]<num_targets]
+    print("split size: ", len(df))
     print(region_categories, category_categories)
     
     if not train:
         # Balanced sampling for testing
         df = df.groupby(["category","region"]).sample(100, random_state=1)
-        assert len(df)==100*len(categories)*len(regions)
+        assert len(df)==100*len(categories)*len(regions), "not right len: "+str(len(df))
 
     df = df.sample(frac=1, random_state=1)
-    df = df.drop(columns=["split"]).reset_index().rename(columns={"index":"path"})
     df["path"] = df["path"].astype(str)
     df["path"] = root_dir+"/fmow_v1.1/images/rgb_img_"+df["path"]+".png"
     return df, regions, categories
@@ -94,6 +97,7 @@ def data_transforms_fmow(conf={}):
     if conf["dataset_options"]["aug_crop"] > 0:
         train_tr_list.append(torchvision.transforms.RandomCrop(input_size, padding=conf["dataset_options"]['aug_crop']))
     if conf["dataset_options"]["aug_horizontal_flip"]:
+        train_tr_list.append(torchvision.transforms.RandomVerticalFlip())
         train_tr_list.append(torchvision.transforms.RandomHorizontalFlip())
     train_tr_list.append(torchvision.transforms.ToTensor())
     test_tr_list.append(torchvision.transforms.ToTensor())
