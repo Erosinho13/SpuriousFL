@@ -131,17 +131,20 @@ def get_envs(group_ids, split_mode='sameratio', seed=42, num_clients=4):
     3 - {(0,1),(1,1)} - birds on water"""
 
     rng = np.random.default_rng(seed=seed)
-    subsets = [[],[],[],[]]
     if split_mode=="homogen":
+        subsets = [[]]*num_clients
         for y in group_ids.keys():
             for s in group_ids[y].keys():
                 l = len(group_ids[y][s])//num_clients
                 perm = rng.permutation(group_ids[y][s])
-                samples_by_envs =  [perm[:l], perm[l:l*2], perm[l*2:l*3], perm[l*3:]]
+                samples_by_envs = []
+                for i in range(num_clients):
+                    samples_by_envs.append(perm[i*l:(i+1)*l])
                 for i, x in enumerate(samples_by_envs):
                     subsets[i].extend(x)
         return subsets
     if split_mode=="sameratio":
+        subsets = [[],[],[],[]]
         for y in group_ids.keys():
             for s in group_ids[y].keys():
                 length = len(group_ids[y][s])//2
