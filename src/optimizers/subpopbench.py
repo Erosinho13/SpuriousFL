@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from src.utils import get_device
 import copy
+import inspect
 
 class Algorithm(torch.nn.Module):
     """
@@ -133,7 +134,8 @@ def get_base_optimizer(params, conf={}):
             lr = float(copt["learning_rate"])
         else:
             lr = 0.001
-        if 'momentum' in copt.keys():
+        signature = inspect.signature(opt.__init__)
+        if 'momentum' in copt.keys() and 'momentum' in signature.parameters:
             return opt(params, lr=lr, momentum=copt['momentum'])
         return opt(params, lr=lr)
     return torch.optim.SGD(params, lr=0.001)

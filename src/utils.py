@@ -151,12 +151,12 @@ def hash_config(conf: dict, dropkeys=["seed", "exp_id"]) -> str:
 
 def get_input_shape(conf, dataset_mode=None):
     """Get data shape from config"""
-    if "dataset_options" in conf.keys():
-        dataset_mode = conf["dataset_options"]["name"]
-        num_classes = conf["dataset_options"]["num_targets"]
-    else:
-        raise KeyError("Missing dataset options")    
+ 
     if dataset_mode is None:
+        if "dataset_options" in conf.keys():
+            dataset_mode = conf["dataset_options"]["name"]
+        else:
+            raise KeyError("Missing dataset options")    
         dataset_mode = conf["dataset_options"]["name"]
 
     if dataset_mode == "CIFAR10":
