@@ -139,16 +139,16 @@ def get_base_optimizer(params, conf={}):
     return torch.optim.SGD(params, lr=0.001)
 
 
-def get_sample_weights(ds, conf):
+def get_sample_weights(dataset, conf):
     """ReSample weights for DataLoader.sampler"""
     if "client_opt" in conf.keys():
         copt = conf["client_opt"]
         if "subpop_optimizer" in copt.keys():
             if copt["subpop_optimizer"] in ["ReSample", "ReWeight"]:
-                ds.dataset.update_metadata()
+                dataset.update_metadata()
             if copt["subpop_optimizer"] == "ReSample":
                 # if attribute not available, groups degenerate to classes
-                train_weights = np.asarray(ds.weights_g)
+                train_weights = np.asarray(dataset.weights_g)
                 train_weights /= np.sum(train_weights)
                 return train_weights
     return None
