@@ -75,7 +75,7 @@ def get_dataset(root_dir, train=True, num_targets=32, num_groups=2, categories=N
     if not train:
         # Balanced sampling for testing
         df = df.groupby(["category","region"]).sample(100, random_state=1)
-        assert len(df)==100*len(categories)*len(regions), "not right len: "+str(len(df))
+        assert len(df)==100*num_targets*num_groups, "not right len: "+str(len(df))
 
     df = df.sample(frac=1, random_state=1)
     df["path"] = df["path"].astype(str)
