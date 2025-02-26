@@ -63,7 +63,7 @@ def data_transforms_waterbirds(conf={}):
 
 
 
-def get_envs(group_ids, split_mode='sameratio', seed=42):
+def get_envs(group_ids, conf):
     """Set list of idx for environment
     homogen:
       - 1/4 of each
@@ -72,6 +72,10 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
     1 - {(0,0),(1,1)} - everyone in the expected background
     2 - {(0,1),(1,0)} - everyone in unexpected background
     3 - {(0,1),(1,1)} - birds on water"""
+
+    split_mode=conf["dataset_options"]["split_mode"]
+    seed=conf["seed"]
+
     def findgroup(y, s):
         if y==0 and s==0:
             return 0, 1
@@ -128,7 +132,7 @@ def get_envs(group_ids, split_mode='sameratio', seed=42):
                 subsets[id1].extend(subset1)
                 subsets[id2].extend(subset2)
         return subsets
-    client_samples = split_mode_to_matrix(split_mode, seed)
+    client_samples = split_mode_to_matrix(conf)
     if client_samples is not None:
         subsets = create_subsets_from_list(group_ids, client_samples, rng)
         return subsets
@@ -142,7 +146,7 @@ def split_data_waterbirds(ds, conf):
     for k in ids_by_groups.keys():
         for l in ids_by_groups[k].keys():
             print(k,l,len(ids_by_groups[k][l]))
-    idx_split = get_envs(ids_by_groups, split_mode=conf["dataset_options"]["split_mode"], seed=conf["seed"])
+    idx_split = get_envs(ids_by_groups, conf)
     ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
     for ds in ds_split:
         print(count_groups(ds, False, 2, 2)["group_sizes"])

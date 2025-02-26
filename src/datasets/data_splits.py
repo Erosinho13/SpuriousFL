@@ -28,8 +28,11 @@ def create_subsets_from_list(group_ids:dict, client_samples:List, rng=np.random.
                 cumulated_idx += c[y][s]
     return subsets
 
-def split_mode_to_matrix(split_mode:str, seed=None)-> List:
+def split_mode_to_matrix(conf:dict)-> List:
     """Named split modes to N matrix list"""
+    split_mode = conf["dataset_options"]["split_mode"]
+    seed = conf["seed"]
+
     client_samples = None
     if split_mode=="zeroCI_LSC":
         client_samples=[
@@ -427,7 +430,7 @@ def split_mode_to_matrix(split_mode:str, seed=None)-> List:
 
         ]
         client_samples += client_samples + client_samples + client_samples
-    if split_mode=="fmow_1":
+    if split_mode in ["fmow_1", "fmow_2"]:
         global_dist_target = np.array([
             [ 2775, 17494],
             [ 1517,  1325],
@@ -465,13 +468,19 @@ def split_mode_to_matrix(split_mode:str, seed=None)-> List:
             [ 5798,  2468],
             [ 1654,  2374],
             [ 2490,  2340]])
-        num_clients = 100
-        num_attributes = 2
-        num_classes = 36
+        num_clients = conf['dataset_options']['num_clients']
+        num_attributes = conf['dataset_options']['num_attributes']
+        num_classes = conf['dataset_options']['num_targets']
         alpha = 0.7
         min_samples = 2
-        client_samples = generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed)
-    
+        bin_size = 50
+        client_types = [("a",20),("b",20),("d",30)]
+        a_max = 6000
+        if split_mode=="fmow_1":
+            client_samples = generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed)
+        if split_mode=="fmow_2":
+            client_samples = gen_clients(global_dist_target, min_samples, num_clients, num_classes, client_types, bin_size, seed, a_max)
+
     return client_samples
 
 def generate_clients_with_global_params(global_dist_target,num_clients,num_attributes,num_classes,alpha,min_samples,seed):
@@ -487,4 +496,139 @@ def generate_clients_with_global_params(global_dist_target,num_clients,num_attri
     client_samples = np.array(client_samples)
     client_samples = client_samples/sum(client_samples) * global_dist
     client_samples = (np.round(client_samples)+min_samples).astype(int)
+    return client_samples
+
+
+# New way of client generation
+
+def gen_c_random(bins, n, seed):
+    orig_shape = bins.shape
+    bins = bins.reshape(bins.size)
+    taken = np.zeros_like(bins)
+    bins = np.array(bins)
+    taken = np.zeros_like(bins)
+    
+    for _ in range(n):
+        available_indices = np.where(bins > 0)[0]
+        if available_indices.size == 0:
+            break  # Stop if there are no more available items to take
+        
+        chosen_index = np.random.default_rng(seed).choice(available_indices)  # Randomly choose an index
+        taken[chosen_index] += 1  # Increase taken count
+        bins[chosen_index] -= 1  # Decrease remainder count
+    
+    return taken.reshape(orig_shape), bins.reshape(orig_shape)
+
+
+def gen_c_classheavy(in_bins, bin_per_client, seed=None):
+    """Client that has attribute balanced samples heavily from one class"""
+    client_bins = np.zeros(in_bins.shape)
+    min_bins = in_bins.min(axis=1)
+    if max(min_bins)>np.ceil(bin_per_client/in_bins.shape[1]):
+        class_id = np.argmax(min_bins)
+        client_bins[class_id] += (bin_per_client//in_bins.shape[1])
+        rem_bins = in_bins - client_bins
+        return client_bins, rem_bins
+    if max(min_bins)>=1:
+        class_id = np.argmax(min_bins)
+        client_bins[class_id] += max(min_bins)
+        rem_bins = in_bins - client_bins
+        bins_to_fill = int(bin_per_client-(max(min_bins)*in_bins.shape[1]))
+        crem, _ = gen_c_classheavy(rem_bins, bins_to_fill)
+        client_bins += crem
+        rem_bins = in_bins - client_bins
+        return client_bins, rem_bins
+    
+    return gen_c_random(in_bins, bin_per_client, seed=seed)
+
+
+def gen_c_attributeheavy(in_bins, bin_per_client, seed=None):
+    """Tries to get bins from one attribute but class balanced"""
+    if in_bins.min(axis=0).max()>0:
+        attr_id = np.argmax(in_bins.min(axis=0))
+        x = np.zeros_like(in_bins)
+        x[:,attr_id]  = in_bins[:,attr_id]
+        crem, _ =  gen_c_random(x,bin_per_client, seed=seed)
+        rem_bins = in_bins - crem
+        return crem, rem_bins
+    attr_id = np.argmax(in_bins.sum(axis=0))
+    if in_bins[:,attr_id].sum()>bin_per_client:
+        x = np.zeros_like(in_bins)
+        x[:,attr_id]  = in_bins[:,attr_id]
+        crem, _ =  gen_c_random(x,bin_per_client, seed=seed)
+        rem_bins = in_bins - crem
+        return crem, rem_bins
+    return gen_c_random(in_bins, bin_per_client, seed=seed)
+
+
+def gen_c_attr_balanced_more_class(in_bins, bin_per_client, seed=None):
+    """Tries to get bins such that the client has as many classes as possible with balanced attributes"""
+    orig_shape = in_bins.shape
+    num_attr = in_bins.shape[1]
+    if in_bins.min(axis=1).sum()>=np.ceil(bin_per_client/num_attr):
+        x = in_bins.min(axis=1)
+        bin_per_attr = bin_per_client//num_attr
+        cbins, _ = gen_c_random(x,bin_per_attr, seed=seed)
+        cbins = cbins.repeat(num_attr).reshape(orig_shape)
+        rem = in_bins - cbins
+        bin_rem = bin_per_client-cbins.sum()
+        crem, _ = gen_c_random(rem,int(bin_rem), seed=seed)
+        cbins = cbins + crem
+        rem_bins = in_bins - cbins
+        return cbins, rem_bins
+    # TODO: Maybe another fallback?
+    return gen_c_random(in_bins, int(bin_per_client), seed=seed)
+
+def gen_c_diagonal(in_bins, bin_per_client,start_attr=0, seed=None):
+    """For each class tries to pick different attribute"""
+    orig_shape = in_bins.shape
+    num_attr = in_bins.shape[1]
+    cbins = np.zeros_like(in_bins)
+    if in_bins.min(axis=1).sum()>=bin_per_client:
+        x = in_bins.min(axis=1)
+        cline, _ = gen_c_random(x,bin_per_client, seed=seed)
+        for i in range(len(cline)):
+            shift = (i+start_attr) % num_attr
+            cbins[i,shift] = cline[i]
+        rem = in_bins - cbins
+        bin_rem = bin_per_client-cline.sum()
+        crem, _ = gen_c_random(rem,int(bin_rem), seed=seed)
+        cbins = cbins + crem
+        rem_bins = in_bins - cbins
+        return cbins, rem_bins
+    # TODO: Maybe another fallback?
+    return gen_c_random(in_bins, int(bin_per_client), seed=seed)
+
+
+def gen_clients(global_dist_target, min_samples, num_clients, num_classes, client_types=[("r",1)], bin_size=50, seed=None, a_max=None):
+    global_dist_target = np.clip(global_dist_target, a_min=None, a_max=a_max)
+    global_dist_target = global_dist_target[:num_classes]
+    global_dist_target = global_dist_target - (num_clients * min_samples)
+    global_dist_target = global_dist_target // bin_size
+    bin_per_client = int(global_dist_target.sum()/num_clients)
+    client_samples = []
+    for method_type, num_next in client_types:
+        for i in range(num_next):
+            if len(client_samples)==num_clients:
+                break
+            if method_type=="r":
+                client_bins, global_dist_target = gen_c_diagonal(global_dist_target, bin_per_client, seed=seed)
+            elif method_type=="d":
+                client_bins, global_dist_target = gen_c_diagonal(global_dist_target, bin_per_client, start_attr=i, seed=seed)
+            elif method_type=="c":
+                client_bins, global_dist_target = gen_c_classheavy(global_dist_target, bin_per_client, seed=seed)
+            elif method_type=="a":
+                client_bins, global_dist_target = gen_c_attributeheavy(global_dist_target, bin_per_client, seed=seed)
+            elif method_type=="b":
+                client_bins, global_dist_target = gen_c_attr_balanced_more_class(global_dist_target, bin_per_client, seed=seed)
+            else:
+                raise NotImplementedError("Unrecognized client type")
+            client_samples.append(client_bins)
+    if len(client_samples)<num_clients:
+        for i in range(len(client_samples),num_clients):
+            client_bins, global_dist_target = gen_c_diagonal(global_dist_target, bin_per_client, seed=seed)
+            client_samples.append(client_bins)
+    client_samples = np.array(client_samples)
+    client_samples = client_samples * bin_size + min_samples
+    client_samples = client_samples.astype(int)
     return client_samples

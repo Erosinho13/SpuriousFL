@@ -120,7 +120,7 @@ def data_transforms_spawrious(conf={}):
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 
 
-def get_envs(group_ids, split_mode='sameratio', seed=42, num_clients=4):
+def get_envs(group_ids, conf):
     """Set list of idx for environment
     homogen:
       - 1/4 of each
@@ -129,6 +129,11 @@ def get_envs(group_ids, split_mode='sameratio', seed=42, num_clients=4):
     1 - {(0,0),(1,1)} - everyone in the expected background
     2 - {(0,1),(1,0)} - everyone in unexpected background
     3 - {(0,1),(1,1)} - birds on water"""
+
+    split_mode=conf["dataset_options"]["split_mode"]
+    seed=conf["seed"]
+    num_clients=conf["dataset_options"]["num_clients"]
+
 
     rng = np.random.default_rng(seed=seed)
     if split_mode=="homogen":
@@ -163,7 +168,7 @@ def get_envs(group_ids, split_mode='sameratio', seed=42, num_clients=4):
                     subsets[1].extend(subset1)
                     subsets[3].extend(subset2)
         return subsets
-    client_samples = split_mode_to_matrix(split_mode, seed)
+    client_samples = split_mode_to_matrix(conf)
     if client_samples is not None:
         subsets = create_subsets_from_list(group_ids, client_samples, rng)
         return subsets
@@ -174,7 +179,7 @@ def split_data_spawrious(ds, conf):
     """Split data in X,Y between 'num_clients' number of clients"""
     
     ids_by_groups = get_spurious_group_idx(ds)
-    idx_split = get_envs(ids_by_groups, split_mode=conf["dataset_options"]["split_mode"], seed=conf["seed"], num_clients=conf["dataset_options"]["num_clients"])
+    idx_split = get_envs(ids_by_groups, conf)
     ds_split = [SubsetDataset(ds, idx) for idx in idx_split]
     for ds in ds_split:
         print(count_groups(ds, False, conf["dataset_options"]["num_groups"], conf["dataset_options"]["num_targets"])["group_sizes"])
