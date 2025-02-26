@@ -469,7 +469,7 @@ def split_mode_to_matrix(conf:dict)-> List:
             [ 1654,  2374],
             [ 2490,  2340]])
         num_clients = conf['dataset_options']['num_clients']
-        num_attributes = conf['dataset_options']['num_attributes']
+        num_attributes = conf['dataset_options']['num_groups']
         num_classes = conf['dataset_options']['num_targets']
         alpha = 0.7
         min_samples = 2
