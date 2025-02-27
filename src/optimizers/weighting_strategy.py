@@ -119,6 +119,56 @@ def client_weights_known_groups(metric_list, conf):
     return client_weights
 
 
+def select_clients_with_uniform_distribution(metric_list, conf, server_round):
+    """
+    Select k clients whose sum matrix has the most uniform distribution using a greedy approach.
+    
+    :param client_matrices: np.ndarray of shape (n, C, G) representing n clients with CxG matrices.
+    :param k: Number of clients to select.
+    :return: A tuple (selected_indices, sum_matrix), where selected_indices is a list of k client indices,
+             and sum_matrix is the sum of their matrices.
+    """
+    n_matrix_list = []
+    for m in metric_list:
+        group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
+        n_dict = {k:v for k,v in m.items() if k in group_keys}
+        max_index = max(int(key.split('_')[1]) for key in n_dict)
+        n_list = [0] * (max_index + 1)
+        for key, value in n_dict.items():
+            index = int(key.split('_')[1])  # Extract the index part from the key
+            n_list[index] = value
+        n_matrix = np.array(n_list)
+        n_matrix = np.resize(n_matrix, (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
+        n_matrix_list.append(n_matrix)
+    
+    client_matrices = np.array(n_matrix_list)
+    k = conf["server_opt"]["num_active_clients"]
+
+    n, C, G = client_matrices.shape
+    first_client = np.random.default_rng(server_round).integers(0,n,1)[0]
+    selected_indices = [first_client]
+    remaining_indices = set(range(n))
+    remaining_indices.remove(first_client)
+    sum_matrix = np.zeros((C, G))
+    
+    for _ in range(k-1):
+        best_client = None
+        min_variance = float('inf')
+        
+        for i in remaining_indices:
+            temp_sum_matrix = sum_matrix + client_matrices[i]
+            variance = np.var(temp_sum_matrix)
+            
+            if variance < min_variance:
+                min_variance = variance
+                best_client = i
+        
+        selected_indices.append(best_client)
+        remaining_indices.remove(best_client)
+        sum_matrix += client_matrices[best_client]
+    
+    return selected_indices, sum_matrix
+
 def apply_softmax(client_weights):
     """Put weights between 0 and 1 with softmax"""
     client_weights = np.array(client_weights)

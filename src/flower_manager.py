@@ -6,7 +6,7 @@ from typing import Optional
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.criterion import Criterion
 
-from src.optimizers.weighting_strategy import client_weights_known_groups, select_noreplacement
+from src.optimizers.weighting_strategy import client_weights_known_groups, select_noreplacement, select_clients_with_uniform_distribution
 from src.utils import log
 from logging import ERROR, INFO, DEBUG
 from logging import WARNING
@@ -64,6 +64,10 @@ class MyManager(fl.server.SimpleClientManager):
             client_weights = np.array(client_weights)/sum(client_weights)
             elements = list(range(len(client_weights)))
             sampled_ids = np.random.choice(elements, size=num_clients, p=client_weights, replace=False)
+            sampled_cids = [str(cid) for cid in sampled_ids]
+        elif self.conf["server_opt"]["selection_method"] == "uniformsample":
+            metric_list = [client_info[int(cid)] for cid in available_cids]
+            sampled_ids, _ = select_clients_with_uniform_distribution(metric_list, self.conf, server_round)
             sampled_cids = [str(cid) for cid in sampled_ids]
         elif self.conf["server_opt"]["selection_method"].startswith("triplets_stochasticmatrix"):
             metric_list = [client_info[int(cid)] for cid in available_cids]
