@@ -163,6 +163,11 @@ class FlowerClient(fl.client.NumPyClient):
                     shared_metrics["SC"] = corr.SC(N)
                     shared_metrics["AI"] = corr.AI(N)
                     shared_metrics["CI"] = corr.CI(N)
+        else:
+            if "compgrad" in self.conf["server_opt"]["client_info"]:
+                compressed_gradients = optim_utils.compress_gradients(self.model, compression_rate=self.conf["client_opt"]["hcsfed_compression_rate"], tolerance=self.conf["client_opt"]["hcsfed_tolerance_gc"])
+                for i,cg in enumerate(compressed_gradients):
+                    shared_metrics["compgrad_"+str(i)] = float(cg)
         return shared_metrics
     
     def share_client_params_always(self, opt, shared_metrics, before_train=False):

@@ -178,3 +178,36 @@ def get_input_shape(conf, dataset_mode=None):
     else:
         raise NotImplementedError('Dataset split for dataset ' + dataset_mode + ' not recognized')
     return input_shape
+
+def adjust_array(v: np.array, q: int, population: np.array) -> np.array:
+
+    """
+    adjust array such that the sum is exactly q and no value is higher than the corresponding value in population.
+
+    :param v: array to be adjusted.
+    :param q: desired sum.
+    :param population: bound for the values of v.
+
+    :return: adjusted array.
+    """
+
+    v_int = np.round(v).astype(int)  # Round v to the nearest integer
+    for i in range(len(v_int)):
+        if v_int[i] > population[i]:
+            v_int[i] = population[i]
+    diff = q - np.sum(v_int)  # Compute the difference from the desired sum
+
+    while diff > 0:
+        new_id = np.random.choice(range(len(v_int)), size=1)[0]
+        if v_int[new_id] + 1 > population[new_id]:
+            continue
+        v_int[new_id] += 1
+        diff = q - np.sum(v_int)
+
+
+    while diff < 0:
+        new_id = np.random.choice(range(len(v_int)), size=1)[0]
+        v_int[new_id] -= 1
+        diff = q - np.sum(v_int)
+
+    return v_int

@@ -6,7 +6,7 @@ from typing import Optional
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.criterion import Criterion
 
-from src.optimizers.weighting_strategy import client_weights_known_groups, select_noreplacement, select_clients_with_uniform_distribution
+from src.optimizers.weighting_strategy import HCSFed, client_weights_known_groups, clients_clustering, select_noreplacement, select_clients_with_uniform_distribution
 from src.utils import log
 from logging import ERROR, INFO, DEBUG
 from logging import WARNING
@@ -19,6 +19,7 @@ class MyManager(fl.server.SimpleClientManager):
         self._cv = threading.Condition()
         self.conf = conf
         self.past_sampled_ids = np.zeros(self.conf['dataset_options']['num_clients'])  # needed for roundrobin sampling strategy
+        self.clusters = None
 
     def sample(
         self,
@@ -97,10 +98,22 @@ class MyManager(fl.server.SimpleClientManager):
             sampled_utils = np.argpartition(utils, num_clients)[:num_clients]
             sampled_cids = np.array(available_cids)[sampled_utils]
 
-        elif self.conf["server_opt"]["selection_method"] == "embbalance" or self.conf["server_opt"]["selection_method"] == "embbalance2":
-            available_client_info = {int(k): client_info[int(k)] for k in available_cids if int(k) in client_info}
+        elif self.conf["server_opt"]["selection_method"].startswith("embbalance"):
+            available_client_info = {int(k): client_info[int(k)] for k in available_cids}
             sampled_ids = get_furthest_points(available_client_info, num_clients, server_round, mode=self.conf["server_opt"]["selection_method"])
             sampled_cids = [str(k) for k in sampled_ids.keys()]
+        elif self.conf["server_opt"]["selection_method"] == "hcsfed":
+
+            dimension_keys = [key for key in sorted(client_info[0].keys()) if key.startswith('compgrad_')]
+            compressed_gradients = np.array([[client_info[int(c)][k] for k in dimension_keys] for c in available_cids])
+
+            if self.clusters is None or((self.conf["server_opt"]["update_static_info_rounds"] != 0) and (server_round % self.conf["server_opt"]["update_static_info_rounds"]== 1)):
+                self.clusters = clients_clustering(compressed_gradients=compressed_gradients, num_clusters=self.conf["client_opt"]["hcsfed_num_clusters"],
+                                  tolerance=self.conf["client_opt"]["hcsfed_tolerance_cl"])
+            cluster_clients = [list(np.where(np.array(self.clusters) == i)[0]) for i in range(self.conf["client_opt"]["hcsfed_num_clusters"])]    
+            sampled_clients = HCSFed(num_clients, len(available_cids), self.clusters,
+                             self.conf["client_opt"]["hcsfed_num_clusters"], compressed_gradients, cluster_clients)
+            sampled_cids = [available_cids[i] for i in sampled_clients]
         return [self.clients[cid] for cid in sampled_cids]
     
 

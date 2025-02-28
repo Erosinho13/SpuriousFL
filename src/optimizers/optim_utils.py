@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, OrderedDict
 import numpy as np
 from src.optimizers.subpopbench import get_base_optimizer, get_loss, get_subpop_optimizer
 from src.utils import get_cpu, get_device, get_input_shape, np_to_tensor
@@ -213,3 +213,49 @@ def get_network_embeddings(model, conf, mean=0.0, std=1.0):
     for i,v in enumerate(final_embeddings):
         stat["netemb_"+str(i)] = float(v)
     return stat
+
+# HCSFed https://arxiv.org/pdf/2208.05135
+
+def get_param_values(state_dict: OrderedDict) -> np.ndarray:
+    """
+    :param state_dict: state_dict of the params.
+    :return: list of model parameter values.
+    """
+
+    params = []
+    for param in state_dict.values():
+        params += list(param.cpu().detach().numpy().flatten())
+    return np.array(params)
+
+
+def compress_gradients(model, compression_rate: float = 1e-5, tolerance: float = 1e-2) -> np.ndarray:
+
+    """
+    Given the original gradients from one client, compress them and return its compressed gradients.
+
+    :param model: Pytorch model of the client.
+    :param compression_rate: compression rate of the compressed gradients.
+    :param tolerance: tolerance parameter for computing the centers.
+
+    :return: compressed gradients.
+    """
+
+    gradients = model.state_dict()
+
+    linearized_gradients = get_param_values(gradients)
+    output_dimension = int(len(linearized_gradients) * compression_rate)
+    centers = np.random.choice(linearized_gradients, output_dimension, replace=False)
+    norm_diff = np.inf
+
+    while norm_diff > tolerance:
+        distances = np.abs(linearized_gradients[:, None] - centers)
+        closest_clusters = np.argmin(distances, axis=1)
+        new_centers = np.array([np.mean(linearized_gradients[closest_clusters == cluster_idx])
+                                for cluster_idx in range(output_dimension)])
+        diff_centers = np.abs(new_centers - centers)
+        norm_diff = np.linalg.norm(diff_centers)
+        #print(f"Current norm diff: {norm_diff:e}", end="\r")
+        centers = new_centers
+    #print()
+
+    return centers

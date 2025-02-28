@@ -26,6 +26,10 @@ class ClientOptConfig:
     num_steps: Optional[int]
     biased_optimizer: Optional[str]
     proximal_mu: float
+    hcsfed_compression_rate: float
+    hcsfed_num_clusters: int
+    hcsfed_tolerance_gc: float
+    hcsfed_tolerance_cl: float
 
 
 @dataclass

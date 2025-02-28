@@ -19,3 +19,7 @@ generalized_cross_entropy_q: 0.7
 num_workers: 4
 biased_optimizer: ERM
 proximal_mu: 0.0
+hcsfed_compression_rate: 1e-5
+hcsfed_num_clusters: 3
+hcsfed_tolerance_gc: 1e-1
+hcsfed_tolerance_cl: 1e-12

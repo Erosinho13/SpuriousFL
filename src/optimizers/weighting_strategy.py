@@ -1,8 +1,9 @@
 import numpy as np
-from src.utils import get_device
+from src.utils import adjust_array, get_device
 import torch
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from cvxopt import matrix, solvers
+from sklearn.cluster import KMeans
 
 def select_3_clients(M, all_selected_clients, tolerance=1e-6):
 
@@ -313,3 +314,77 @@ def probabilistic_selection(node_prob, node_count, labeled, alpha, beta):
             node_prob[i] = node_prob[i] + weight / (len(rest_nodes))
 
     return node_prob
+
+def clients_clustering(compressed_gradients: np.array, num_clusters: int, tolerance: float = 1e-10) -> list[int]:
+    """
+    Client clustering according to their compressed gradients.
+
+    :param compressed_gradients: numpy array of compressed gradients per each client.
+    :param num_clusters: desired number of clusters.
+    :param tolerance: tolerance parameter for computing the centers.
+    :return: list of cluster indices associated with each client.
+    """
+
+    row_indices = np.random.choice(compressed_gradients.shape[0], size=num_clusters, replace=False)
+    centers = compressed_gradients[row_indices]
+    clusters = (KMeans(n_clusters=num_clusters, random_state=0, init=centers, tol=tolerance)
+                .fit(compressed_gradients).labels_)
+    return clusters
+
+def HCSFed(num_clients_per_round: int, num_clients: int, clusters: list[int], num_clusters: int,
+           compressed_gradients: np.array, cluster_clients: list[list]) -> list[int]:
+
+    """
+    The HCSFed algorithm.
+
+    :param num_clients_per_round: number of clients per round.
+    :param num_clients: number of clients in total.
+    :param clusters: list l such that client at index k belongs to cluster with index l[k].
+    :param num_clusters: desired number of clusters.
+    :param compressed_gradients: compressed gradients per each client, computed using compress_gradients.
+    :param cluster_clients: inverse of the clusters array. It is a list of lists, where at each index i (cluster) there
+                            is the list of indices of the clients belonging to cluster i.
+
+    :return: indices of selected clients for the current round.
+    https://arxiv.org/pdf/2208.05135
+    """
+
+    q = num_clients_per_round / num_clients
+    tot_m = max(q * num_clients, 1)
+    N = np.bincount(clusters, minlength=num_clusters)
+
+    eps = 1e-6  # needed for numerical stability in case N[h] = 1, no need to change this value
+    S = []
+    X = []
+    for h in range(num_clusters):
+        Xh = compressed_gradients[[i for i, j in enumerate(clusters) if j == h]]
+        X.append(Xh)
+        if len(Xh) == 0:
+            diff = 0
+        else:
+            diff = np.sum(np.linalg.norm(Xh[:, np.newaxis] - Xh, ord=2, axis=2) ** 2)
+        S.append(1 / (N[h] - 1 + eps) * diff)
+    m = np.array([(N[h] * S[h]) / (sum(N * S)) * tot_m for h in range(num_clusters)])
+    m = adjust_array(m, num_clients_per_round, [len(i) for i in cluster_clients])
+
+    clusters_norm = [sum([np.linalg.norm(k, ord=2) for k in compressed_gradients[clusters == h]]) for h in
+                     range(num_clusters)]
+    all_p = np.array(
+        [np.linalg.norm(compressed_gradients[k], ord=2) / clusters_norm[clusters[k]] for k in range(num_clients)])
+    p = [[j for i, j in enumerate(all_p) if h == clusters[i]] for h in range(num_clusters)]
+
+    sampled_clients = []
+    for h in range(num_clusters):
+        if m[h] == 0:
+            continue
+        p[h] /= sum(p[h])  # probabilities already sum to 1, however this is needed for numerical errors
+        try:
+            cluster_clients_idx = np.random.choice(np.arange(len(p[h])), size=m[h], replace=False, p=p[h])
+        except Exception as e:
+            print(e)
+            pass
+        sampled_clients += list(np.array(cluster_clients[h])[cluster_clients_idx])
+    sampled_clients = list(map(int, sampled_clients))
+    sampled_clients.sort()
+
+    return sampled_clients
