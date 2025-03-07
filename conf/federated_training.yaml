@@ -24,6 +24,7 @@ client_opt:
 server_opt:
   rounds: 200
   optimizer: FedAvgM
+  participation: selection
 dataset_options:
   split_mode: more_expected_clients
   num_samples_per_class: null
