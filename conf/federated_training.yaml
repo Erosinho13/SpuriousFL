@@ -3,8 +3,8 @@ defaults:
   - machine: env
   - client_opt: all_defaults
   - server_opt: all_defaults
-  - model_options: resnet
-  - dataset_options: waterbirds
+  - model_options: mobilenet
+  - dataset_options: spawrious
   - override hydra/launcher: kyiv
   - _self_
 
@@ -23,10 +23,9 @@ client_opt:
   epochs: 1
 server_opt:
   rounds: 200
+  optimizer: FedAvgM
 dataset_options:
-  input_size: 224
-  num_clients: 4
   split_mode: more_expected_clients
   num_samples_per_class: null
 checkpoint: null
-wandb: false
+wandb: true
