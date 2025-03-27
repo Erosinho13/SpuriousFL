@@ -45,19 +45,19 @@ project
  - FedNova: `nova` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_nova`, `server_opt.optimizer=FedAvgM`
  - pow-d: `gloss` in `server_opt.client_info`, `server_opt.participation=weighting`, `server_opt.weight_clients=server_post_powd`
  - round robin: `server_opt.participation=selection`, `server_opt.selection_method=roundrobin`
- - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=server_post_fedpns`
- - FedPNS w/o weights: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=same`
+ - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=server_post_fedpns`, `gloss` in `server_opt.client_info`
+ - FedPNS w/o weights: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=same`, `gloss` in `server_opt.client_info`
  - Oort: `oort` in `server_opt.client_info`, `server_opt.selection_method=oort`, `server_opt.participation=selection`
  - HCSFed: `compgrad` in `server_opt.client_info` `server_opt.selection_method=hcsfed`
 
 ## Datasets distributions
  - Spawrious_GSC: `dataset_options.split_mode=spawrious2`, `dataset_options.num_clients=24`
- - Spawrious_GCI: `dataset_options.split_mode=spawrious_GCI`, `dataset_option.num_clients=24`
- - Spawrious_GAI: `dataset_options.split_mode=spawrious_GAI_2`, `dataset_option.num_clients=25`
- - Waterbirds_dist: `dataset_options.split_mode=waterbirds_dist`, `dataset_option.num_clients=30`
+ - Spawrious_GCI: `dataset_options.split_mode=spawrious_GCI`, `dataset_options.num_clients=24`
+ - Spawrious_GAI: `dataset_options.split_mode=spawrious_GAI_2`, `dataset_options.num_clients=25`
+ - Waterbirds_dist: `dataset_options.split_mode=waterbirds_dist`, `dataset_options.num_clients=30`
  - Spawrious_4: `dataset_options.split_mode=spawrious4`, `dataset_options.num_clients=25`, `dataset_options.num_targets=4`
  - CMINST_GSC: `dataset_options.split_mode=sparwious2`, `dataset_options.num_clients=24` `dataset_options.name=CMNIST`, `dataset_options.input_size=28`
- - Spawrious_GCI_100: `dataset_options.split_mode=spawrious_GCI_100`, `dataset_option.num_clients=100`, `server_opt.num_active_clients=12`
+ - Spawrious_GCI_100: `dataset_options.split_mode=spawrious_GCI_100`, `dataset_options.num_clients=100`, `server_opt.num_active_clients=12`
 
 ## Run
 Example run: `python flower_train.py`
