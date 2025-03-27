@@ -31,7 +31,7 @@ def ground_truth_matrix(dataset, n_targets, n_groups, batch_size, num_workers=0,
             s_weights[s_array == label] = len(s_array) / count
     y_weights = y_weights / torch.max(y_weights)
     s_weights = s_weights / torch.max(s_weights)
-    return m, y_weights, s_weights
+    return m, y_weights, s_weights, y_array, s_array
 
 
 def training(model, loader, optimizer, steps, loss_fn, device, verbose=1):

@@ -31,7 +31,7 @@ def main(cfg: Config):
     conf = OmegaConf.to_container(cfg, resolve=True)
 
     train_ds, eval_ds, test_ds = data_preparation.load_data(conf=conf)
-    gt_int_matrix, y_weights, _ = ground_truth_matrix(
+    gt_int_matrix, y_weights, _, _, _ = ground_truth_matrix(
         train_ds,
         cfg.dataset_options.num_targets,
         cfg.dataset_options.num_groups,

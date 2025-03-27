@@ -50,6 +50,7 @@ class ServerOptConfig:
     fedpns_alpha: float
     fedpns_beta: float
     update_static_info_rounds: int
+    multiclass: bool
 
 
 @dataclass

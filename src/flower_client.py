@@ -1,11 +1,12 @@
 from collections import Counter
+import itertools
 import flwr as fl
 from src import corr, utils
-from src.datasets.dataset_utils import ModifiedDataset, SubsetDataset, count_groups
+from src.datasets.dataset_utils import ModifiedDataset, OneVsRestDataset, SubsetDataset, count_groups
 from src.optimizers.subpopbench import GeneralizedCrossEntropyLoss as GCELoss
 from  src.optimizers import subpop_federated
 from src.optimizers.dataloaders import InfiniteDataLoader, WeightedDataLoader
-from src.optimizers.matrix_inference import biased_prediction, estimate_interaction_matrix, ground_truth_matrix, split_by_class, train_left_right, training
+from src.optimizers.matrix_inference import biased_binary_prediction, biased_prediction, concat_error_predictions, estimate_interaction_matrix, ground_truth_matrix, split_by_class, train_left_right, training
 from src.utils import log
 from logging import ERROR, INFO
 import numpy as np
@@ -160,9 +161,24 @@ class FlowerClient(fl.client.NumPyClient):
                     for i, v in enumerate(group_sizes):
                         shared_metrics["groupsize_"+str(i)] = int(v)
                 if "triplets" in self.conf["server_opt"]["client_info"]:
-                    shared_metrics["SC"] = corr.SC(N)
-                    shared_metrics["AI"] = corr.AI(N)
-                    shared_metrics["CI"] = corr.CI(N)
+                    if self.conf["server_opt"]["multiclass"]:
+                        num_targets = N.shape[0]
+                        total_pairs = (num_targets * (num_targets - 1)) // 2
+                        sum_CI = 0
+                        sum_AI = 0
+                        sum_SC = 0
+                        for i, j in itertools.combinations(range(num_targets), 2):
+                            submatrix = N[[i, j], :]
+                            sum_SC += corr.SC(submatrix)
+                            sum_AI += corr.AI(submatrix)
+                            sum_CI += corr.CI(submatrix)
+                        shared_metrics["SC"] = sum_SC / total_pairs
+                        shared_metrics["AI"] = sum_AI / total_pairs
+                        shared_metrics["CI"] = sum_CI / total_pairs
+                    else:
+                        shared_metrics["SC"] = corr.SC(N)
+                        shared_metrics["AI"] = corr.AI(N)
+                        shared_metrics["CI"] = corr.CI(N)
         else:
             if "compgrad" in self.conf["server_opt"]["client_info"]:
                 compressed_gradients = optim_utils.compress_gradients(self.model, compression_rate=self.conf["client_opt"]["hcsfed_compression_rate"], tolerance=self.conf["client_opt"]["hcsfed_tolerance_gc"])
@@ -214,7 +230,7 @@ class FlowerClient(fl.client.NumPyClient):
     def predict_n_matrix(self):
         """Predict N matrix by training biased and spurious classifier"""
         train_ds = self.train_data.dataset
-        gt_int_matrix, y_weights, _ = ground_truth_matrix(
+        gt_int_matrix, y_weights, _, y_array, _ = ground_truth_matrix(
             train_ds,
             self.conf["dataset_options"]["num_targets"],
             self.conf["dataset_options"]["num_groups"],
@@ -223,43 +239,97 @@ class FlowerClient(fl.client.NumPyClient):
         )
 
         device = utils.get_device(self.conf)
-        model = copy.deepcopy(self.model).to(device)
+
 
         # ==============================================
         #log(INFO, "Training biased model")
-        if self.conf["client_opt"]["biased_optimizer"] == 'ReSample':
-            weights = y_weights
+        if self.conf["server_opt"]["multiclass"]:
+            # Train one biased classifier for each class in an one-vs-rest manner
+            error_data_list = []
+            for cls_i in range(self.conf["dataset_options"]["num_targets"]):
+                # Replace classifier layer to make it binary
+                model = copy.deepcopy(self.model)
+                num_features = model.classifier.in_features
+                model.classifier = torch.nn.Linear(num_features, 2)
+                model.to(device)
+                onevsrest_ds = OneVsRestDataset(train_ds, cls_i)
+
+
+                if self.conf["client_opt"]["biased_optimizer"] == 'ReSample':
+                    # one-class weight: keep orig, rest replace
+                    _weights = torch.zeros(len(y_array))
+                    _weights[y_array == cls_i] = len(y_array) / len(_weights[y_array == cls_i])
+                    _weights[y_array != cls_i] = len(y_array) / len(_weights[y_array != cls_i])
+                    weights = _weights
+                else:
+                    weights = None
+
+                train_loader = iter(
+                    InfiniteDataLoader(
+                        dataset=onevsrest_ds,
+                        weights=weights,
+                        batch_size=self.conf["client_opt"]["batch_size"]
+                    )
+                )
+                opt = subpopbench.get_base_optimizer(model.parameters(), self.conf)
+
+                training(
+                    model,
+                    train_loader,
+                    opt,
+                    self.conf["client_opt"]["biased_trainer_steps"],
+                    GCELoss(self.conf["client_opt"]["generalized_cross_entropy_q"]),
+                    device,
+                    verbose=0
+                )
+                # ==============================================
+                #log(INFO, "Get biased predictions")
+                # Get prediction for the one class
+                train_loader = torch.utils.data.DataLoader(
+                    train_ds,
+                    shuffle=False,
+                    batch_size=self.conf["client_opt"]["batch_size"],
+                )
+                error_data = biased_binary_prediction(model, train_loader, device, cls_i, verbose=0)
+                error_data_list.append(error_data)
+            error_dataset = concat_error_predictions(error_data_list)
+            splits = split_by_class(error_dataset)
         else:
-            weights = None
-        train_loader = iter(
-            InfiniteDataLoader(
-                dataset=train_ds,
-                weights=weights,
-                batch_size=self.conf["client_opt"]["batch_size"]
+            # Train a simple biased classifier for 2x2 matrix
+            model = copy.deepcopy(self.model).to(device)
+
+            if self.conf["client_opt"]["biased_optimizer"] == 'ReSample':
+                weights = y_weights
+            else:
+                weights = None
+            train_loader = iter(
+                InfiniteDataLoader(
+                    dataset=train_ds,
+                    weights=weights,
+                    batch_size=self.conf["client_opt"]["batch_size"]
+                )
             )
-        )
-        opt = subpopbench.get_base_optimizer(model.parameters(), self.conf)
+            opt = subpopbench.get_base_optimizer(model.parameters(), self.conf)
 
-        training(
-            model,
-            train_loader,
-            opt,
-            self.conf["client_opt"]["biased_trainer_steps"],
-            GCELoss(self.conf["client_opt"]["generalized_cross_entropy_q"]),
-            device,
-            verbose=0
-        )
+            training(
+                model,
+                train_loader,
+                opt,
+                self.conf["client_opt"]["biased_trainer_steps"],
+                GCELoss(self.conf["client_opt"]["generalized_cross_entropy_q"]),
+                device,
+                verbose=0
+            )
 
-        # ==============================================
-        #log(INFO, "Get biased predictions")
-        train_loader = torch.utils.data.DataLoader(
-            train_ds,
-            shuffle=False,
-            batch_size=self.conf["client_opt"]["batch_size"],
-        )
-        error_dataset = biased_prediction(model, train_loader, device, verbose=0)
-        splits = split_by_class(error_dataset)
-
+            # ==============================================
+            #log(INFO, "Get biased predictions")
+            train_loader = torch.utils.data.DataLoader(
+                train_ds,
+                shuffle=False,
+                batch_size=self.conf["client_opt"]["batch_size"],
+            )
+            error_dataset = biased_prediction(model, train_loader, device, verbose=0)
+            splits = split_by_class(error_dataset)
         # ==============================================
         #log(INFO, "Train Left-Right classifier")
 

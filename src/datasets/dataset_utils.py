@@ -71,6 +71,30 @@ class ModifiedDataset(Dataset, SubpopDataset):
             return super().__getattribute__('dataset')
         return getattr(self.dataset, name)   
 
+class OneVsRestDataset(Dataset):
+    def __init__(self, base_dataset, target_class):
+        """
+        Wraps around an existing dataset (including SubsetDataset) for one-vs-rest classification.
+
+        Args:
+            base_dataset (Dataset): The dataset with N-class labels.
+            target_class (int): The class treated as positive (1), all others as negative (0).
+        """
+        self.base_dataset = base_dataset
+        self.target_class = target_class
+
+    def __len__(self):
+        return len(self.base_dataset)
+
+    def __getitem__(self, idx):
+        x, y = self.base_dataset[idx]  # Extract (image, label) from base dataset
+        y_binary = 1 if y == self.target_class else 0
+        return x, y_binary
+
+    def __getattr__(self, name):
+        """Delegate attribute access to the base dataset for compatibility."""
+        return getattr(self.base_dataset, name)
+
 
 class SubsetDataset(Dataset, SubpopDataset):
     def __init__(self, dataset, indices):
