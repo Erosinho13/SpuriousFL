@@ -161,7 +161,7 @@ class FlowerClient(fl.client.NumPyClient):
                     for i, v in enumerate(group_sizes):
                         shared_metrics["groupsize_"+str(i)] = int(v)
                 if "triplets" in self.conf["server_opt"]["client_info"]:
-                    if self.conf["server_opt"]["multiclass"]:
+                    if self.conf["server_opt"]["multiclass"] and self.conf["dataset_options"]["num_targets"]>2:
                         num_targets = N.shape[0]
                         total_pairs = (num_targets * (num_targets - 1)) // 2
                         sum_CI = 0
@@ -243,7 +243,7 @@ class FlowerClient(fl.client.NumPyClient):
 
         # ==============================================
         #log(INFO, "Training biased model")
-        if self.conf["server_opt"]["multiclass"]:
+        if self.conf["server_opt"]["multiclass"] and self.conf["dataset_options"]["num_targets"]>2:
             # Train one biased classifier for each class in an one-vs-rest manner
             error_data_list = []
             for cls_i in range(self.conf["dataset_options"]["num_targets"]):
