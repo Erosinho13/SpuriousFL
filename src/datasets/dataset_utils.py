@@ -87,9 +87,9 @@ class OneVsRestDataset(Dataset):
         return len(self.base_dataset)
 
     def __getitem__(self, idx):
-        x, y = self.base_dataset[idx]  # Extract (image, label) from base dataset
+        index, x, (y, s) = self.base_dataset[idx]  # Extract (image, label) from base dataset
         y_binary = 1 if y == self.target_class else 0
-        return x, y_binary
+        return index, x, (y_binary, s)
 
     def __getattr__(self, name):
         """Delegate attribute access to the base dataset for compatibility."""

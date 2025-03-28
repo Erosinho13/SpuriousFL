@@ -107,7 +107,7 @@ def biased_binary_prediction(model, loader, device, one_class_id, verbose=1):
         prob = F.softmax(logits, dim=1)
         prediction = torch.argmax(prob, dim=1)
         if len(y==one_class_id)>0:
-            misclassified.append((~(1 == prediction)).to(int))
+            misclassified.append((~(1 == prediction)).to(int)[y==one_class_id])
             features.append(feature.cpu()[y==one_class_id])
             targets.append(y[y==one_class_id])
             groups.append(s[y==one_class_id])
@@ -122,7 +122,7 @@ def concat_error_predictions(prediction_list):
     """Gets the output of the single class binary predictions and put them together to get one TensorDataset"""
     misclassified, targets, groups, features = [], [], [], []
     for predictions in prediction_list:
-        m,t,g,f = predictions
+        f,m,t,g = predictions
         misclassified.append(m)
         targets.append(t)
         groups.append(g)
