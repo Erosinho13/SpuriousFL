@@ -81,6 +81,58 @@ def biased_prediction(model, loader, device, verbose=1):
     return TensorDataset(features, misclassified, targets, groups)
 
 
+def biased_binary_prediction(model, loader, device, one_class_id, verbose=1):
+    """For One-vs-Rest biased model.
+    Expects binary model, but original multiclass loader.
+    Follows the `biased_prediction` code
+    but returns only with the 'one' class's missclassificaion
+    so it can be chained together with the other binary models 
+    to build the same misclassified dataset.
+    params:
+        - one_class_id : the id of the 'one' class to keep"""
+    model.eval()
+    featurizer = model.featurizer
+    clf = model.classifier
+
+    misclassified, targets, groups, features = [], [], [], []
+    iterator = loader
+    if verbose>0:
+        iterator = tqdm(loader, desc="Biased Prediction")
+    for _, x, (y, s) in iterator:
+        x = x.to(device)
+        with torch.no_grad():
+            feature = featurizer(x)
+            logits = clf(feature).cpu()
+
+        prob = F.softmax(logits, dim=1)
+        prediction = torch.argmax(prob, dim=1)
+        if len(y==one_class_id)>0:
+            misclassified.append((~(1 == prediction)).to(int))
+            features.append(feature.cpu()[y==one_class_id])
+            targets.append(y[y==one_class_id])
+            groups.append(s[y==one_class_id])
+
+    misclassified = torch.cat(misclassified)
+    targets = torch.cat(targets)
+    groups = torch.cat(groups)
+    features = torch.vstack(features)
+    return features, misclassified, targets, groups
+
+def concat_error_predictions(prediction_list):
+    """Gets the output of the single class binary predictions and put them together to get one TensorDataset"""
+    misclassified, targets, groups, features = [], [], [], []
+    for predictions in prediction_list:
+        m,t,g,f = predictions
+        misclassified.append(m)
+        targets.append(t)
+        groups.append(g)
+        features.append(f)
+    misclassified = torch.cat(misclassified)
+    targets = torch.cat(targets)
+    groups = torch.cat(groups)
+    features = torch.vstack(features)
+    return TensorDataset(features, misclassified, targets, groups)
+
 def split_by_class(misclf_dataset):
     features, misclassified, targets, groups = misclf_dataset.tensors
     splits = dict()
