@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 from src.utils import adjust_array, get_device
 import torch
@@ -315,7 +316,7 @@ def probabilistic_selection(node_prob, node_count, labeled, alpha, beta):
 
     return node_prob
 
-def clients_clustering(compressed_gradients: np.array, num_clusters: int, tolerance: float = 1e-10) -> list[int]:
+def clients_clustering(compressed_gradients: np.array, num_clusters: int, tolerance: float = 1e-10) -> List[int]:
     """
     Client clustering according to their compressed gradients.
 
@@ -331,8 +332,8 @@ def clients_clustering(compressed_gradients: np.array, num_clusters: int, tolera
                 .fit(compressed_gradients).labels_)
     return clusters
 
-def HCSFed(num_clients_per_round: int, num_clients: int, clusters: list[int], num_clusters: int,
-           compressed_gradients: np.array, cluster_clients: list[list]) -> list[int]:
+def HCSFed(num_clients_per_round: int, num_clients: int, clusters: List[int], num_clusters: int,
+           compressed_gradients: np.array, cluster_clients: List[List]) -> List[int]:
 
     """
     The HCSFed algorithm.
