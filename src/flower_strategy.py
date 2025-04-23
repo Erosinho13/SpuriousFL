@@ -328,7 +328,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
     def configure_evaluate(
         self, server_round: int, parameters: Parameters, client_manager: ClientManager
-    ) -> list[tuple[ClientProxy, EvaluateIns]]:
+    ) -> List[Tuple[ClientProxy, EvaluateIns]]:
         """Configure the next round of evaluation."""
         # Do not configure federated evaluation if fraction eval is 0.
         if self.fraction_evaluate == 0.0:

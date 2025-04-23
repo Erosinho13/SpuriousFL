@@ -2,7 +2,7 @@ import numpy as np
 import random
 import flwr as fl
 import threading
-from typing import Optional
+from typing import List, Optional
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.criterion import Criterion
 
@@ -29,7 +29,7 @@ class MyManager(fl.server.SimpleClientManager):
         criterion: Optional[Criterion] = None,
         evaluate: Optional[bool] = False,
         server_round: Optional[int] = None
-    ) -> list[ClientProxy]:
+    ) -> List[ClientProxy]:
         """Sample a number of Flower ClientProxy instances."""
         # Block until at least num_clients are connected.
         if min_num_clients is None:
