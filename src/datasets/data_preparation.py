@@ -1,3 +1,4 @@
+from src.datasets.celeba import CelebA, data_transforms_celeba, split_data_celeba
 from src.datasets.fmow import FMOW, data_transforms_fmow
 from src.datasets.spawrious import Spawrious, data_transforms_spawrious, split_data_spawrious
 import torch
@@ -176,6 +177,23 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         )
         valset = copy.deepcopy(testset)
         return trainset, valset, testset
+    if dataset_mode=="CelebA":
+        ds_opt = conf["dataset_options"]
+        train_tr_list, test_tr_list = data_transforms_celeba(conf)
+        group = ds_opt["celeba_group"]
+        target = ds_opt["celeba_target"]
+        trainset = CelebA(
+            "./datasets", train=True, transforms=train_tr_list,
+            target_attr_name=target,
+            group_attr_name=group
+        )
+        testset = CelebA(
+            "./datasets", train=False, transforms=test_tr_list,
+            target_attr_name=target,
+            group_attr_name=group
+        )
+        valset = copy.deepcopy(testset)
+        return trainset, valset, testset       
     raise NotImplementedError(dataset_mode)
 
 
@@ -217,6 +235,11 @@ def split_data(ds, conf):
             )
     elif dataset_mode == "Spawrious" or dataset_mode=="CMNIST" or dataset_mode=="FMOW":
         ds_split = split_data_spawrious(
+            ds,
+            conf
+        )
+    elif dataset_mode == "CelebA":
+        ds_split = split_data_celeba(
             ds,
             conf
         )

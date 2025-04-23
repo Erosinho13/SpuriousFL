@@ -1,0 +1,14 @@
+name: CelebA
+input_size: 224
+num_samples_per_class: null
+num_targets: 2
+num_groups: 2
+norm: true
+aug_crop: 0
+aug_horizontal_flip: true
+local_training_id: null
+split_mode: afed
+num_clients: 100
+num_celebrity: 20
+celeba_group: Male
+celeba_target: Wavy_Hair

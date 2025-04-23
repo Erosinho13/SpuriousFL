@@ -73,6 +73,9 @@ class DatasetConfig:
     categories: Optional[List]
     regions: Optional[List]
     confounding_factor: Optional[float]
+    num_celebrity: Optional[int]
+    celeba_group: Optional[str]
+    celeba_target: Optional[str]
 
 @dataclass
 class ModelConfig:
