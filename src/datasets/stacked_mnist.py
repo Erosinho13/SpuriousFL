@@ -1,6 +1,7 @@
 import math
 import random
 from collections import defaultdict
+from typing import List
 
 import numpy as np
 
@@ -63,11 +64,11 @@ class StackedMNIST(MNIST):
                  dirichlet_groups_alpha: float = 1.0,
                  uniform_targets: bool = False,
                  uniform_groups: bool = False,
-                 force_targets: list[int] = None,
-                 force_groups: list[int] = None,
-                 force_targets_proportions: list[float] = None,
-                 force_groups_proportions: list[float] = None,
-                 force_proportions: list[list[float]] = None):
+                 force_targets: List[int] = None,
+                 force_groups: List[int] = None,
+                 force_targets_proportions: List[float] = None,
+                 force_groups_proportions: List[float] = None,
+                 force_proportions: List[List[float]] = None):
 
         super().__init__(root=root, train=train, transform=transform, target_transform=target_transform,
                          download=download)
