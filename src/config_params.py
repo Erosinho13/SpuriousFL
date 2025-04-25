@@ -52,6 +52,13 @@ class ServerOptConfig:
     update_static_info_rounds: int
     multiclass: bool
 
+@dataclass
+class FairnessConfig:
+    favorable_label: int
+    unfavorable_label: int
+    privileged_protected_attribute: int
+    unprivileged_protected_attribute: int
+    calculate_fairness: bool
 
 @dataclass
 class DatasetConfig:
@@ -76,6 +83,7 @@ class DatasetConfig:
     num_celebrity: Optional[int]
     celeba_group: Optional[str]
     celeba_target: Optional[str]
+    fairness_params: FairnessConfig
 
 @dataclass
 class ModelConfig:

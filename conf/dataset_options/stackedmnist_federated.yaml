@@ -1,3 +1,6 @@
+defaults:
+  - fairness_params: all_defaults
+  
 name: StackedMNIST
 root: 'datasets/'
 num_train_images: 60000

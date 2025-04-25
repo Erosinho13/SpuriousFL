@@ -1,3 +1,6 @@
+defaults:
+  - fairness_params: all_defaults
+  
 name: CIFAR10
 num_targets: 10
 num_groups: 1

@@ -3,6 +3,7 @@ import itertools
 import flwr as fl
 from src import corr, utils
 from src.datasets.dataset_utils import ModifiedDataset, OneVsRestDataset, SubsetDataset, count_groups
+from src.fair_metrics_raw import compute_all_metrics
 from src.optimizers.subpopbench import GeneralizedCrossEntropyLoss as GCELoss
 from  src.optimizers import subpop_federated
 from src.optimizers.dataloaders import InfiniteDataLoader, WeightedDataLoader
@@ -116,13 +117,28 @@ class FlowerClient(fl.client.NumPyClient):
 
             # Local model eval
             self.set_parameters(weights, config)
-            loss, accuracy, group_acc = optim_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
+
+            if self.conf["dataset_options"]["fairness_params"]["calculate_fairness"]:
+                loss, accuracy, group_acc, out_dict = optim_utils.evaluate(self.model, test_ds, self.conf, verbose=0, extra_eval_fn=optim_utils.collect_lists)
+            else:
+                loss, accuracy, group_acc = optim_utils.evaluate(self.model, test_ds, self.conf, verbose=0)
+            
             metric_dict = {
                 "cid": self.cid,
                  "test_loss": loss,
                  "test_accuracy": accuracy,
             }
             metric_dict = metric_dict | group_acc
+
+            if self.conf["dataset_options"]["fairness_params"]["calculate_fairness"]:
+                keys = out_dict["pred_labels"].keys()
+                orig_labels = [out_dict["orig_labels"][i] for i in keys]
+                pred_labels = [out_dict["pred_labels"][i] for i in keys]
+                attributes = [out_dict["attributes"][i] for i in keys]
+                protected_attributes_dict = self.conf["dataset_options"]["fairness_params"]
+                protected_attributes_dict["values"] = attributes
+                fairness_dict = compute_all_metrics(orig_labels, pred_labels, protected_attributes_dict)
+                metric_dict = metric_dict | fairness_dict
 
             return (
                 loss,

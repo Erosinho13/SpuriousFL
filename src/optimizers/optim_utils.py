@@ -89,6 +89,20 @@ def fit(model, data, conf, validation_data=None, verbose=0, opt=None):
 
     return history
 
+
+def collect_lists(indeces, images, labels, groups, predicted, outdict):
+    if "pred_labels" not in outdict:
+        outdict["pred_labels"] = {}
+    if "orig_labels" not in outdict:
+        outdict["orig_labels"] = {}
+    if "attributes" not in outdict:
+        outdict["attributes"] = {}
+    for i, l, g, v in zip(indeces.detach().to('cpu').numpy(), labels.detach().to('cpu').numpy(), groups.detach().to('cpu').numpy(), predicted.detach().to('cpu').numpy()):
+            outdict["pred_labels"][i] = int(v)
+            outdict["orig_labels"][i] = int(l)
+            outdict["attributes"][i] = int(g)
+
+
 #!TODO update with subpopbench optims
 def evaluate(model, data, conf, verbose=0,
              extra_eval_fn: Callable[[
@@ -104,6 +118,7 @@ def evaluate(model, data, conf, verbose=0,
     loss_fn = get_loss(conf=conf)
     correct, total, loss = 0, 0, 0.0
     label_group_correct, label_group_total = {}, {}
+
     with torch.no_grad():
         for indeces, images, (labels, groups) in data:
             indeces, images, labels, groups = indeces.to(get_device(conf)), images.to(get_device(conf)), labels.to(get_device(conf)), groups.to(

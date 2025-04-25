@@ -1,3 +1,6 @@
+defaults:
+  - fairness_params: all_defaults
+  
 name: WaterBirds
 input_size: 224
 num_targets: 2

@@ -1,3 +1,6 @@
+defaults:
+  - fairness_params: all_defaults
+  
 name: CelebA
 input_size: 224
 num_samples_per_class: null

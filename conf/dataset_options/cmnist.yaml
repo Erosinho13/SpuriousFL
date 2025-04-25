@@ -1,3 +1,6 @@
+defaults:
+  - fairness_params: all_defaults
+  
 name: CMNIST
 input_size: 28
 num_targets: 2

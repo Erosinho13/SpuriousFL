@@ -1,0 +1,5 @@
+favorable_label: 0
+unfavorable_label: 1
+privileged_protected_attribute: 0
+unprivileged_protected_attribute: 1
+calculate_fairness: false
