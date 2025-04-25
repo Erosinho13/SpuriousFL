@@ -132,11 +132,14 @@ class FlowerClient(fl.client.NumPyClient):
 
             if self.conf["dataset_options"]["fairness_params"]["calculate_fairness"]:
                 keys = out_dict["pred_labels"].keys()
-                orig_labels = [out_dict["orig_labels"][i] for i in keys]
-                pred_labels = [out_dict["pred_labels"][i] for i in keys]
-                attributes = [out_dict["attributes"][i] for i in keys]
+                orig_labels = np.array([out_dict["orig_labels"][i] for i in keys])
+                pred_labels = np.array([out_dict["pred_labels"][i] for i in keys])
+                attributes = np.array([out_dict["attributes"][i] for i in keys])
                 protected_attributes_dict = self.conf["dataset_options"]["fairness_params"]
                 protected_attributes_dict["values"] = attributes
+                print(orig_labels[:10])
+                print(pred_labels[:10])
+                print(attributes[:10])
                 fairness_dict = compute_all_metrics(orig_labels, pred_labels, protected_attributes_dict)
                 metric_dict = metric_dict | fairness_dict
 
