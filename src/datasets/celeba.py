@@ -115,7 +115,10 @@ def split_data_celeba(ds, conf):
     https://arxiv.org/abs/2501.02732
     """
 
-    data_idx_map, _ = load_split_data(ds, conf)
+    if conf["dataset_options"]["split_mode"]=="afed":
+        data_idx_map, _ = load_split_data(ds, conf)
+    else:
+        raise NotImplementedError("Split mode not implemented for dataset")
 
     ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map.values()]
     for ds in ds_split:
