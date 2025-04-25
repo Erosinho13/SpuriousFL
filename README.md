@@ -61,3 +61,19 @@ project
 
 ## Run
 Example run: `python flower_train.py`
+
+## Requirements
+```
+python 3.10.11
+flwr==1.8.0[simulation]
+torch
+torchvision
+matplotlib
+wilds
+hydra-core
+timm
+cvxopt
+wandb
+git+https://github.com/aengusl/spawrious.git
+submitit hydra-submitit-launcher
+```
