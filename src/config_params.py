@@ -30,7 +30,8 @@ class ClientOptConfig:
     hcsfed_num_clusters: int
     hcsfed_tolerance_gc: float
     hcsfed_tolerance_cl: float
-
+    AFed_generator_noise_dim: int
+    AFed_lam: float
 
 @dataclass
 class ServerOptConfig:
@@ -51,6 +52,7 @@ class ServerOptConfig:
     fedpns_beta: float
     update_static_info_rounds: int
     multiclass: bool
+    afed_generator: bool
 
 @dataclass
 class FairnessConfig:
