@@ -1,4 +1,5 @@
 
+from src.datasets.data_splits import split_mode_to_matrix
 from src.datasets.dataset_utils import SubpopDataset, SubsetDataset, count_groups
 import torchvision
 import numpy as np
@@ -35,7 +36,12 @@ class CelebA(VisionDataset, SubpopDataset):
         self.target_attr = second_line_values.index(target_attr_name)
         self.group_attr = second_line_values.index(group_attr_name)
 
+        self.identity_df = None
+        self.labels_df = None
+
     def get_celeba_metadata(self):
+        if self.identity_df is not None and self.labels_df is not None:
+            return self.labels_df, self.identity_df
         ids = []
         labels = []
         for i in tqdm(range(len(self))):
@@ -46,6 +52,8 @@ class CelebA(VisionDataset, SubpopDataset):
             labels.append({"index":i,"target":y,"group":s})
         identity_df = pd.DataFrame(ids)
         labels_df = pd.DataFrame(labels)
+        self.labels_df = labels_df
+        self.identity_df = identity_df
         return labels_df, identity_df
 
     def get_meta(self, index:int):
@@ -110,6 +118,56 @@ def load_split_data(train_ds, conf):
         ratio = min(len(group_0_positive)/len(target_idx), len(group_1_positive)/len(target_idx))
     return data_idx_map, ratio
 
+def split_celeb_majority(train_ds, conf):
+    """Gives each celeb a group by where they have the majority of samples 
+    and select celebs from these categories based on celeb distribution matrix."""
+    labels_df, identity_df = train_ds.get_celeba_metadata()
+    df = identity_df.merge(labels_df)
+    # Step 1: Count occurrences of each (identity, target, group) combination
+    counts = df.groupby(['identity', 'target', 'group']).size().reset_index(name='count')
+    # Step 2: For each identity, get the row with the maximum count
+    majority_df = counts.loc[counts.groupby('identity')['count'].idxmax()].reset_index(drop=True)
+    # Step 3: Keep only required columns
+    majority_df = majority_df[['identity', 'target', 'group']]
+
+    data_split = split_mode_to_matrix(conf)
+    data_split = np.array(data_split)
+
+    result = []
+    # Make a copy to track unused identities
+    unused_df = majority_df.copy()
+
+    for matrix in data_split:
+        selected_indices = []
+
+        # For this matrix, we'll consume from unused_df
+        current_unused = unused_df.copy()
+
+        num_targets, num_groups = matrix.shape
+        for target in range(num_targets):
+            for group in range(num_groups):
+                n_to_pick = matrix[target, group]
+                if n_to_pick > 0:
+                    # Filter unused identities for this (target, group)
+                    subset = current_unused[(current_unused['target'] == target) & (current_unused['group'] == group)]
+
+                    # Sample without replacement
+                    picked = subset.sample(n=min(n_to_pick, len(subset)), random_state=conf["seed"])
+
+                    # Collect picked identities
+                    selected_indices.extend(picked['identity'].tolist())
+
+                    # Remove picked identities from the pool
+                    current_unused = current_unused.drop(picked.index)
+
+        # Save selected for this matrix
+        result.append(selected_indices)
+
+        # Remove all picked identities globally to prevent reuse in next matrix
+        unused_df = unused_df.drop(unused_df[unused_df['identity'].isin(selected_indices)].index)
+    indexed_ids = [df[df['identity'].isin(identity_list)].index.tolist() for identity_list in result]
+    return indexed_ids
+
 def split_data_celeba(ds, conf):
     """
     Torch wrapper for split from AFed paper
@@ -118,10 +176,12 @@ def split_data_celeba(ds, conf):
 
     if conf["dataset_options"]["split_mode"]=="afed":
         data_idx_map, _ = load_split_data(ds, conf)
-    else:
-        raise NotImplementedError("Split mode not implemented for dataset")
 
-    ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map.values()]
+        ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map.values()]
+    else:
+        data_idx_map = split_celeb_majority(ds, conf)
+        ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map]
+
     for ds in ds_split:
         print(count_groups(ds, False, conf["dataset_options"]["num_groups"], conf["dataset_options"]["num_targets"])["group_sizes"])
     return ds_split
