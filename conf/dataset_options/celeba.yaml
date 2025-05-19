@@ -15,3 +15,5 @@ num_clients: 100
 num_celebrity: 20
 celeba_group: Male
 celeba_target: Wavy_Hair
+fairness_params:
+  calculate_fairness: true
