@@ -1,8 +1,13 @@
+import os
 from typing import Callable, OrderedDict
 import numpy as np
-from src.optimizers.subpopbench import get_base_optimizer, get_loss, get_subpop_optimizer
+from src.models import model_utils
+from src.models.afed_generator import AFedGenerator
+from src.optimizers.subpopbench import gen_z_attr, get_base_optimizer, get_loss, get_subpop_optimizer
 from src.utils import get_cpu, get_device, get_input_shape, np_to_tensor
 import torch
+from sklearn.metrics import average_precision_score
+
 
 class History:
     def __init__(self):
@@ -274,3 +279,57 @@ def compress_gradients(model, compression_rate: float = 1e-5, tolerance: float =
     #print()
 
     return centers
+
+def train_generator(generator, generator_optimizer, generator_lr_scheduler, local_model_lst, conf):
+    """
+    AFed Generator training
+    https://arxiv.org/pdf/2501.02732
+    """
+    device = get_device(conf)
+    generator.train()
+    for i in range(50):
+        generator_optimizer.zero_grad()
+        a = np.random.choice([0, 1], conf["client_opt"]["batch_size"])
+        a = torch.tensor(a, dtype=torch.int64).to(device)
+        z_attr, eps = gen_z_attr(a, z_dim=conf["client_opt"]["AFed_generator_noise_dim"] + 2)
+        fake_data = generator(z_attr.to(device))
+        diversity_loss = generator.diversity_loss(eps.to(device), fake_data.to(device))
+        
+        # calculate the label prediction loss of the generator
+        teacher_loss = 0
+        client_model = model_utils.init_model(
+            conf=conf,
+        )
+        for client_weights in local_model_lst: #!TODO: numpy to model load
+            model_utils.set_weights(client_model, client_weights)
+            client_model['a_cls'].eval()
+            # calculate the attribute prediction loss of the generator
+            a_scores = client_model['a_cls'](fake_data)
+            attr_loss_g = get_loss(conf)(a_scores, a.type(torch.float32))
+            teacher_loss += attr_loss_g
+
+        generator_loss = 1 * teacher_loss + 5 * diversity_loss
+        generator_loss.backward()
+        generator_optimizer.step()
+    generator_lr_scheduler.step()
+
+def AFed_generator_init(conf):
+    """Initialize AFed Generator model, optimizer and learning rate scheduler"""
+    afed_generator = AFedGenerator()
+    model_path = os.path.join(
+        "checkpoints",
+        conf["exp_id"],
+        "afed_generator"
+    )
+    model_utils.save_model(afed_generator, model_path)
+    generator_optimizer = torch.optim.Adam(
+        params=afed_generator.parameters(),
+        lr=3e-4,
+        betas=(0.9, 0.999),
+        eps=1e-08,
+        weight_decay=1e-2,
+        amsgrad=False
+    )
+    generator_lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+        optimizer=generator_optimizer, gamma=0.98)
+    return afed_generator, generator_optimizer, generator_lr_scheduler

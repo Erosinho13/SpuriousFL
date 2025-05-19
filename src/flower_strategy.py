@@ -24,7 +24,9 @@ from flwr.common import (
 )
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from sklearn.cluster import kmeans_plusplus
+from src.models.afed_generator import AFedGenerator
 from src.optimizers import subpop_federated 
+from src.optimizers.optim_utils import train_generator
 from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, client_weights_nova, flatten_weights, get_relation, node_deleting, probabilistic_selection, select_noreplacement, temperature_weighted_values, top_k_binary_list, upscale
 from src.utils import log
 from src.models import model_utils
@@ -110,6 +112,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
             for i in range(self.conf["dataset_options"]["num_clients"]):
                 self.stored_client_data[i] = {"update_needed":True}
                 self.stored_client_data[i]["fedpns_p"] = 1/self.conf["dataset_options"]["num_clients"]
+        if self.conf["server_opt"]["afed_generator"]:
+            self.afed_generator, self.generator_optimizer, self.generator_lr_scheduler = AFed_generator_init(self.conf)
         self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
         self.client_update_requested = []
 
@@ -156,6 +160,19 @@ class MyStrategy(fl.server.strategy.FedOpt):
         # Calculate client weights with post-training methods
         if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
             results = self.post_calculate_weights(results, server_round=server_round)
+
+        # AFed generator training https://arxiv.org/pdf/2501.02732
+        if self.conf["server_opt"]["afed_generator"]:
+            #!TODO: train generator
+            local_model_lst = [w for w, res in results]
+            train_generator(self.afed_generator, self.generator_optimizer, self.generator_lr_scheduler, local_model_lst, self.conf)
+
+            model_path = os.path.join(
+            "checkpoints",
+            self.conf["exp_id"],
+            "afed_generator"
+            )
+            model_utils.save_model(self.afed_generator, model_path)
 
         self.log_client_weights(results)
         log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
@@ -595,3 +612,4 @@ class MyStrategy(fl.server.strategy.FedOpt):
             self.stored_client_data[k]["fedpns_p"] = v
 
         print("FedPNS_P:",node_prob)
+

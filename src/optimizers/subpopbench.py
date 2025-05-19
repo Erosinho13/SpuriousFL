@@ -1,6 +1,8 @@
 # Algorithms implemented in https://github.com/YyzHarry/SubpopBench/blob/main/subpopbench/learning/algorithms.py
 
+import os
 from src.datasets.dataset_utils import get_metadata
+from src.models.afed_generator import AFedGenerator
 import torch
 import numpy as np
 from src.utils import get_device
@@ -512,3 +514,101 @@ class Prox(ERM):
             proximal_term += torch.square((local_weights - global_weights).norm(2))
         loss = orig_loss + (self.proximal_mu / 2) * proximal_term
         return loss
+
+
+class AFed(Algorithm):
+    """AFed uses a generator (obtained from the server) to optimize training for global data distribution.
+    AFed paper: https://arxiv.org/pdf/2501.02732"""
+    def __init__(self, model, conf):
+        super().__init__(
+            model, conf)
+        #!TODO: Load generator from probably file
+        model_path = os.path.join(
+            "checkpoints",
+            self.conf["exp_id"],
+            "afed_generator"
+        )
+        generator = AFedGenerator()
+        generator.load_state_dict(torch.load(os.path.join(model_path, "torchmodel.pt")))
+
+        self.featurizer = self.network.featurizer
+        self.classifier = self.network.classifier
+        attr_num = conf["dataset_options"]["num_groups"]
+        device = get_device(conf)
+        self.a_classifier = torch.nn.Linear(self.network.classifier.in_features, attr_num).to(device)
+        self._init_model()
+
+    def _init_model(self):
+        lr = self.conf["client_opt"]["learning_rate"]
+        self.optimizer = {
+            'featurizer': torch.optim.Adam(self.featurizer.parameters(), lr=lr),
+            'classifier': torch.optim.SGD(self.classifier.parameters(), lr=lr),
+            'a_classifier': torch.optim.SGD(self.a_classifier.parameters(), lr=lr)
+        }
+        self.loss = {
+            'classifier': get_loss(conf=self.conf),
+            'a_classifier': get_loss(conf=self.conf)
+        }
+        self.lr_scheduler = None
+
+    def _compute_loss(self, i, pred, y, a, step):
+        # Not used
+        return self.loss['classifier'](pred, y).mean()
+
+    def update(self, minibatch, step):
+        all_i, all_x, all_y, all_a = minibatch
+        self.optimizer['featurizer'].zero_grad()
+        self.optimizer['classifier'].zero_grad()
+        self.optimizer['a_classifier'].zero_grad()
+        all_feat = self.return_feats(all_x)
+        y_scores = self.classifier(all_feat)
+        y_loss_true = self.loss['classifier'](y_scores.view(-1), all_y)
+        y_loss_value = y_loss_true.item()
+        a_scores = self.a_classifier(all_feat.detach())
+        a_loss = self.loss['a_classifier'](a_scores, all_a).mean()
+        a_loss.backward()
+        a_loss_value = a_loss.item()
+        self.optimizer['a_classifier'].step()
+
+        # Generator G:
+        alpha = 1 
+        gamma = np.random.beta(alpha, alpha)
+        true_feat_0 = self.return_feats(all_x)
+        z_attr, _ = gen_z_attr(1-all_a, z_dim=self.conf["client_opt"]["AFed_generator_noise_dim"] + 2)
+        fake_feat_1 = self.generator(z_attr.to(get_device(self.conf)))
+        mix_feat = gamma * true_feat_0 + (1-gamma) * fake_feat_1
+
+        mix_feat = mix_feat.requires_grad_(True)
+        pred = self.classifier(mix_feat).sum()
+        grad = torch.autograd.grad(outputs=pred, inputs=mix_feat, create_graph=True)[0].view(mix_feat.size(0), -1)
+        delta_x = (true_feat_0 - fake_feat_1).view(mix_feat.size(0), -1)
+        grad_inn = (grad * delta_x).sum(1).view(-1)
+        loss_grad = torch.abs(grad_inn.mean())
+        y_loss_true += self.conf["client_opt"]["AFed_lam"] * loss_grad
+
+        y_loss_true.backward()
+        self.optimizer['featurizer'].step()
+        self.optimizer['classifier'].step()
+
+
+        correct = (torch.max(y_scores.data, 1)[1] == all_y).sum().item()
+        return {'loss': y_loss_value, "correct":correct, 'a_loss': a_loss_value}
+
+    def return_feats(self, x):
+        return self.featurizer(x)
+
+    def predict(self, x):
+        return self.network(x)
+
+
+def gen_z_attr(a, num_classes=2, z_dim=34):
+    batch_size = a.shape[0]
+    eps = torch.rand(batch_size, z_dim)
+    eps = torch.FloatTensor(eps)
+    # https://arxiv.org/abs/1809.03627
+    one_hot_attr = torch.zeros(batch_size, num_classes)
+    one_hot_attr.scatter_(1, a.cpu().type(torch.int64).view(-1, 1), 1)
+    z_y_attr = torch.cat((eps, one_hot_attr), dim=1)
+
+    return z_y_attr, eps
+    
