@@ -61,7 +61,8 @@ class CelebA(VisionDataset, SubpopDataset):
         x, (attrs, _) = self.dataset[index]
         y = attrs[self.target_attr]
         s = attrs[self.group_attr]
-        return index, np.asarray(x), (y, s)
+        # torchvision already doing the transform
+        return index, x, (y, s)
 
     def __getattr__(self, name):
         try:
