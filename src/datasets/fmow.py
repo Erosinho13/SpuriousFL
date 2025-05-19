@@ -23,7 +23,7 @@ class FMOW(VisionDataset, SubpopDataset):
         self.metadata = {"regions":regions, "categories":categories}
         self.subset = dataset[["path","category","region"]].to_numpy()
         self.root = root
-        self.transforms = transforms
+        self.transform = transforms
 
     def __len__(self) -> int:
         return len(self.subset)
@@ -31,7 +31,7 @@ class FMOW(VisionDataset, SubpopDataset):
     def __getitem__(self, index: int):
         x, y, s = self.subset[index]
         x = Image.open(x)
-        x = self.transforms(x)
+        x = self.transform(x)
         return index, x, (y, s)
 
     def __getattr__(self, name):

@@ -30,7 +30,7 @@ class Spawrious(VisionDataset, SubpopDataset):
         self.metadata = {"locations":locations, "breeds":breeds}
         self.subset = dataset[["path","breed","location"]].to_numpy()
         self.root = root
-        self.transforms = transforms
+        self.transform = transforms
 
     def __len__(self) -> int:
         return len(self.subset)
@@ -38,7 +38,7 @@ class Spawrious(VisionDataset, SubpopDataset):
     def __getitem__(self, index: int):
         x, y, s = self.subset[index]
         x = Image.open(x)
-        x = self.transforms(x)
+        x = self.transform(x)
         return index, x, (y, s)
 
     def __getattr__(self, name):
