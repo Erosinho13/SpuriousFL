@@ -117,6 +117,8 @@ def get_subpop_optimizer(model, data, conf={}):
                 return LfF(model, conf)
             elif copt["subpop_optimizer"] == "Prox":
                 return Prox(model, conf)
+            elif copt["subpop_optimizer"] == "AFed":
+                return AFed(model, conf)
             else:
                 raise NotImplementedError("Subpop optimizer not recognized")
     return ERM(model, conf)
