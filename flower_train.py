@@ -71,7 +71,7 @@ def train(conf, conf_name):
     if conf["wandb"]:
         import wandb
 
-        setup_hash = utils.hash_config(conf, ["seed","exp_id"])
+        setup_hash = utils.hash_config(conf, ["seed","exp_id", "len_total_data"])
         conf["config_id"] = setup_hash
 
         if "store_id" in conf.keys():
