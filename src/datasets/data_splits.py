@@ -474,7 +474,7 @@ def split_mode_to_matrix(conf:dict)-> List:
         client_samples += [[[1, 9], [9, 1]]] * 15  # Type SC (2)
     if split_mode=="celeba_gci":
         client_samples = []
-        client_samples += [[[9, 9], [1, 1]]] * 2  #  Type CI (0)
+        client_samples += [[[9, 9], [1, 1]]] * 15  #  Type CI (0)
         client_samples += [[[1, 1], [9, 9]]] * 1  # Type CI (0)
         client_samples += [[[9, 1], [9, 1]]] * 2  # Type AI (1)
         client_samples += [[[1, 9], [1, 9]]] * 2  # Type AI (1)
