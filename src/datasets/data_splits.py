@@ -472,6 +472,22 @@ def split_mode_to_matrix(conf:dict)-> List:
         client_samples += [[[1, 9], [1, 9]]] * 2  # Type AI (1)
         client_samples += [[[9, 1], [1, 9]]] * 1  # Type SC (2)
         client_samples += [[[1, 9], [9, 1]]] * 15  # Type SC (2)
+    if split_mode=="celeba_gci":
+        client_samples = []
+        client_samples += [[[9, 9], [1, 1]]] * 2  #  Type CI (0)
+        client_samples += [[[1, 1], [9, 9]]] * 1  # Type CI (0)
+        client_samples += [[[9, 1], [9, 1]]] * 2  # Type AI (1)
+        client_samples += [[[1, 9], [1, 9]]] * 2  # Type AI (1)
+        client_samples += [[[9, 1], [1, 9]]] * 2  # Type SC (2)
+        client_samples += [[[1, 9], [9, 1]]] * 2  # Type SC (2)
+    if split_mode=="celeba_gai":
+        client_samples = []
+        client_samples += [[[9, 9], [1, 1]]] * 2  #  Type CI (0)
+        client_samples += [[[1, 1], [9, 9]]] * 2  # Type CI (0)
+        client_samples += [[[9, 1], [9, 1]]] * 15  # Type AI (1)
+        client_samples += [[[1, 9], [1, 9]]] * 1  # Type AI (1)
+        client_samples += [[[9, 1], [1, 9]]] * 2  # Type SC (2)
+        client_samples += [[[1, 9], [9, 1]]] * 2  # Type SC (2)
 
     if split_mode in ["fmow_1", "fmow_3"]:
         global_dist_target = np.array([
