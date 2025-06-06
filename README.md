@@ -76,4 +76,5 @@ cvxopt
 wandb
 git+https://github.com/aengusl/spawrious.git
 submitit hydra-submitit-launcher
+datasets[vision]
 ```

@@ -7,7 +7,8 @@ from torchvision.datasets import VisionDataset
 import os
 from tqdm import tqdm
 import pandas as pd
-
+from datasets import load_dataset, Image
+from PIL import Image as PILImage
 
 class CelebA(VisionDataset, SubpopDataset):
     def __init__(
@@ -22,57 +23,73 @@ class CelebA(VisionDataset, SubpopDataset):
             split = 'train'
         else:
             split = 'test'
-        dataset = torchvision.datasets.CelebA(
-            root=root, split=split, download=True, transform=transforms, target_type=['attr', 'identity']
-        )
+        dataset = load_dataset("negedng/CelebA-attrs-identity", split="train", cache_dir=root)
+        self.transform = transforms  # Save the transform first
+        
+
+        def hf_transform(examples):
+            if "image" in examples.keys():
+                examples["image"] = [transforms(img) for img in examples["image"]]
+            return examples
+
+        dataset.set_transform(hf_transform)
         self.dataset = dataset
         self.root = root
 
-        with open(os.path.join(self.root,"celeba/list_attr_celeba.txt"), 'r') as file:
-            lines = file.readlines()
-
         # Get the second line (index 1) and split by spaces
-        second_line_values = lines[1].strip().split()
-        self.target_attr = second_line_values.index(target_attr_name)
-        self.group_attr = second_line_values.index(group_attr_name)
+        self.target_attr_name = target_attr_name
+        self.group_attr_name = group_attr_name
 
         self.identity_df = None
         self.labels_df = None
+    def __len__(self) -> int:
+        return len(self.dataset)
 
+    def __getitem__(self, index: int):
+        hf_dict = self.dataset[index]
+        x = hf_dict["image"]
+        #x = self.transform(hf_dict["image"])
+        y = hf_dict[self.target_attr_name]
+        s = hf_dict[self.group_attr_name]
+        return index, x, (y, s)
+
+    def __getitems__(self, indices):
+        hf_dicts = self.dataset[indices]  # batched fetch
+        images = hf_dicts["image"]
+        targets = hf_dicts[self.target_attr_name]
+        groups = hf_dicts[self.group_attr_name]
+        return [(i, img, (y, s)) for i, img, y, s in zip(indices, images, targets, groups)]
+    
+    def get_meta(self, index:int):
+        indiv = self.dataset["identity"][index]
+        y = self.dataset[self.target_attr_name][index]
+        s = self.dataset[self.group_attr_name][index]
+        return index, y, s, indiv   
+
+    def get_metas(self, indices):
+        indivs = self.dataset["identity"][indices]  # batched fetch
+        targets = self.dataset[self.target_attr_name][indices]
+        groups = self.dataset[self.group_attr_name][indices]
+        return [(i, y, s, indiv) for i, indiv, y, s in zip(indices, indivs, targets, groups)]  
+     
     def get_celeba_metadata(self):
         if self.identity_df is not None and self.labels_df is not None:
             return self.labels_df, self.identity_df
         ids = []
         labels = []
-        for i in tqdm(range(len(self))):
-            _, y, s, identity = self.get_meta(i)
-            y = int(y)
-            s = int(s)
-            ids.append({"index":i, "identity":int(identity)})
-            labels.append({"index":i,"target":y,"group":s})
-        identity_df = pd.DataFrame(ids)
-        labels_df = pd.DataFrame(labels)
+        ids = list(range(len(self)))
+        identities = self.dataset["identity"]
+        ys = self.dataset[self.target_attr_name]
+        ss = self.dataset[self.group_attr_name]
+        identity_df = pd.DataFrame({"index":ids, "identity":identities})
+        labels_df = pd.DataFrame({"index":ids, "target":ys,"group":ss})
+
         self.labels_df = labels_df
         self.identity_df = identity_df
         return labels_df, identity_df
 
-    def get_meta(self, index:int):
-        _, (attrs, indiv) = self.dataset[index]
-        y = attrs[self.target_attr]
-        s = attrs[self.group_attr]
-        return index, y, s, indiv
-
-    def __len__(self) -> int:
-        return len(self.dataset)
-
-    def __getitem__(self, index: int):
-        x, (attrs, _) = self.dataset[index]
-        y = attrs[self.target_attr]
-        s = attrs[self.group_attr]
-        # torchvision already doing the transform
-        return index, x, (y, s)
-
     def __getattr__(self, name):
+        #print(f"Attribute called: {name}")
         try:
             return super().__getattribute__('dataset').__getattribute__(name)
         except AttributeError:
