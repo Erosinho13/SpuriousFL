@@ -315,7 +315,7 @@ def train_generator(generator, generator_optimizer, generator_lr_scheduler, loca
 
 def AFed_generator_init(conf):
     """Initialize AFed Generator model, optimizer and learning rate scheduler"""
-    afed_generator = AFedGenerator()
+    afed_generator = AFedGenerator(conf)
     model_path = os.path.join(
         "checkpoints",
         conf["exp_id"],

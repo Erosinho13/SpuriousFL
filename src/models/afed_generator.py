@@ -1,16 +1,18 @@
 # From AFed paper: https://arxiv.org/pdf/2501.02732
 
+from src.utils import get_device
 import torch.nn as nn
 import torch
 import numpy as np
 
 class AFedGenerator(nn.Module):
     def __init__(self,
-                 hidden_dim=128,
-                 latent_dim=64,
+                 conf,
+                 hidden_dim=32,
+                 latent_dim=16,
                  input_channel=3,
                  n_class=2,
-                 noise_dim=32,
+                 noise_dim=8,
                  embedding=False):
         super(AFedGenerator, self).__init__()
 
@@ -22,20 +24,21 @@ class AFedGenerator(nn.Module):
         self.diversity_loss = DiversityLoss(metric='l1')
         self.embedding = embedding
         self.build_network()
+        self.conf = conf
 
     def build_network(self):
         if self.embedding:
             self.embedding_layer = nn.Embedding(4, self.noise_dim)
             input_dim = self.noise_dim * 2
-            self.fc_configs = [input_dim, self.hidden_dim]
+            self.fc_configs = [input_dim, self.hidden_dim[0]]
         else:
             input_dim = self.noise_dim + self.n_class
-            self.fc_configs = [input_dim, self.hidden_dim]
+            self.fc_configs = [input_dim, self.hidden_dim[0]]
         self.fc_layers = nn.ModuleList()
         for i in range(len(self.fc_configs) - 1):
             input_dim, out_dim = self.fc_configs[i], self.fc_configs[i + 1]
             print("Build layer {} X {}".format(input_dim, out_dim))
-            fc = nn.Linear(input_dim, out_dim)
+            fc = nn.Linear(in_features=input_dim, out_features=out_dim)
             bn = nn.BatchNorm1d(out_dim)
             act = nn.ReLU()
             self.fc_layers += [fc, bn, act]
@@ -48,7 +51,7 @@ class AFedGenerator(nn.Module):
         G(Z|y,a)
         """
         for layer in self.fc_layers:
-            z = layer(z.cuda())
+            z = layer(z.to(get_device(self.conf)))
         z = self.representation_layer(z)
 
         return z

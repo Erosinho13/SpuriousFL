@@ -530,8 +530,8 @@ class AFed(Algorithm):
             self.conf["exp_id"],
             "afed_generator"
         )
-        generator = AFedGenerator()
-        generator.load_state_dict(torch.load(os.path.join(model_path, "torchmodel.pt")))
+        self.generator = AFedGenerator(conf)
+        self.generator.load_state_dict(torch.load(os.path.join(model_path, "torchmodel.pt")))
 
         self.featurizer = self.network.featurizer
         self.classifier = self.network.classifier
@@ -559,42 +559,56 @@ class AFed(Algorithm):
 
     def update(self, minibatch, step):
         all_i, all_x, all_y, all_a = minibatch
+
+        device = get_device(self.conf)
+        all_x, all_y, all_a = all_x.to(device), all_y.to(device), all_a.to(device)
+
         self.optimizer['featurizer'].zero_grad()
         self.optimizer['classifier'].zero_grad()
         self.optimizer['a_classifier'].zero_grad()
-        all_feat = self.return_feats(all_x)
+
+        # --- Forward pass for classification ---
+        all_feat = self.featurizer(all_x)
         y_scores = self.classifier(all_feat)
-        y_loss_true = self.loss['classifier'](y_scores.view(-1), all_y)
+        y_loss_true = self.loss['classifier'](y_scores, all_y).mean()
         y_loss_value = y_loss_true.item()
-        a_scores = self.a_classifier(all_feat.detach())
+
+        # --- Adversarial classifier loss (no gradients for featurizer) ---
+        with torch.no_grad():
+            feat_detached = all_feat.detach()
+        a_scores = self.a_classifier(feat_detached)
         a_loss = self.loss['a_classifier'](a_scores, all_a).mean()
-        a_loss.backward()
         a_loss_value = a_loss.item()
+        a_loss.backward()
         self.optimizer['a_classifier'].step()
 
-        # Generator G:
-        alpha = 1 
-        gamma = np.random.beta(alpha, alpha)
-        true_feat_0 = self.return_feats(all_x)
-        z_attr, _ = gen_z_attr(1-all_a, z_dim=self.conf["client_opt"]["AFed_generator_noise_dim"] + 2)
-        fake_feat_1 = self.generator(z_attr.to(get_device(self.conf)))
-        mix_feat = gamma * true_feat_0 + (1-gamma) * fake_feat_1
+        # --- Generator and gradient penalty ---
+        with torch.no_grad():
+            z_attr, _ = gen_z_attr(1 - all_a, z_dim=self.conf["client_opt"]["AFed_generator_noise_dim"] + 2)
+            z_attr = z_attr.to(device)
+            fake_feat_1 = self.generator(z_attr)
 
-        mix_feat = mix_feat.requires_grad_(True)
+        gamma = torch.tensor(np.random.beta(1.0, 1.0), device=device).clamp(0.0, 1.0)
+        mix_feat = gamma * all_feat.detach() + (1 - gamma) * fake_feat_1.detach()
+        mix_feat.requires_grad_(True)
+
         pred = self.classifier(mix_feat).sum()
-        grad = torch.autograd.grad(outputs=pred, inputs=mix_feat, create_graph=True)[0].view(mix_feat.size(0), -1)
-        delta_x = (true_feat_0 - fake_feat_1).view(mix_feat.size(0), -1)
-        grad_inn = (grad * delta_x).sum(1).view(-1)
+        grad = torch.autograd.grad(outputs=pred, inputs=mix_feat, create_graph=False, retain_graph=False)[0]
+        delta_x = (all_feat.detach() - fake_feat_1.detach()).view(mix_feat.size(0), -1)
+        grad = grad.view(mix_feat.size(0), -1)
+        grad_inn = (grad * delta_x).sum(1)
         loss_grad = torch.abs(grad_inn.mean())
-        y_loss_true += self.conf["client_opt"]["AFed_lam"] * loss_grad
 
-        y_loss_true.backward()
+        # Final loss with regularizer
+        y_loss_total = y_loss_true + self.conf["client_opt"]["AFed_lam"] * loss_grad
+        y_loss_total.backward()
+
         self.optimizer['featurizer'].step()
         self.optimizer['classifier'].step()
 
-
-        correct = (torch.max(y_scores.data, 1)[1] == all_y).sum().item()
-        return {'loss': y_loss_value, "correct":correct, 'a_loss': a_loss_value}
+        # Free memory
+        del all_feat, fake_feat_1, mix_feat, grad, delta_x, pred, grad_inn
+        torch.cuda.empty_cache()
 
     def return_feats(self, x):
         return self.featurizer(x)

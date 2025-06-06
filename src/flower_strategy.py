@@ -24,9 +24,8 @@ from flwr.common import (
 )
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from sklearn.cluster import kmeans_plusplus
-from src.models.afed_generator import AFedGenerator
 from src.optimizers import subpop_federated 
-from src.optimizers.optim_utils import train_generator
+from src.optimizers.optim_utils import AFed_generator_init, train_generator
 from src.optimizers.weighting_strategy import apply_smoothing, apply_softmax, client_weights_IDA, client_weights_known_groups, client_weights_nova, flatten_weights, get_relation, node_deleting, probabilistic_selection, select_noreplacement, temperature_weighted_values, top_k_binary_list, upscale
 from src.utils import log
 from src.models import model_utils
