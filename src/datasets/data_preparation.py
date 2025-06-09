@@ -1,6 +1,7 @@
 from src.datasets.celeba import CelebA, data_transforms_celeba, split_data_celeba
 from src.datasets.fmow import FMOW, data_transforms_fmow
 from src.datasets.spawrious import Spawrious, data_transforms_spawrious, split_data_spawrious
+from src.datasets.utkface import UTKFace, data_transforms_utkface
 import torch
 import copy
 import numpy as np
@@ -180,8 +181,8 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
     if dataset_mode=="CelebA":
         ds_opt = conf["dataset_options"]
         train_tr_list, test_tr_list = data_transforms_celeba(conf)
-        group = ds_opt["celeba_group"]
-        target = ds_opt["celeba_target"]
+        group = ds_opt["group_name"]
+        target = ds_opt["target_name"]
         trainset = CelebA(
             "./datasets", train=True, transforms=train_tr_list,
             target_attr_name=target,
@@ -193,7 +194,20 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
             group_attr_name=group
         )
         valset = copy.deepcopy(testset)
-        return trainset, valset, testset       
+        return trainset, valset, testset
+    if dataset_mode=="UTKFace":
+        ds_opt = conf["dataset_options"]
+        train_transforms, test_transforms = data_transforms_utkface(conf)
+        trainset = UTKFace(
+                    "./datasets", train=True, transforms=train_transforms,
+                    conf=conf
+                )
+        testset = UTKFace(
+            "./datasets", train=False, transforms=test_transforms,
+            conf=conf
+        )
+        valset = copy.deepcopy(testset)
+        return trainset, valset, testset     
     raise NotImplementedError(dataset_mode)
 
 

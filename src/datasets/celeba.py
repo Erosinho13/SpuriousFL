@@ -23,7 +23,7 @@ class CelebA(VisionDataset, SubpopDataset):
             split = 'train'
         else:
             split = 'test'
-        dataset = load_dataset("negedng/CelebA-attrs-identity", split="train", cache_dir=root)
+        dataset = load_dataset("negedng/CelebA-attrs-identity", split=split, cache_dir=root)
         self.transform = transforms  # Save the transform first
         
 
@@ -36,7 +36,6 @@ class CelebA(VisionDataset, SubpopDataset):
         self.dataset = dataset
         self.root = root
 
-        # Get the second line (index 1) and split by spaces
         self.target_attr_name = target_attr_name
         self.group_attr_name = group_attr_name
 

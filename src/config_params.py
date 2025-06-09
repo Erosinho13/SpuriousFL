@@ -83,8 +83,8 @@ class DatasetConfig:
     regions: Optional[List]
     confounding_factor: Optional[float]
     num_celebrity: Optional[int]
-    celeba_group: Optional[str]
-    celeba_target: Optional[str]
+    group_name: Optional[str]
+    target_name: Optional[str]
     fairness_params: FairnessConfig
 
 @dataclass
