@@ -1,4 +1,5 @@
 from src.datasets.celeba import CelebA, data_transforms_celeba, split_data_celeba
+from src.datasets.fairface import FairFace, data_transforms_fairface
 from src.datasets.fmow import FMOW, data_transforms_fmow
 from src.datasets.spawrious import Spawrious, data_transforms_spawrious, split_data_spawrious
 from src.datasets.utkface import UTKFace, data_transforms_utkface
@@ -207,7 +208,20 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
             conf=conf
         )
         valset = copy.deepcopy(testset)
-        return trainset, valset, testset     
+        return trainset, valset, testset
+    if dataset_mode=="FairFace":
+        ds_opt = conf["dataset_options"]
+        train_transforms, test_transforms = data_transforms_fairface(conf)
+        trainset = FairFace(
+                    "./datasets", train=True, transforms=train_transforms,
+                    conf=conf
+                )
+        testset = FairFace(
+            "./datasets", train=False, transforms=test_transforms,
+            conf=conf
+        )
+        valset = copy.deepcopy(testset)
+        return trainset, valset, testset
     raise NotImplementedError(dataset_mode)
 
 

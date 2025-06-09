@@ -11,7 +11,7 @@ import pandas as pd
 from datasets import load_dataset, Image
 from PIL import Image as PILImage
 
-class UTKFace(VisionDataset, SubpopDataset):
+class FairFace(VisionDataset, SubpopDataset):
     def __init__(
         self,
         root="./datasets",
@@ -22,30 +22,23 @@ class UTKFace(VisionDataset, SubpopDataset):
         if train:
             split = 'train'
         else:
-            split = 'test'
-        dataset = load_dataset("nu-delta/utkface", split="train", cache_dir=root)
-        split_dataset = dataset.train_test_split(test_size=0.2, seed=conf["seed"])
-        dataset = split_dataset[split]
+            split = 'validation'
+        dataset = load_dataset("HuggingFaceM4/FairFace", "0.25", split=split, cache_dir=root)
 
         # Preprocess steps
-        ethnicity_mapping = {"White": 0,"Black": 1,"Indian": 2,"Asian": 3,"Other": 4}
 
         def preprocess_labels(example, conf):
-            example["gender"] = 0 if example["gender"]=="Male" else 1
-            if (conf["num_targets"]==2 and conf["target_name"]=="ethnicity") or (conf["num_groups"]==2 and conf["group_name"]=="ethnicity"):
-                example["ethnicity"] = 0 if example["ethnicity"]=="White" else 1
-            else:
-                example["ethnicity"] = ethnicity_mapping[example["ethnicity"]]
+            if (conf["num_targets"]==2 and conf["target_name"]=="race") or (conf["num_groups"]==2 and conf["group_name"]=="race"):
+                example["race"] = 0 if example["race"]==3 else 1
             age_clusters = 0
             if conf["target_name"]=="age":
                 age_clusters = conf["num_targets"]
             if conf["group_name"]=="age":
                 age_clusters = conf["num_groups"]
-            if age_clusters>0:
-                step = 100//age_clusters
-                example["age"] = min(example["age"],99)//step
+            if age_clusters==2:
+                example["age"] = 0 if example["age"]<6 else 1
             return example
-        
+                
         dataset = dataset.map(lambda x: preprocess_labels(x,conf["dataset_options"]))
    
         self.transform = transforms  # Save the transform first
@@ -69,7 +62,6 @@ class UTKFace(VisionDataset, SubpopDataset):
     def __getitem__(self, index: int):
         hf_dict = self.dataset[index]
         x = hf_dict["image"]
-        #x = self.transform(hf_dict["image"])
         y = hf_dict[self.target_attr_name]
         s = hf_dict[self.group_attr_name]
         return index, x, (y, s)
@@ -80,7 +72,6 @@ class UTKFace(VisionDataset, SubpopDataset):
         targets = hf_dicts[self.target_attr_name]
         groups = hf_dicts[self.group_attr_name]
         return [(i, img, (y, s)) for i, img, y, s in zip(indices, images, targets, groups)]
-    
 
     def __getattr__(self, name):
         #print(f"Attribute called: {name}")
@@ -90,7 +81,7 @@ class UTKFace(VisionDataset, SubpopDataset):
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
 
-def data_transforms_utkface(conf):
+def data_transforms_fairface(conf):
     train_tr_list = [
     ]
     test_tr_list = [
@@ -98,7 +89,7 @@ def data_transforms_utkface(conf):
     if "input_size" in conf["dataset_options"].keys():
         input_size = conf["dataset_options"]["input_size"]
     else:
-        input_size = 200
+        input_size = 224
     train_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
     test_tr_list.append(torchvision.transforms.Resize((input_size, input_size)))
     if conf["dataset_options"]["aug_crop"] > 0:
@@ -115,5 +106,5 @@ def data_transforms_utkface(conf):
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 
 
-def split_data_utkface(ds, conf):
+def split_data_fairface(ds, conf):
     raise NotImplementedError()

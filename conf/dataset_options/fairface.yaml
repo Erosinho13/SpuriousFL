@@ -1,0 +1,18 @@
+defaults:
+  - fairness_params: all_defaults
+  
+name: FairFace
+input_size: 224
+num_samples_per_class: null
+num_targets: 2
+num_groups: 2
+norm: true
+aug_crop: 0
+aug_horizontal_flip: true
+local_training_id: null
+split_mode: spawrious_gsc
+num_clients: 24
+group_name: race
+target_name: gender
+fairness_params:
+  calculate_fairness: true

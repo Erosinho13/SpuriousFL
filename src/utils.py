@@ -185,6 +185,11 @@ def get_input_shape(conf, dataset_mode=None):
             input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
         else:
             input_shape = (3, 200, 200)
+    elif dataset_mode == "FairFace":
+        if "dataset_options" in conf.keys() and "input_size" in conf["dataset_options"].keys():
+            input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
+        else:
+            input_shape = (3, 224, 224)
     else:
         raise NotImplementedError('Dataset split for dataset ' + dataset_mode + ' not recognized')
     return input_shape
