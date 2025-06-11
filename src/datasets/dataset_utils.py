@@ -99,14 +99,22 @@ class OneVsRestDataset(Dataset):
 class SubsetDataset(Dataset, SubpopDataset):
     def __init__(self, dataset, indices):
         if isinstance(dataset, SubsetDataset):
-            self.indices = indices
+            self.indices = np.array(indices)
             self.dataset = dataset.dataset
         else:
             self.dataset = dataset
-            self.indices = indices
+            self.indices = np.array(indices)
+        
+        
+        if hasattr(self.dataset, "__getitems__"):
+            self.__getitems__ = self.conditional_getitems
+
+    def conditional_getitems(self, idxs):
+        actual_idxs = self.indices[idxs]
+        return self.dataset.__getitems__(actual_idxs)
 
     def __getitem__(self, idx):
-        actual_idx = self.indices[idx]
+        actual_idx = self.indices[idx].astype(list) # Casts to the list-compatible type, eg. int or str
         return self.dataset[actual_idx]
 
     def __len__(self):
