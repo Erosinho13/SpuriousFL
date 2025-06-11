@@ -53,12 +53,12 @@ class CelebA(VisionDataset, SubpopDataset):
         s = hf_dict[self.group_attr_name]
         return index, x, (torch.tensor(y), torch.tensor(s))
 
-    def __getitems__(self, indices):
-        hf_dicts = self.dataset[indices]  # batched fetch
-        images = hf_dicts["image"]
-        targets = hf_dicts[self.target_attr_name]
-        groups = hf_dicts[self.group_attr_name]
-        return [(i, img, (torch.tensor(y), torch.tensor(s))) for i, img, y, s in zip(indices, images, targets, groups)]
+#    def __getitems__(self, indices):
+#        hf_dicts = self.dataset[indices]  # batched fetch
+#        images = hf_dicts["image"]
+#        targets = hf_dicts[self.target_attr_name]
+#        groups = hf_dicts[self.group_attr_name]
+#        return [(i, img, (torch.tensor(y), torch.tensor(s))) for i, img, y, s in zip(indices, images, targets, groups)]
     
     def get_meta(self, index:int):
         indiv = self.dataset["identity"][index]
@@ -90,6 +90,8 @@ class CelebA(VisionDataset, SubpopDataset):
 
     def __getattr__(self, name):
         #print(f"Attribute called: {name}")
+        if name=="__getitems__":
+            raise AttributeError("'__getitems__' hidden to ensure pytorch's expected functionalities.")
         try:
             return super().__getattribute__('dataset').__getattribute__(name)
         except AttributeError:
