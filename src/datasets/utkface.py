@@ -29,6 +29,10 @@ class UTKFace(VisionDataset, SubpopDataset):
 
         # Preprocess steps
         ethnicity_mapping = {"White": 0,"Black": 1,"Indian": 2,"Asian": 3,"Other": 4}
+        if conf["target_name"]=="ethnicity":
+            assert conf["num_targets"]==2 or conf["num_targets"]==5
+        if conf["group_name"]=="ethnicity":
+            assert conf["num_groups"]==2 or conf["num_groups"]==5
 
         def preprocess_labels(example, conf):
             example["gender"] = 0 if example["gender"]=="Male" else 1

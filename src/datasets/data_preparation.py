@@ -184,6 +184,7 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         train_tr_list, test_tr_list = data_transforms_celeba(conf)
         group = ds_opt["group_name"]
         target = ds_opt["target_name"]
+        assert (isinstance(group,str) and ds_opt["num_groups"]==2) or (isinstance(group,list) and ds_opt["num_groups"]==2**len(group))
         trainset = CelebA(
             "./datasets", train=True, transforms=train_tr_list,
             target_attr_name=target,
