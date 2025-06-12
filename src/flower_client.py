@@ -164,15 +164,21 @@ class FlowerClient(fl.client.NumPyClient):
         """Pass client opt params to FL server within the shared metrics dict"""
         N = None
         if before_train:
+            # Save group weights no matter what
+            metadata = count_groups(self.train_data.dataset,
+                                            num_attributes=self.conf["dataset_options"]["num_groups"],
+                                            num_labels=self.conf["dataset_options"]["num_targets"])
+            group_sizes = metadata["group_sizes"]
+            N = np.resize(group_sizes, (self.conf["dataset_options"]["num_targets"],self.conf["dataset_options"]["num_groups"]))
+            group_sizes = np.resize(N, (1, N.shape[0]*N.shape[1]))
+            group_sizes = list(group_sizes[0])
+            for i, v in enumerate(group_sizes):
+                shared_metrics["interaction_matrix_"+str(i)] = int(v)
+            
+            # Do the rest
             if "groupweights" in self.conf["server_opt"]["client_info"] or "triplets" in self.conf["server_opt"]["client_info"]:
                 if "Npredicted" in self.conf["server_opt"]["client_info"]:
                     N = self.predict_n_matrix()
-                else:
-                    metadata = count_groups(self.train_data.dataset,
-                                            num_attributes=self.conf["dataset_options"]["num_groups"],
-                                            num_labels=self.conf["dataset_options"]["num_targets"])
-                    group_sizes = metadata["group_sizes"]
-                    N = np.resize(group_sizes, (self.conf["dataset_options"]["num_targets"],self.conf["dataset_options"]["num_groups"]))
                         
                 if "groupweights" in self.conf["server_opt"]["client_info"]:
                     group_sizes = np.resize(N, (1, N.shape[0]*N.shape[1]))

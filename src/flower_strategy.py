@@ -116,6 +116,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             self.afed_generator, self.generator_optimizer, self.generator_lr_scheduler = AFed_generator_init(self.conf)
         self.shared_copt_params = subpop_federated.init_shared_opt_params(self.conf)
         self.client_update_requested = []
+        self.round_interaction_matrix = {} # Stores relative interaction matrix each round
 
         super().__init__(evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
                          fit_metrics_aggregation_fn=fit_metrics_aggregation_fn,
@@ -281,6 +282,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             wandb_log = aggregated_result[1]
             wandb_log["round"] = rnd
             wandb_log.update(self.train_metrics_aggregated)
+            wandb_log.update(self.round_interaction_matrix)
             wandb.log(wandb_log)
 
         return aggregated_result
@@ -507,6 +509,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             self.calculate_pns_scores(results)
 
         metrics = [res.metrics for _, res in results]
+        self.track_group_dist(metrics)
         for client_metric in metrics:
             if client_metric["cid"] not in self.stored_client_data.keys():
                 self.stored_client_data[client_metric["cid"]] = {"update_needed":True}
@@ -628,3 +631,20 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         print("FedPNS_P:",node_prob)
 
+    def track_group_dist(self, metric_list):
+        """Calculate client weights if we know the N matrix of all clients"""
+        
+        n_matrix = {}
+        total = 0
+        for m in metric_list:
+            group_keys = [k for k in m.keys() if k.startswith("interaction_matrix_")]
+            n_dict = {k:v for k,v in m.items() if k in group_keys}
+            for k in group_keys:
+                if k not in n_matrix.keys():
+                    n_matrix[k] = 0
+                n_matrix[k] += n_dict[k]
+                total += n_dict[k]
+        for k,v in n_matrix.items():
+            n_matrix[k] = v/total
+        self.round_interaction_matrix = n_matrix
+        
