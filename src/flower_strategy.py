@@ -571,7 +571,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
         save_path = os.path.join(
                 "checkpoints",
                 self.conf["exp_id"],
-                "client_info-last.json"
+                "client_info.json"
             )
         with open(save_path, 'w') as file:
             json.dump(self.stored_client_data, file)
