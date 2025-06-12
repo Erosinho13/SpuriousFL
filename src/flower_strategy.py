@@ -176,6 +176,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         self.log_client_weights(results)
         log(DEBUG, "Client weights: %s", [(res.num_examples, res.metrics["cid"]) for _, res in results])
+        
 
         # Aggregate weights
         fedavg_parameters_aggregated, metrics_aggregated = super().aggregate_fit(
@@ -533,7 +534,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
                     self.stored_client_data[client_metric["cid"]][k] = v
         if update_something:
             log(DEBUG, "Updated client info %s", str(self.stored_client_data))
-            self.log_client_info()
+            self.log_client_info(server_round)
 
     def log_client_weights(self, results=None):
         """Log client weights into a csv file"""
@@ -551,12 +552,26 @@ class MyStrategy(fl.server.strategy.FedOpt):
         with open(save_path,'a') as file:
             file.write(",".join(map(str, client_num_examples)) + "\n")
 
-    def log_client_info(self):
+    def log_client_info(self,server_round):
         """Log latest info of clients to file"""
+        if ((
+            self.conf["server_opt"]["update_static_info_rounds"] != 0
+        ) and (
+            server_round
+            % self.conf["server_opt"]["update_static_info_rounds"]
+            == 1
+        )) or server_round==1:
+            save_path = os.path.join(
+                "checkpoints",
+                self.conf["exp_id"],
+                f"client_info-{server_round}.json"
+            )
+            with open(save_path, 'w') as file:
+                json.dump(self.stored_client_data, file)
         save_path = os.path.join(
                 "checkpoints",
                 self.conf["exp_id"],
-                "client_info.json"
+                "client_info-last.json"
             )
         with open(save_path, 'w') as file:
             json.dump(self.stored_client_data, file)
