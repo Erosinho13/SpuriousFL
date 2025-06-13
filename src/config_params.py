@@ -1,6 +1,6 @@
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 @dataclass
 class ClientOptConfig:
@@ -83,7 +83,7 @@ class DatasetConfig:
     regions: Optional[List]
     confounding_factor: Optional[float]
     num_celebrity: Optional[int]
-    group_name: Optional[str]
+    group_name: Optional[Union[str, List[str]]]
     target_name: Optional[str]
     fairness_params: FairnessConfig
 
