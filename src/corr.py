@@ -97,29 +97,16 @@ def DSI(M):
     return 1 - K * float(gmean(proportion))
 
 
-def main():
+def report_dist(M):
 
-    M = np.array([
-
-        [[10, 10],
-         [10, 10]],
-
-        [[10, 10],
-         [10, 10]],
-
-        [[10, 10],
-         [10, 10]],
-
-        [[10, 10],
-         [10, 10]],
-
-    ])
+    
 
     # print(round(SC(N), 4))
     # print(round(CI(N), 4))
     # print(round(AI(N), 4))
 
     print(global_N(M))
+    print(f"NoC = {round(len(M), 2)}")
     print(f"GSC = {round(GSC(M), 2)}")
     print(f"LSC = {round(LSC(M), 2)}")
     print(f"FSC = {round(FSC(M), 2)}")
@@ -128,7 +115,28 @@ def main():
     print(f"GAI = {round(GAI(M), 2)}")
     print(f"LAI = {round(LAI(M), 2)}")
     print(f"DSI = {round(DSI(M), 2)}")
-
+    print("Total data:", np.sum(M))
+    count = {"CI":0,"AI":0,"SC":0}
+    for c in M:
+        t = ["CI","AI","SC"][np.argmax(np.array([CI(c),AI(c),SC(c)]))]
+        count[t]+=1
+        #print(f"{CI(c):.2f},{AI(c):.2f},{SC(c):.2f}, {t}")
+    print("Total:", count)
 
 if __name__ == '__main__':
-    main()
+    M = np.array([
+
+            [[10, 10],
+            [10, 10]],
+
+            [[10, 10],
+            [10, 10]],
+
+            [[10, 10],
+            [10, 10]],
+
+            [[10, 10],
+            [10, 10]],
+
+    ])
+    report_dist(M)
