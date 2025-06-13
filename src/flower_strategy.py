@@ -151,6 +151,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif server_round == 1:  # Only log this warning once
             log(WARNING, "No fit_metrics_aggregation_fn provided")
 
+        # Calculate round interaction matrix
+        self.track_group_dist(results)
         # Calculate global client opt params from shared metrics
         self.aggregate_client_opt_params([res.metrics for _, res in results])
         # Update stored client info with new data
@@ -509,7 +511,6 @@ class MyStrategy(fl.server.strategy.FedOpt):
             self.calculate_pns_scores(results)
 
         metrics = [res.metrics for _, res in results]
-        self.track_group_dist(metrics)
         for client_metric in metrics:
             if client_metric["cid"] not in self.stored_client_data.keys():
                 self.stored_client_data[client_metric["cid"]] = {"update_needed":True}
@@ -631,9 +632,9 @@ class MyStrategy(fl.server.strategy.FedOpt):
 
         print("FedPNS_P:",node_prob)
 
-    def track_group_dist(self, metric_list):
+    def track_group_dist(self, results):
         """Calculate client weights if we know the N matrix of all clients"""
-        
+        metric_list = [res.metrics for _, res in results]
         n_matrix = {}
         total = 0
         for m in metric_list:
@@ -647,4 +648,5 @@ class MyStrategy(fl.server.strategy.FedOpt):
         for k,v in n_matrix.items():
             n_matrix[k] = v/total
         self.round_interaction_matrix = n_matrix
+        print("Round Interaction matrix:", n_matrix)
         
