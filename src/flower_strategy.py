@@ -151,14 +151,15 @@ class MyStrategy(fl.server.strategy.FedOpt):
         elif server_round == 1:  # Only log this warning once
             log(WARNING, "No fit_metrics_aggregation_fn provided")
 
-        # Calculate round interaction matrix
-        self.track_group_dist(results)
+
         # Calculate global client opt params from shared metrics
         self.aggregate_client_opt_params([res.metrics for _, res in results])
         # Update stored client info with new data
         self.update_stored_client_info(results, server_round)
         # Get stored client info to look like client sent it
         results = self.update_results_from_cache(results)
+        # Calculate round interaction matrix (data from cache)
+        self.track_group_dist(results)
 
         # Calculate client weights with post-training methods
         if self.conf["server_opt"]["weight_clients"].startswith("server_post_"):
