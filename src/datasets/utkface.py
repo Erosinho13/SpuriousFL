@@ -62,7 +62,7 @@ class UTKFace(VisionDataset, SubpopDataset):
         self.dataset = dataset
         self.root = root
         self.target_attr_name = conf["dataset_options"]["target_name"]
-        self.group_attr_name = conf["dataset_options"]["group_name"]
+        self.group_attr_name = conf["dataset_options"]["group_name"][0]
 
 
         self.identity_df = None

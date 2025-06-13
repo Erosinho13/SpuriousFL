@@ -25,7 +25,7 @@ class CelebA(VisionDataset, SubpopDataset):
         else:
             split = 'test'
         dataset = load_dataset("negedng/CelebA-attrs-identity", split=split, cache_dir=root)
-        if isinstance(group_attr_name,list):
+        if len(group_attr_name)>1:
             #group_attr_name is a list of the attributes to combine
             def preprocess_labels(example, group_attr_name):
                 binary_string = ''.join(str(example[col]) for col in group_attr_name)
@@ -36,7 +36,7 @@ class CelebA(VisionDataset, SubpopDataset):
             dataset = dataset.map(lambda x: preprocess_labels(x,group_attr_name))
             self.group_attr_name = "MergedAttributes"
         else:
-            self.group_attr_name = group_attr_name
+            self.group_attr_name = group_attr_name[0]
 
         self.transform = transforms  # Save the transform first
         def hf_transform(examples):

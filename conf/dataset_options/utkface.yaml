@@ -12,7 +12,7 @@ aug_horizontal_flip: true
 local_training_id: null
 split_mode: spawrious_gsc
 num_clients: 24
-group_name: ethnicity
+group_name: ['ethnicity']
 target_name: gender
 fairness_params:
   calculate_fairness: true

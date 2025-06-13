@@ -13,7 +13,7 @@ local_training_id: null
 split_mode: afed
 num_clients: 100
 num_celebrity: 20
-group_name: Male
+group_name: ['Male']
 target_name: Wavy_Hair
 fairness_params:
   calculate_fairness: true
