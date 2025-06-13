@@ -636,7 +636,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
     def track_group_dist(self, results):
         """Calculate client weights if we know the N matrix of all clients"""
         def getindex(k, conf):
-            i = k.split('_')[-1]
+            i = int(k.split('_')[-1])
             y = i//conf["dataset_options"]["num_groups"]
             g = i%conf["dataset_options"]["num_groups"]
             return f"interaction_matrix_y{y}g{g}"
