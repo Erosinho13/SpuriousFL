@@ -1,6 +1,7 @@
 
 from src.datasets.data_splits import split_mode_to_matrix
-from src.datasets.dataset_utils import SubpopDataset, SubsetDataset, count_groups
+from src.datasets.dataset_utils import SubpopDataset, SubsetDataset, count_groups, get_spurious_group_idx_from_df
+from src.datasets.spawrious import get_envs
 import torchvision
 import numpy as np
 from torchvision.datasets import VisionDataset
@@ -218,6 +219,15 @@ def load_split_data(train_ds, conf):
         ratio = min(len(group_0_positive)/len(target_idx), len(group_1_positive)/len(target_idx))
     return data_idx_map, ratio
 
+def split_simple(train_ds, conf):
+    """Split like spawrious, but use getmeta"""
+    labels_df, identity_df = train_ds.get_celeba_metadata()
+    ids_by_groups = get_spurious_group_idx_from_df(labels_df)
+    idx_split = get_envs(ids_by_groups, conf)
+    return idx_split
+
+
+
 def split_celeb_majority(train_ds, conf):
     """Gives each celeb a group by where they have the majority of samples 
     and select celebs from these categories based on celeb distribution matrix."""
@@ -278,10 +288,12 @@ def split_data_celeba(ds, conf):
         data_idx_map, _ = load_split_data(ds, conf)
 
         ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map.values()]
-    else:
+    elif conf["dataset_options"]["split_mode"]=="celeba_gsc":
         data_idx_map = split_celeb_majority(ds, conf)
         ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map]
-
+    else:
+        data_idx_map = split_simple(ds, conf)
+        ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map]
     for ds in ds_split:
         print(count_groups(ds, False, conf["dataset_options"]["num_groups"], conf["dataset_options"]["num_targets"])["group_sizes"])
     return ds_split

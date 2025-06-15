@@ -154,6 +154,18 @@ def get_spurious_group_idx(ds):
     return d
 
 
+def get_spurious_group_idx_from_df(label_df):
+    """Gets the list of idx for every (y,s) pair for y-label, s-spurious group.
+    Expects pandas dataframe with 'target', 'group' and 'index' columns."""
+    d = {}
+    for groupid, df in label_df.groupby(["target","group"]):
+        y,s = groupid
+        if y not in d.keys():
+            d[y]={}
+        d[y][s] = list(df.index)
+    return d
+
+
 def count_groups(ds, update_ds=True, num_attributes=None, num_labels=None):
     orig_ids, ds_y, ds_s= [], [], []
     for i in range(len(ds)):
