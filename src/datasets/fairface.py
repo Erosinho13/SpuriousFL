@@ -1,7 +1,8 @@
 
 
 from src.datasets.data_splits import split_mode_to_matrix
-from src.datasets.dataset_utils import SubpopDataset, SubsetDataset, count_groups
+from src.datasets.dataset_utils import SubpopDataset, SubsetDataset, count_groups, get_spurious_group_idx_from_df
+from src.datasets.spawrious import get_envs
 import torchvision
 import numpy as np
 from torchvision.datasets import VisionDataset
@@ -118,5 +119,17 @@ def data_transforms_fairface(conf):
     return torchvision.transforms.Compose(train_tr_list), torchvision.transforms.Compose(test_tr_list)
 
 
+def split_simple(train_ds, conf):
+    """Split like spawrious, but use getmeta"""
+    labels_df = train_ds.get_stats()
+    ids_by_groups = get_spurious_group_idx_from_df(labels_df)
+    idx_split = get_envs(ids_by_groups, conf)
+    return idx_split
+
+
 def split_data_fairface(ds, conf):
-    raise NotImplementedError()
+    data_idx_map = split_simple(ds, conf)
+    ds_split = [SubsetDataset(ds, idx) for idx in data_idx_map]
+    for ds in ds_split:
+        print(count_groups(ds, False, conf["dataset_options"]["num_groups"], conf["dataset_options"]["num_targets"])["group_sizes"])
+    return ds_split
