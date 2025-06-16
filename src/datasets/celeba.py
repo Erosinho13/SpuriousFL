@@ -83,7 +83,7 @@ class CelebA(VisionDataset, SubpopDataset):
         groups = self.dataset[self.group_attr_name][indices]
         return [(i, y, s, indiv) for i, indiv, y, s in zip(indices, indivs, targets, groups)]  
      
-    def get_celeba_metadata(self):
+    def get_stats(self):
         if self.identity_df is not None and self.labels_df is not None:
             return self.labels_df, self.identity_df
         ids = []
@@ -140,7 +140,7 @@ class CelebA2(VisionDataset, SubpopDataset):
         self.identity_df = None
         self.labels_df = None
 
-    def get_celeba_metadata(self):
+    def get_stats(self):
         if self.identity_df is not None and self.labels_df is not None:
             return self.labels_df, self.identity_df
         ids = []
@@ -196,7 +196,7 @@ def split_celebA(identity_df, num_celebty, num_clients, seed=None):
 
 def load_split_data(train_ds, conf):
     """Try to get a split with good ratio of group1 vs group2 positive"""
-    labels_df, identity_df = train_ds.get_celeba_metadata()
+    labels_df, identity_df = train_ds.get_stats()
     ratio = 1.0
     seed = conf["seed"]
     i = 0
@@ -221,7 +221,7 @@ def load_split_data(train_ds, conf):
 
 def split_simple(train_ds, conf):
     """Split like spawrious, but use getmeta"""
-    labels_df, identity_df = train_ds.get_celeba_metadata()
+    labels_df, identity_df = train_ds.get_stats()
     ids_by_groups = get_spurious_group_idx_from_df(labels_df)
     idx_split = get_envs(ids_by_groups, conf)
     return idx_split
@@ -231,7 +231,7 @@ def split_simple(train_ds, conf):
 def split_celeb_majority(train_ds, conf):
     """Gives each celeb a group by where they have the majority of samples 
     and select celebs from these categories based on celeb distribution matrix."""
-    labels_df, identity_df = train_ds.get_celeba_metadata()
+    labels_df, identity_df = train_ds.get_stats()
     df = identity_df.merge(labels_df)
     # Step 1: Count occurrences of each (identity, target, group) combination
     counts = df.groupby(['identity', 'target', 'group']).size().reset_index(name='count')

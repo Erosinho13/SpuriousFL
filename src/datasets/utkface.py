@@ -29,28 +29,28 @@ class UTKFace(VisionDataset, SubpopDataset):
 
         # Preprocess steps
         ethnicity_mapping = {"White": 0,"Black": 1,"Indian": 2,"Asian": 3,"Other": 4}
-        if conf["target_name"]=="ethnicity":
-            assert conf["num_targets"]==2 or conf["num_targets"]==5
-        if conf["group_name"]=="ethnicity":
-            assert conf["num_groups"]==2 or conf["num_groups"]==5
+        if conf["dataset_options"]["target_name"]=="ethnicity":
+            assert conf["dataset_options"]["num_targets"]==2 or conf["dataset_options"]["num_targets"]==5
+        if conf["dataset_options"]["group_name"][0]=="ethnicity":
+            assert conf["dataset_options"]["num_groups"]==2 or conf["dataset_options"]["num_groups"]==5
 
         def preprocess_labels(example, conf):
             example["gender"] = 0 if example["gender"]=="Male" else 1
-            if (conf["num_targets"]==2 and conf["target_name"]=="ethnicity") or (conf["num_groups"]==2 and conf["group_name"]=="ethnicity"):
+            if (conf["dataset_options"]["num_targets"]==2 and conf["dataset_options"]["target_name"]=="ethnicity") or (conf["dataset_options"]["num_groups"]==2 and conf["dataset_options"]["group_name"][0]=="ethnicity"):
                 example["ethnicity"] = 0 if example["ethnicity"]=="White" else 1
             else:
                 example["ethnicity"] = ethnicity_mapping[example["ethnicity"]]
             age_clusters = 0
-            if conf["target_name"]=="age":
-                age_clusters = conf["num_targets"]
-            if conf["group_name"]=="age":
-                age_clusters = conf["num_groups"]
+            if conf["dataset_options"]["target_name"]=="age":
+                age_clusters = conf["dataset_options"]["num_targets"]
+            if conf["dataset_options"]["group_name"]=="age":
+                age_clusters = conf["dataset_options"]["num_groups"]
             if age_clusters>0:
                 step = 100//age_clusters
                 example["age"] = min(example["age"],99)//step
             return example
         
-        dataset = dataset.map(lambda x: preprocess_labels(x,conf["dataset_options"]))
+        dataset = dataset.map(lambda x: preprocess_labels(x,conf))
    
         self.transform = transforms  # Save the transform first
         def hf_transform(examples):
@@ -85,6 +85,17 @@ class UTKFace(VisionDataset, SubpopDataset):
         groups = hf_dicts[self.group_attr_name]
         return [(i, img, (y, s)) for i, img, y, s in zip(indices, images, targets, groups)]
     
+    def get_stats(self):
+        if self.labels_df is not None:
+            return self.labels_df
+        ids = []
+        ids = list(range(len(self)))
+        ys = self.dataset[self.target_attr_name]
+        ss = self.dataset[self.group_attr_name]
+        labels_df = pd.DataFrame({"index":ids, "target":ys,"group":ss})
+
+        self.labels_df = labels_df
+        return labels_df
 
     def __getattr__(self, name):
         #print(f"Attribute called: {name}")

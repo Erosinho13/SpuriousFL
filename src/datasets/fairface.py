@@ -28,18 +28,18 @@ class FairFace(VisionDataset, SubpopDataset):
         # Preprocess steps
 
         def preprocess_labels(example, conf):
-            if (conf["num_targets"]==2 and conf["target_name"]=="race") or (conf["num_groups"]==2 and conf["group_name"]=="race"):
+            if (conf["dataset_options"]["num_targets"]==2 and conf["dataset_options"]["target_name"]=="race") or (conf["dataset_options"]["num_groups"]==2 and conf["dataset_options"]["group_name"][0]=="race"):
                 example["race"] = 0 if example["race"]==3 else 1
             age_clusters = 0
-            if conf["target_name"]=="age":
-                age_clusters = conf["num_targets"]
-            if conf["group_name"]=="age":
-                age_clusters = conf["num_groups"]
+            if conf["dataset_options"]["target_name"]=="age":
+                age_clusters = conf["dataset_options"]["num_targets"]
+            if conf["dataset_options"]["group_name"]=="age":
+                age_clusters = conf["dataset_options"]["num_groups"]
             if age_clusters==2:
                 example["age"] = 0 if example["age"]<6 else 1
             return example
                 
-        dataset = dataset.map(lambda x: preprocess_labels(x,conf["dataset_options"]))
+        dataset = dataset.map(lambda x: preprocess_labels(x,conf))
    
         self.transform = transforms  # Save the transform first
         def hf_transform(examples):
@@ -72,6 +72,18 @@ class FairFace(VisionDataset, SubpopDataset):
         targets = hf_dicts[self.target_attr_name]
         groups = hf_dicts[self.group_attr_name]
         return [(i, img, (y, s)) for i, img, y, s in zip(indices, images, targets, groups)]
+
+    def get_stats(self):
+        if self.labels_df is not None:
+            return self.labels_df
+        ids = []
+        ids = list(range(len(self)))
+        ys = self.dataset[self.target_attr_name]
+        ss = self.dataset[self.group_attr_name]
+        labels_df = pd.DataFrame({"index":ids, "target":ys,"group":ss})
+
+        self.labels_df = labels_df
+        return labels_df
 
     def __getattr__(self, name):
         #print(f"Attribute called: {name}")
