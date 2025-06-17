@@ -1,8 +1,8 @@
 from src.datasets.celeba import CelebA, data_transforms_celeba, split_data_celeba
-from src.datasets.fairface import FairFace, data_transforms_fairface
+from src.datasets.fairface import FairFace, data_transforms_fairface, split_data_fairface
 from src.datasets.fmow import FMOW, data_transforms_fmow
 from src.datasets.spawrious import Spawrious, data_transforms_spawrious, split_data_spawrious
-from src.datasets.utkface import UTKFace, data_transforms_utkface
+from src.datasets.utkface import UTKFace, data_transforms_utkface, split_data_utkface
 import torch
 import copy
 import numpy as np
@@ -269,6 +269,16 @@ def split_data(ds, conf):
         )
     elif dataset_mode == "CelebA":
         ds_split = split_data_celeba(
+            ds,
+            conf
+        )
+    elif dataset_mode == "UTKFace":
+        ds_split = split_data_utkface(
+            ds,
+            conf
+        )
+    elif dataset_mode == "FairFace":
+        ds_split = split_data_fairface(
             ds,
             conf
         )
