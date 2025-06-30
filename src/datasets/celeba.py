@@ -12,7 +12,7 @@ from datasets import load_dataset, Image
 from PIL import Image as PILImage
 import torch
 
-class CelebA(VisionDataset, SubpopDataset):
+class CelebA2(VisionDataset, SubpopDataset):
     def __init__(
         self,
         root="./datasets",
@@ -75,7 +75,7 @@ class CelebA(VisionDataset, SubpopDataset):
         indiv = self.dataset["identity"][index]
         y = self.dataset[self.target_attr_name][index]
         s = self.dataset[self.group_attr_name][index]
-        return index, y, s, indiv   
+        return index, y, s, indiv
 
     def get_metas(self, indices):
         indivs = self.dataset["identity"][indices]  # batched fetch
@@ -110,7 +110,7 @@ class CelebA(VisionDataset, SubpopDataset):
 
 
 
-class CelebA2(VisionDataset, SubpopDataset):
+class CelebA(VisionDataset, SubpopDataset):
     def __init__(
         self,
         root="./datasets",
@@ -135,7 +135,9 @@ class CelebA2(VisionDataset, SubpopDataset):
         # Get the second line (index 1) and split by spaces
         second_line_values = lines[1].strip().split()
         self.target_attr = second_line_values.index(target_attr_name)
-        self.group_attr = second_line_values.index(group_attr_name)
+        self.group_attr = []
+        for attr in group_attr_name:
+            self.group_attr.append(second_line_values.index(attr))
 
         self.identity_df = None
         self.labels_df = None
@@ -160,7 +162,15 @@ class CelebA2(VisionDataset, SubpopDataset):
     def get_meta(self, index:int):
         _, (attrs, indiv) = self.dataset[index]
         y = attrs[self.target_attr]
-        s = attrs[self.group_attr]
+        if len(self.group_attr)==1:
+            s = attrs[self.group_attr[0]]
+        else:
+            ss = []
+            for attr in self.group_attr:
+                ss.append(attrs[attr])
+            s = int(''.join(str(int(b.item())) for b in ss), 2)
+            s = torch.tensor(s)
+        # torchvision already doing the transform
         return index, y, s, indiv
 
     def __len__(self) -> int:
@@ -169,7 +179,14 @@ class CelebA2(VisionDataset, SubpopDataset):
     def __getitem__(self, index: int):
         x, (attrs, _) = self.dataset[index]
         y = attrs[self.target_attr]
-        s = attrs[self.group_attr]
+        if len(self.group_attr)==1:
+            s = attrs[self.group_attr[0]]
+        else:
+            ss = []
+            for attr in self.group_attr:
+                ss.append(attrs[attr])
+            s = int(''.join(str(int(b.item())) for b in ss), 2)
+            s = torch.tensor(s)
         # torchvision already doing the transform
         return index, x, (y, s)
 
