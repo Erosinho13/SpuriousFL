@@ -12,7 +12,7 @@ from datasets import load_dataset, Image
 from PIL import Image as PILImage
 import torch
 
-class CelebA2(VisionDataset, SubpopDataset):
+class CelebA(VisionDataset, SubpopDataset):
     def __init__(
         self,
         root="./datasets",
@@ -110,7 +110,7 @@ class CelebA2(VisionDataset, SubpopDataset):
 
 
 
-class CelebA(VisionDataset, SubpopDataset):
+class CelebA2(VisionDataset, SubpopDataset):
     def __init__(
         self,
         root="./datasets",
