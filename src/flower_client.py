@@ -75,6 +75,7 @@ class FlowerClient(fl.client.NumPyClient):
             
             # Share client training metadata
             shared_metrics["loss"] = history.history["loss"][-1]
+            shared_metrics["train_accuracy"] = history.history["accuracy"][-1]
             if config["update_info"]:
                 shared_metrics = self.share_client_params_once(opt, shared_metrics, before_train=False)
             shared_metrics = self.share_client_params_always(opt, shared_metrics, before_train=False)
