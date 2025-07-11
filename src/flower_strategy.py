@@ -418,6 +418,8 @@ class MyStrategy(fl.server.strategy.FedOpt):
             if self.conf["server_opt"]["weight_clients"] == "server_post_IDA_softmax":
                 client_weights = apply_softmax(client_weights)
             client_weights = upscale(client_weights, self.conf['len_total_data'])
+        elif self.conf["server_opt"]["weight_clients"] == "server_post_FairFed":
+            raise NotImplementedError("FairFed not implemented yet")
         elif self.conf["server_opt"]["weight_clients"].startswith("server_post_groupweights"):
             # Weighting with the known groups in mind
             client_weights = client_weights_known_groups(metric_list, self.conf)
@@ -516,7 +518,7 @@ class MyStrategy(fl.server.strategy.FedOpt):
             if client_metric["cid"] not in self.stored_client_data.keys():
                 self.stored_client_data[client_metric["cid"]] = {"update_needed":True}
             self.stored_client_data[client_metric["cid"]]["last_round"] = server_round
-            always_update_list = ["gloss", "weights", "tau", "local_norm", "oort", "netemb"]
+            always_update_list = ["gloss", "weights", "tau", "local_norm", "oort", "netemb","groupacc"]
             for k in always_update_list:
                 if k in client_metric.keys():
                     update_something = True

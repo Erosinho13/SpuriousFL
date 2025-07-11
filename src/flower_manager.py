@@ -6,7 +6,7 @@ from typing import List, Optional
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.criterion import Criterion
 
-from src.optimizers.weighting_strategy import HCSFed, client_weights_known_groups, clients_clustering, select_noreplacement, select_clients_with_uniform_distribution
+from src.optimizers.weighting_strategy import HCSFed, client_weights_fairfed, client_weights_known_groups, clients_clustering, select_noreplacement, select_clients_with_uniform_distribution
 from src.utils import log
 from logging import ERROR, INFO, DEBUG
 from logging import WARNING
@@ -19,6 +19,7 @@ class MyManager(fl.server.SimpleClientManager):
         self._cv = threading.Condition()
         self.conf = conf
         self.past_sampled_ids = np.zeros(self.conf['dataset_options']['num_clients'])  # needed for roundrobin sampling strategy
+        self.client_omega = {}
         self.clusters = None
 
     def sample(
@@ -59,6 +60,19 @@ class MyManager(fl.server.SimpleClientManager):
 
         if self.conf["server_opt"]["selection_method"] == "random":
             sampled_cids = random.sample(available_cids, num_clients)
+        elif self.conf["server_opt"]["selection_method"] == "fairfed":
+            metric_list = [client_info[int(cid)] for cid in available_cids]
+            for cid in available_cids:
+                if int(cid) not in self.client_omega:
+                    self.client_omega[int(cid)] = 1/len(available_cids)
+            omega_list = [self.client_omega[int(cid)] for cid in available_cids]
+            client_weights = client_weights_fairfed(metric_list, omega_list, self.conf)
+            for i, cid in enumerate(available_cids):
+                self.client_omega[int(cid)] = client_weights[i]
+            client_weights = np.array(client_weights)/sum(client_weights)
+            elements = list(range(len(client_weights)))
+            sampled_ids = np.random.choice(elements, size=num_clients, p=client_weights, replace=False)
+            sampled_cids = [str(cid) for cid in sampled_ids]            
         elif self.conf["server_opt"]["selection_method"] == "groupweights":
             metric_list = [client_info[int(cid)] for cid in available_cids]
             client_weights = client_weights_known_groups(metric_list, self.conf)

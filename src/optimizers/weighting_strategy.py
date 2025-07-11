@@ -120,6 +120,39 @@ def client_weights_known_groups(metric_list, conf):
     client_weights = weights_from_n_matrix_list(n_matrix_list)
     return client_weights
 
+def client_weights_fairfed(metric_list, omega_list, conf):
+    """Weight clients according to FairFed: https://ojs.aaai.org/index.php/AAAI/article/view/25911"""
+    train_acc_list = []
+    size_list = []
+    group_f_list = []
+    for m in metric_list:
+        datasize = 0
+        group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
+        for k in group_keys:
+            datasize += m[k]
+        train_acc = m["groupacc_train_accuracy"]
+        train_acc_list.append(train_acc)
+        gacc_keys = [k for k in m.keys() if k.startswith("groupacc_y")]
+        acc_dict = {k:v for k,v in m.items() if k in gacc_keys}
+        max_index = max(int(key.split('_')[1]) for key in acc_dict)
+        acc_list = [0] * (max_index + 1)
+        for key, value in acc_dict.items():
+            index = int(key.split('_')[1])  # Extract the index part from the key
+            acc_dict[index] = value
+        acc_matrix = np.array(acc_list)
+        acc_matrix = np.resize(acc_matrix, (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
+        acc_diff = acc_matrix.max(axis=1) - acc_matrix.min(axis=1)
+        fairness_scalar = np.average(acc_diff)
+        group_f_list.append(fairness_scalar)
+    group_f_list = np.array(group_f_list)
+    train_acc_list = np.array(train_acc_list)
+    avg_acc = np.average(train_acc_list)
+    avg_f = np.average(group_f_list)
+    delta_list = np.abs(group_f_list - avg_f)
+    avg_delta = np.average(delta_list)
+    omega_list = omega_list - conf["server_opt"]["fairfed_beta"]*(delta_list-avg_delta)
+    omega_list = omega_list/np.sum(omega_list)
+    return omega_list
 
 def select_clients_with_uniform_distribution(metric_list, conf, server_round):
     """

@@ -75,7 +75,6 @@ class FlowerClient(fl.client.NumPyClient):
             
             # Share client training metadata
             shared_metrics["loss"] = history.history["loss"][-1]
-            shared_metrics["train_accuracy"] = history.history["accuracy"][-1]
             if config["update_info"]:
                 shared_metrics = self.share_client_params_once(opt, shared_metrics, before_train=False)
             shared_metrics = self.share_client_params_always(opt, shared_metrics, before_train=False)
@@ -220,6 +219,12 @@ class FlowerClient(fl.client.NumPyClient):
                 loss, accuracy, group_acc = optim_utils.evaluate(self.model, self.train_data, self.conf, verbose=0)
                 shared_metrics["gloss"] = loss
         else:
+            if "groupacc" in self.conf["server_opt"]["client_info"]:
+                loss, accuracy, group_acc = optim_utils.evaluate(self.model, self.train_data, self.conf, verbose=0)
+                del group_acc["worst_group"]
+                group_acc = {("groupacc_"+k):v for k,v in group_acc.items()}
+                shared_metrics["groupacc_train_accuracy"] = accuracy
+                shared_metrics = shared_metrics | group_acc
             if "oort" in self.conf["server_opt"]["client_info"]:
                 oort_stats = optim_utils.oort_stat(self.model, self.train_data, self.conf)
                 shared_metrics["oort"] = oort_stats["oort_util"]

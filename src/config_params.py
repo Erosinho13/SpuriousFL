@@ -53,6 +53,7 @@ class ServerOptConfig:
     update_static_info_rounds: int
     multiclass: bool
     afed_generator: bool
+    fairfed_beta:float
 
 @dataclass
 class FairnessConfig:
