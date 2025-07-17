@@ -263,7 +263,7 @@ def matrix_to_list(matrix):
     return matrix.flatten().tolist()
 
 
-def dict_to_matrix(data_dict, num_targets, num_groups, prefix="groupacc_y", suffix="g", dtype=float):
+def dict_to_matrix(data_dict, num_targets, num_groups, prefix="y", suffix="g", dtype=float):
     """
     Converts a dictionary of group statistics into a numpy matrix.
 
@@ -319,7 +319,7 @@ def dict_to_matrix(data_dict, num_targets, num_groups, prefix="groupacc_y", suff
     return matrix_data
 
 
-def matrix_to_dict(matrix, prefix="groupacc_y", suffix="g"):
+def matrix_to_dict(matrix, prefix="y", suffix="g"):
     """
     Converts a numpy matrix into a dictionary where keys are formatted strings
     and values are the matrix elements.

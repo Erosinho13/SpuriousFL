@@ -8,7 +8,7 @@ from src.optimizers.subpopbench import GeneralizedCrossEntropyLoss as GCELoss
 from  src.optimizers import subpop_federated
 from src.optimizers.dataloaders import InfiniteDataLoader, WeightedDataLoader
 from src.optimizers.matrix_inference import biased_binary_prediction, biased_prediction, concat_error_predictions, estimate_interaction_matrix, ground_truth_matrix, split_by_class, train_left_right, training
-from src.utils import list_to_matrix, log, matrix_to_list
+from src.utils import dict_to_matrix, list_to_matrix, log, matrix_to_list
 from logging import ERROR, INFO
 import numpy as np
 import os
@@ -220,7 +220,8 @@ class FlowerClient(fl.client.NumPyClient):
             if "groupacc" in self.conf["server_opt"]["client_info"]:
                 loss, accuracy, group_acc = optim_utils.evaluate(self.model, self.train_data, self.conf, verbose=0)
                 del group_acc["worst_group"]
-                group_acc = {("groupacc_"+k):v for k,v in group_acc.items()}
+                group_acc = matrix_to_list(dict_to_matrix(group_acc,self.conf["dataset_options"]["num_targets"],self.conf["dataset_options"]["num_groups"]))
+                group_acc = {("groupacc_"+i):v for i,v in enumerate(group_acc)}
                 shared_metrics["groupacc_train_accuracy"] = accuracy
                 shared_metrics = shared_metrics | group_acc
             if "oort" in self.conf["server_opt"]["client_info"]:
