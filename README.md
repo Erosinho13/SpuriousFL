@@ -48,7 +48,8 @@ project
  - FedPNS: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=server_post_fedpns`, `gloss` in `server_opt.client_info`
  - FedPNS w/o weights: `server_opt.participation=selection`, `server_opt.selection_method=fedpns`, `server_opt.weight_clients=same`, `gloss` in `server_opt.client_info`
  - Oort: `oort` in `server_opt.client_info`, `server_opt.selection_method=oort`, `server_opt.participation=selection`
- - HCSFed: `compgrad` in `server_opt.client_info` `server_opt.selection_method=hcsfed`
+ - HCSFed: `compgrad` in `server_opt.client_info`, `server_opt.selection_method=hcsfed`
+ - FairFed: `groupacc` i `server_opt.client_info`, `server_opt.selection_method=fairfed` or `server_opt.weight_clients=server_post_FairFed`
 
 ## Datasets distributions
  - Spawrious_GSC: `dataset_options.split_mode=spawrious2`, `dataset_options.num_clients=24`
