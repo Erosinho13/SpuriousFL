@@ -1,6 +1,8 @@
 from typing import List
 import numpy as np
 
+from src.utils import list_to_matrix
+
 def create_subsets_from_list(group_ids:dict, client_samples:List, rng=np.random.default_rng()) -> List[List]:
     """
     Inputs:
@@ -34,6 +36,12 @@ def split_mode_to_matrix(conf:dict)-> List:
     seed = conf["seed"]
 
     client_samples = None
+    if split_mode=="balanced":
+        num_clients = conf["dataset_options"]["num_clients"]
+        num_groups = conf["dataset_options"]["num_groups"]
+        num_targets = conf["dataset_options"]["num_targets"]
+        client_samples = np.ones((num_clients,num_targets,num_groups), dtype=int) * 50
+        client_samples = client_samples.tolist()
     if split_mode=="zeroCI_LSC":
         client_samples=[
             [ # Birds on land
@@ -631,7 +639,7 @@ def generate_clients_with_global_params(global_dist_target,num_clients,num_attri
     for i in range(num_clients):
         seed_i = seed * i if seed is not None else None
         alphas = np.random.default_rng(seed_i).dirichlet([alpha]*(num_attributes*num_classes),1)[0]
-        client_dist = np.resize(alphas, (num_classes,num_attributes))
+        client_dist = list_to_matrix(alphas, num_classes, num_attributes)
         client_dist = client_dist *(num_attributes*num_classes)
         client_samples.append(list(client_dist))
     client_samples = np.array(client_samples)

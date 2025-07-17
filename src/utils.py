@@ -226,3 +226,117 @@ def adjust_array(v: np.array, q: int, population: np.array) -> np.array:
         diff = q - np.sum(v_int)
 
     return v_int
+
+
+def list_to_matrix(counts_list, num_targets, num_groups):
+    """
+    Converts a 1D list of counts into a 2D numpy matrix.
+
+    Args:
+        counts_list (list): A 1D list of numerical values representing the flattened matrix data.
+        num_targets (int): The number of rows for the resulting matrix.
+        num_groups (int): The number of columns for the resulting matrix.
+
+    Returns:
+        numpy.ndarray: A 2D numpy array with the specified shape (num_targets, num_groups).
+
+    Raises:
+        ValueError: If the total number of elements in counts_list does not match
+                    num_targets * num_groups.
+    """
+    if len(counts_list) != num_targets * num_groups:
+        raise ValueError(f"List length ({len(counts_list)}) does not match "
+                         f"expected matrix size ({num_targets} * {num_groups} = {num_targets * num_groups}).")
+    return np.resize(np.array(counts_list), (num_targets, num_groups))
+
+
+def matrix_to_list(matrix):
+    """
+    Converts a numpy matrix into a 1D list.
+
+    Args:
+        matrix (numpy.ndarray): A numpy array (can be 1D or multi-dimensional).
+
+    Returns:
+        list: A 1D list containing all elements from the matrix in row-major order.
+    """
+    return matrix.flatten().tolist()
+
+
+def dict_to_matrix(data_dict, num_targets, num_groups, prefix="groupacc_y", suffix="g", dtype=float):
+    """
+    Converts a dictionary of group statistics into a numpy matrix.
+
+    The dictionary keys are expected to follow a pattern like "prefixYsuffixG",
+    where Y is the target index and G is the group index.
+
+    Args:
+        data_dict (dict): A dictionary where keys are strings like "groupacc_y0g1"
+                          and values are the corresponding numerical statistics.
+        num_targets (int): The number of rows for the resulting matrix (corresponding to Y).
+        num_groups (int): The number of columns for the resulting matrix (corresponding to G).
+        prefix (str): The prefix used in the dictionary keys (e.g., "groupacc_y").
+        suffix (str): The suffix used in the dictionary keys (e.g., "g").
+        dtype (type): The data type for the elements in the resulting numpy array.
+
+    Returns:
+        numpy.ndarray: A 2D numpy array populated with values from the dictionary.
+
+    Raises:
+        ValueError: If a key format is unexpected or indices are out of bounds.
+    """
+    matrix_data = np.zeros((num_targets, num_groups), dtype=dtype)
+
+    for key, value in data_dict.items():
+        try:
+            # Check if the key starts with the expected prefix
+            if not key.startswith(prefix):
+                print(f"Warning: Key '{key}' does not start with expected prefix '{prefix}'. Skipping.")
+                continue
+
+            # Extract the part after the prefix
+            after_prefix = key[len(prefix):]
+            
+            # Find the index of the suffix
+            suffix_index = after_prefix.find(suffix)
+
+            if suffix_index == -1:
+                print(f"Warning: Suffix '{suffix}' not found in key part '{after_prefix}'. Skipping.")
+                continue
+
+            y_str = after_prefix[:suffix_index]
+            g_str = after_prefix[suffix_index + len(suffix):]
+
+            y = int(y_str)
+            g = int(g_str)
+
+            if 0 <= y < num_targets and 0 <= g < num_groups:
+                matrix_data[y, g] = dtype(value)
+            else:
+                print(f"Warning: Key '{key}' has out-of-bounds indices (y={y}, g={g}). Skipping.")
+        except (ValueError, IndexError) as e:
+            print(f"Warning: Could not parse key '{key}' or value '{value}'. Error: {e}. Skipping.")
+    return matrix_data
+
+
+def matrix_to_dict(matrix, prefix="groupacc_y", suffix="g"):
+    """
+    Converts a numpy matrix into a dictionary where keys are formatted strings
+    and values are the matrix elements.
+
+    Args:
+        matrix (numpy.ndarray): A 2D numpy array.
+        prefix (str): The prefix to use in the dictionary keys (e.g., "groupacc_y").
+        suffix (str): The suffix to use in the dictionary keys (e.g., "g").
+
+    Returns:
+        dict: A dictionary of key-value pairs, where keys follow
+              the format "prefix_Y_suffix_G".
+    """
+    result_dict = {}
+    num_targets, num_groups = matrix.shape
+    for y in range(num_targets):
+        for g in range(num_groups):
+            key = f"{prefix}{y}{suffix}{g}"
+            result_dict[key] = matrix[y, g]
+    return result_dict

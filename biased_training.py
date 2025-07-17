@@ -200,11 +200,11 @@ def train(conf, conf_name=None):
 
     # Create a list that fills in 0 for missing keys
     counts_list = [n_counter.get(i, 0) for i in id_range]
-    N = np.resize(np.array(counts_list), (num_targets, num_groups))
+    N = utils.list_to_matrix(counts_list, num_targets, num_groups)
     print("Predicted:")
     print(N)
     print("Expected:")
-    N_true = np.resize(np.array(metadata1["group_sizes"]), (num_targets, num_groups))
+    N_true = utils.list_to_matrix(metadata1["group_sizes"], num_targets, num_groups)
     print(N_true)
     print("purity:")
     group_accuracies_matrix = np.array(utils.collect_values_to_2d_array(group_accuracies)).T

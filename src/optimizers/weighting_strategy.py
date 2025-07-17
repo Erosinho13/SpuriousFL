@@ -1,6 +1,6 @@
 from typing import List
 import numpy as np
-from src.utils import adjust_array, get_device
+from src.utils import adjust_array, get_device, list_to_matrix
 import torch
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from cvxopt import matrix, solvers
@@ -115,7 +115,7 @@ def client_weights_known_groups(metric_list, conf):
             index = int(key.split('_')[1])  # Extract the index part from the key
             n_list[index] = value
         n_matrix = np.array(n_list)
-        n_matrix = np.resize(n_matrix, (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
+        n_matrix = list_to_matrix(n_matrix, conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"])
         n_matrix_list.append(n_matrix)
     client_weights = weights_from_n_matrix_list(n_matrix_list)
     return client_weights
@@ -139,8 +139,7 @@ def client_weights_fairfed(metric_list, omega_list, conf):
         for key, value in acc_dict.items():
             index = int(key.split('_')[1])  # Extract the index part from the key
             acc_dict[index] = value
-        acc_matrix = np.array(acc_list)
-        acc_matrix = np.resize(acc_matrix, (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
+        acc_matrix = list_to_matrix(acc_matrix, conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"])
         acc_diff = acc_matrix.max(axis=1) - acc_matrix.min(axis=1)
         fairness_scalar = np.average(acc_diff)
         group_f_list.append(fairness_scalar)
@@ -172,8 +171,7 @@ def select_clients_with_uniform_distribution(metric_list, conf, server_round):
         for key, value in n_dict.items():
             index = int(key.split('_')[1])  # Extract the index part from the key
             n_list[index] = value
-        n_matrix = np.array(n_list)
-        n_matrix = np.resize(n_matrix, (conf["dataset_options"]["num_targets"],conf["dataset_options"]["num_groups"]))
+        n_matrix = list_to_matrix(n_list, conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"])
         n_matrix_list.append(n_matrix)
     
     client_matrices = np.array(n_matrix_list)

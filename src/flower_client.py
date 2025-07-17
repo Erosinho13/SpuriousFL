@@ -8,7 +8,7 @@ from src.optimizers.subpopbench import GeneralizedCrossEntropyLoss as GCELoss
 from  src.optimizers import subpop_federated
 from src.optimizers.dataloaders import InfiniteDataLoader, WeightedDataLoader
 from src.optimizers.matrix_inference import biased_binary_prediction, biased_prediction, concat_error_predictions, estimate_interaction_matrix, ground_truth_matrix, split_by_class, train_left_right, training
-from src.utils import log
+from src.utils import list_to_matrix, log, matrix_to_list
 from logging import ERROR, INFO
 import numpy as np
 import os
@@ -169,9 +169,8 @@ class FlowerClient(fl.client.NumPyClient):
                                             num_attributes=self.conf["dataset_options"]["num_groups"],
                                             num_labels=self.conf["dataset_options"]["num_targets"])
             group_sizes = metadata["group_sizes"]
-            N = np.resize(group_sizes, (self.conf["dataset_options"]["num_targets"],self.conf["dataset_options"]["num_groups"]))
-            group_sizes = np.resize(N, (1, N.shape[0]*N.shape[1]))
-            group_sizes = list(group_sizes[0])
+            N = list_to_matrix(group_sizes, self.conf["dataset_options"]["num_targets"], self.conf["dataset_options"]["num_groups"])
+            group_sizes = matrix_to_list(N)
             for i, v in enumerate(group_sizes):
                 shared_metrics["interaction_matrix_"+str(i)] = int(v)
             
@@ -181,8 +180,7 @@ class FlowerClient(fl.client.NumPyClient):
                     N = self.predict_n_matrix()
                         
                 if "groupweights" in self.conf["server_opt"]["client_info"]:
-                    group_sizes = np.resize(N, (1, N.shape[0]*N.shape[1]))
-                    group_sizes = list(group_sizes[0])
+                    group_sizes = matrix_to_list(N)
                     for i, v in enumerate(group_sizes):
                         shared_metrics["groupsize_"+str(i)] = int(v)
                 if "triplets" in self.conf["server_opt"]["client_info"]:
@@ -392,9 +390,8 @@ class FlowerClient(fl.client.NumPyClient):
             verbose=0
         )
 
-        l = self.conf["dataset_options"]["num_targets"] * self.conf["dataset_options"]["num_groups"]
-        m_true = np.resize(gt_int_matrix.cpu().numpy(),(1,l))
-        m_pred = np.resize(est_int_matrix.cpu().numpy(),(1,l))
+        m_true = matrix_to_list(gt_int_matrix.cpu().numpy())
+        m_pred = matrix_to_list(est_int_matrix.cpu().numpy())
         log_msg = "True: " + str(m_true) + " Pred: " + str(m_pred)
         log(INFO, log_msg)
         return est_int_matrix.cpu().numpy()
