@@ -16,4 +16,4 @@ update_static_info_rounds: 0
 num_active_clients: 9
 multiclass: true
 afed_generator: false
-fairfed_beta: 1
+fairfed_beta: 0.1

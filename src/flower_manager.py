@@ -19,7 +19,7 @@ class MyManager(fl.server.SimpleClientManager):
         self._cv = threading.Condition()
         self.conf = conf
         self.past_sampled_ids = np.zeros(self.conf['dataset_options']['num_clients'])  # needed for roundrobin sampling strategy
-        self.client_omega = {}
+        self.client_omega = None
         self.clusters = None
 
     def sample(
@@ -62,13 +62,14 @@ class MyManager(fl.server.SimpleClientManager):
             sampled_cids = random.sample(available_cids, num_clients)
         elif self.conf["server_opt"]["selection_method"] == "fairfed":
             metric_list = [client_info[int(cid)] for cid in available_cids]
-            for cid in available_cids:
-                if int(cid) not in self.client_omega:
-                    self.client_omega[int(cid)] = 1/len(available_cids)
-            omega_list = [self.client_omega[int(cid)] for cid in available_cids]
-            client_weights = client_weights_fairfed(metric_list, omega_list, self.conf)
+            if self.client_omega is None:
+                omega_list = None
+                self.client_omega = {}
+            else:
+                omega_list = [self.client_omega[int(cid)] for cid in available_cids]
+            client_weights, omega_list = client_weights_fairfed(metric_list, omega_list, self.conf)
             for i, cid in enumerate(available_cids):
-                self.client_omega[int(cid)] = client_weights[i]
+                self.client_omega[int(cid)] = omega_list[i]
             client_weights = np.array(client_weights)/sum(client_weights)
             elements = list(range(len(client_weights)))
             sampled_ids = np.random.choice(elements, size=num_clients, p=client_weights, replace=False)

@@ -340,3 +340,30 @@ def matrix_to_dict(matrix, prefix="y", suffix="g"):
             key = f"{prefix}{y}{suffix}{g}"
             result_dict[key] = matrix[y, g]
     return result_dict
+
+
+def dict_to_list(data_dict: dict, prefix: str) -> list:
+    """
+    Converts a dictionary with keys in the format "prefix_i" into a list
+    where 'i' is the index in the list.
+
+    Args:
+        data_dict (dict): The input dictionary where keys are like "prefix_0", "prefix_1", etc.
+        prefix (str): The prefix string used in the dictionary keys.
+    """
+
+    max_index = -1
+    indexed_items = []
+    for key, value in data_dict.items():
+        index_str = key.split(f'{prefix}', 1)[1]
+        index = int(index_str)
+        indexed_items.append((index, value))
+        if index > max_index:
+            max_index = index
+            
+    result_list = [0] * (max_index + 1)
+
+    for index, value in indexed_items:
+        result_list[index] = value
+
+    return result_list

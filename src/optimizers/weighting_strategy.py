@@ -1,6 +1,6 @@
 from typing import List
 import numpy as np
-from src.utils import adjust_array, get_device, list_to_matrix
+from src.utils import adjust_array, dict_to_list, dict_to_matrix, get_device, list_to_matrix
 import torch
 from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, NDArrays
 from cvxopt import matrix, solvers
@@ -109,13 +109,8 @@ def client_weights_known_groups(metric_list, conf):
     for m in metric_list:
         group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
         n_dict = {k:v for k,v in m.items() if k in group_keys}
-        max_index = max(int(key.split('_')[1]) for key in n_dict)
-        n_list = [0] * (max_index + 1)
-        for key, value in n_dict.items():
-            index = int(key.split('_')[1])  # Extract the index part from the key
-            n_list[index] = value
-        n_matrix = np.array(n_list)
-        n_matrix = list_to_matrix(n_matrix, conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"])
+        n_list = dict_to_list(n_dict, "groupsize_")
+        n_matrix = list_to_matrix(n_list, conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"])
         n_matrix_list.append(n_matrix)
     client_weights = weights_from_n_matrix_list(n_matrix_list)
     return client_weights
@@ -130,16 +125,14 @@ def client_weights_fairfed(metric_list, omega_list, conf):
         group_keys = [k for k in m.keys() if k.startswith("groupsize_")]
         for k in group_keys:
             datasize += m[k]
+        size_list.append(datasize)
         train_acc = m["groupacc_train_accuracy"]
         train_acc_list.append(train_acc)
-        gacc_keys = [k for k in m.keys() if k.startswith("groupacc_y")]
+        gacc_keys = [k for k in m.keys() if (k.startswith("groupacc_") and k!="groupacc_train_accuracy")]
         acc_dict = {k:v for k,v in m.items() if k in gacc_keys}
-        max_index = max(int(key.split('_')[1]) for key in acc_dict)
-        acc_list = [0] * (max_index + 1)
-        for key, value in acc_dict.items():
-            index = int(key.split('_')[1])  # Extract the index part from the key
-            acc_dict[index] = value
-        acc_matrix = list_to_matrix(acc_matrix, conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"])
+        acc_list = dict_to_list(acc_dict,"groupacc_")
+        acc_matrix = list_to_matrix(acc_list, conf["dataset_options"]["num_targets"], conf["dataset_options"]["num_groups"])
+        acc_matrix = acc_matrix / 100
         acc_diff = acc_matrix.max(axis=1) - acc_matrix.min(axis=1)
         fairness_scalar = np.average(acc_diff)
         group_f_list.append(fairness_scalar)
@@ -149,9 +142,17 @@ def client_weights_fairfed(metric_list, omega_list, conf):
     avg_f = np.average(group_f_list)
     delta_list = np.abs(group_f_list - avg_f)
     avg_delta = np.average(delta_list)
-    omega_list = omega_list - conf["server_opt"]["fairfed_beta"]*(delta_list-avg_delta)
-    omega_list = omega_list/np.sum(omega_list)
-    return omega_list
+    if omega_list is None:
+        omega_list = size_list / np.sum(size_list)
+    else:
+        omega_list = omega_list - conf["server_opt"]["fairfed_beta"]*(delta_list-avg_delta)
+    
+    client_weights = np.clip(omega_list,0.000001,1.0)
+    client_weights = client_weights/np.sum(client_weights)
+    print("FairFed omega_list and weights:")
+    print(omega_list)
+    print(client_weights)
+    return client_weights, omega_list
 
 def select_clients_with_uniform_distribution(metric_list, conf, server_round):
     """
