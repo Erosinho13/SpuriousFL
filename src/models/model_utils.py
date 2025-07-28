@@ -1,3 +1,4 @@
+from src.models.mlp import MLP
 from src.utils import get_device, get_input_shape
 import torch
 from typing import List
@@ -7,7 +8,7 @@ import os
 
 from torchvision.models import mobilenet_v2
 
-from .cnn import get_diao_CNN
+from .cnn import DiaoCNN, get_diao_CNN
 from .mobilenet import mobilenetv2
 from .resnet import get_resnet50
 
@@ -72,7 +73,9 @@ def init_model(conf, model_path=None, weights=None, *args, **kwargs):
     kwargs["input_shape"] = input_shape
     kwargs["num_classes"] = num_classes
     if conf["model_options"]["model_type"] == "CNN":
-        model = get_diao_CNN(*args, **kwargs)
+        model = DiaoCNN(input_shape=input_shape, num_classes=num_classes, default_hidden=conf["model_options"]["hidden_units"])
+    if conf["model_options"]["model_type"] == "MLP":
+        model = MLP(input_shape=input_shape,num_classes=num_classes,hidden_sizes=conf["model_options"]["hidden_units"])
     elif conf["model_options"]["model_type"] == "ResNet":
         if 'norm_layer' in conf.keys():
             norm=conf['norm_layer']

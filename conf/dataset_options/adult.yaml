@@ -1,0 +1,13 @@
+defaults:
+  - fairness_params: all_defaults
+  
+name: Adult
+input_size: 16
+num_targets: 2
+num_groups: 2
+split_mode: balanced
+num_clients: 10
+group_name: ['sex']
+target_name: Income Binary
+fairness_params:
+  calculate_fairness: true

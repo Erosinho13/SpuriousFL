@@ -1,3 +1,4 @@
+from src.datasets.adult import Adult
 from src.datasets.celeba import CelebA, data_transforms_celeba, split_data_celeba
 from src.datasets.fairface import FairFace, data_transforms_fairface, split_data_fairface
 from src.datasets.fmow import FMOW, data_transforms_fmow
@@ -220,6 +221,24 @@ def load_data(dataset_mode="CIFAR10", val_split=False, val_ratio=0.2, conf={}):
         testset = FairFace(
             "./datasets", train=False, transforms=test_transforms,
             conf=conf
+        )
+        valset = copy.deepcopy(testset)
+        return trainset, valset, testset
+    if dataset_mode=="Adult":
+        ds_opt = conf["dataset_options"]
+        group = ds_opt["group_name"]
+        target = ds_opt["target_name"]
+        trainset = Adult(
+            train=True,
+            target_attr_name=target,
+            group_attr_name=group,
+            seed=conf["seed"]
+        )
+        testset = Adult(
+            train=False,
+            target_attr_name=target,
+            group_attr_name=group,
+            seed=conf["seed"]
         )
         valset = copy.deepcopy(testset)
         return trainset, valset, testset

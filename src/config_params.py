@@ -93,6 +93,7 @@ class ModelConfig:
     model_type: str
     norm_layer: str
     pretrained: Optional[bool]
+    hidden_units: Optional[List]
 
 @dataclass
 class EnvironmentConfig:

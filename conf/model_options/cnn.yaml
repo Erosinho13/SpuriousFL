@@ -1,0 +1,2 @@
+model_type: CNN
+hidden_units: [64, 128, 256, 512]

@@ -190,8 +190,10 @@ def get_input_shape(conf, dataset_mode=None):
             input_shape = (3, conf["dataset_options"]["input_size"], conf["dataset_options"]["input_size"])
         else:
             input_shape = (3, 224, 224)
+    elif dataset_mode == "Adult":
+        input_shape = conf["dataset_options"]["input_size"]
     else:
-        raise NotImplementedError('Dataset split for dataset ' + dataset_mode + ' not recognized')
+        raise NotImplementedError('Input shape for dataset ' + dataset_mode + ' not recognized')
     return input_shape
 
 def adjust_array(v: np.array, q: int, population: np.array) -> np.array:

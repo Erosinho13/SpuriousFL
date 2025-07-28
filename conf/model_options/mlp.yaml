@@ -1,0 +1,2 @@
+model_type: MLP
+hidden_units: [64]
