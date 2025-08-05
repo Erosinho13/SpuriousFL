@@ -15,4 +15,4 @@ class MLP(AbstractModel):
         for i in range(len(hidden_sizes)-1):
             blocks.append(nn.Linear(hidden_sizes[i],hidden_sizes[i+1]))
         self.featurizer = nn.Sequential(*blocks)
-        self.classifier = nn.Linear(in_features=hidden_sizes[-1], out_features=num_classes, bias=use_bias)
+        self.classifier = nn.Linear(in_features=hidden_sizes[-1], out_features=num_classes)

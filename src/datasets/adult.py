@@ -13,7 +13,7 @@ class Adult(SubpopDataset):
     def __init__(self,
                  train=True,
                  target_attr_name="Income Binary",
-                 group_attr_name="sex",
+                 group_attr_name=["sex"],
                  seed=0
                  ):
         download_adult_dataset()
@@ -24,11 +24,16 @@ class Adult(SubpopDataset):
             df = train_df
         else:
             df = test_df
+        
         self.y_list = df[target_attr_name].to_numpy().astype(int)
-        self.g_list = df[group_attr_name].to_numpy().astype(int)
+        if len(group_attr_name)==1:
+            group_attr_name = group_attr_name[0]
+            self.g_list = df[group_attr_name].to_numpy().astype(int)
+        else:
+            raise NotImplementedError("combining attributes not implemented yet")
         drop_colums = set([target_attr_name]).union(set(["race","sex"]))
-        df = df.drop(columns=drop_colums)
-        self.x_array = df.to_numpy().astype(np.float32)
+        df_temp = df.drop(columns=drop_colums)
+        self.x_array = df_temp.to_numpy().astype(np.float32)
         super().__init__()
 
     def __len__(self):

@@ -175,7 +175,14 @@ def split_mode_to_matrix(conf:dict)-> List:
         client_samples += [[[10, 90], [10, 90]]] * 2  # Birds on water, Type AI (1)
         client_samples += [[[90, 10], [10, 90]]] * 15  # Expected background, Type SC (2)
         client_samples += [[[10, 90], [90, 10]]] * 1  # Unexpected background, Type SC (2)
-    
+    if split_mode=="adult_gsc":
+        client_samples = []
+        client_samples += [[[260, 260], [10, 10]]] * 2
+        client_samples += [[[10, 10], [260, 260]]] * 2
+        client_samples += [[[260, 10], [260, 10]]] * 2
+        client_samples += [[[10, 260], [10, 260]]] * 2
+        client_samples += [[[260, 10], [10, 260]]] * 15
+        client_samples += [[[10, 260], [260, 10]]] * 1
     if split_mode=="testdist":
         client_samples = []
         client_samples += [[[170,10],[19,1]]] * 2
